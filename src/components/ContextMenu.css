@@ -1,0 +1,103 @@
+/* ─── Context menu — the most dramatic Liquid Glass component ───────────────── */
+#context-menu {
+  position: fixed;
+  z-index: 1000;
+  background: linear-gradient(
+    145deg,
+    rgba(255, 255, 255, 0.82) 0%,
+    rgba(255, 255, 255, 0.72) 100%
+  );
+  backdrop-filter: blur(64px) saturate(200%) brightness(1.04);
+  -webkit-backdrop-filter: blur(64px) saturate(200%) brightness(1.04);
+  border: 1px solid var(--rim-bright);
+  border-radius: var(--r-xl);
+  box-shadow:
+    var(--shadow-float),
+    inset 0 1px 0 var(--rim-bright),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.04);
+  padding: 5px;
+  min-width: 210px;
+}
+
+[data-theme="dark"] #context-menu {
+  background: linear-gradient(
+    145deg,
+    rgba(52, 52, 62, 0.94) 0%,
+    rgba(36, 36, 44, 0.97) 100%
+  );
+}
+
+#context-menu .context-menu-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 12px;
+  background: none;
+  border: none;
+  border-radius: var(--r-sm);
+  color: var(--text);
+  cursor: default;
+  font-size: 13px;
+  text-align: left;
+  gap: 16px;
+  transition: background 0.08s;
+}
+
+#context-menu .context-menu-item:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(0, 122, 255, 0.82) 0%,
+    rgba(0, 95, 215, 0.88) 100%
+  );
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.35);
+}
+
+#context-menu .context-menu-shortcut {
+  color: var(--text-subtle);
+  font-size: 12px;
+  margin-left: auto;
+  letter-spacing: 0.03em;
+}
+
+#context-menu .context-menu-item:hover .context-menu-shortcut {
+  color: rgba(255, 255, 255, 0.65);
+}
+
+#context-menu .context-menu-item--disabled,
+#context-menu .context-menu-item--disabled:hover {
+  color: var(--text-subtle);
+  background: none;
+  box-shadow: none;
+  cursor: default;
+}
+
+#context-menu .context-menu-item--disabled .context-menu-shortcut,
+#context-menu .context-menu-item--disabled:hover .context-menu-shortcut {
+  color: var(--text-subtle);
+  opacity: 0.5;
+}
+
+#context-menu .context-menu-sep {
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--rim-dark) 20%,
+    var(--rim-dark) 80%,
+    transparent 100%
+  );
+  margin: 4px 10px;
+}
+
+/* In dark mode --rim-dark is near-black on dark glass — use rim-mid instead */
+[data-theme="dark"] #context-menu .context-menu-sep {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--rim-mid) 20%,
+    var(--rim-mid) 80%,
+    transparent 100%
+  );
+}

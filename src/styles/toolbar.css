@@ -1,0 +1,93 @@
+/* ─── Toolbar ────────────────────────────────────────────────────────────────── */
+#toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px 8px 80px; /* 80px = macOS traffic-light safe area */
+  min-height: 50px;
+  flex-shrink: 0;
+  background: var(--glass-heavy);
+  backdrop-filter: var(--blur-mid);
+  -webkit-backdrop-filter: var(--blur-mid);
+  border-bottom: 1px solid var(--rim-dark);
+  box-shadow: var(--shadow-inner);
+  position: relative;
+  z-index: 10;
+}
+
+#toolbar .toolbar-nav {
+  display: flex;
+  gap: 2px;
+}
+
+#toolbar .toolbar-actions {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* ─── Toolbar buttons — glass pill style ────────────────────────────────────── */
+#toolbar .toolbar-btn {
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  color: var(--text);
+  cursor: default;
+  font-size: 16px;
+  padding: 4px 9px;
+  line-height: 1;
+  min-width: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+#toolbar .toolbar-btn:hover:not(:disabled) {
+  background: var(--glass-mid);
+  backdrop-filter: var(--blur-light);
+  -webkit-backdrop-filter: var(--blur-light);
+  border-color: var(--rim-mid);
+  box-shadow: var(--shadow-inner), var(--shadow-panel);
+}
+
+#toolbar .toolbar-btn:active:not(:disabled) {
+  background: var(--glass-light);
+  border-color: var(--rim-bright);
+}
+
+#toolbar .toolbar-btn:disabled {
+  opacity: 0.30;
+  cursor: default;
+}
+
+@keyframes nav-btn-flash {
+  0%, 40% {
+    background: var(--glass-light);
+    border-color: var(--rim-bright);
+  }
+  100% {
+    background: none;
+    border-color: transparent;
+  }
+}
+
+#toolbar .toolbar-btn--flash {
+  animation: nav-btn-flash 200ms ease-out forwards;
+}
+
+/* ─── Status bar ─────────────────────────────────────────────────────────────── */
+#statusbar {
+  height: 24px;
+  background: var(--glass-heavy);
+  backdrop-filter: var(--blur-light);
+  -webkit-backdrop-filter: var(--blur-light);
+  border-top: 1px solid var(--rim-dark);
+  box-shadow: inset 0 -1px 0 var(--rim-bright);
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  font-size: 11px;
+  color: var(--text-mid);
+  flex-shrink: 0;
+}

@@ -1,0 +1,44 @@
+/* ─── Breadcrumb ─────────────────────────────────────────────────────────────── */
+#breadcrumb {
+  display: flex;
+  align-items: center;
+  background: var(--glass-mid);
+  backdrop-filter: var(--blur-light);
+  -webkit-backdrop-filter: var(--blur-light);
+  border: 1px solid var(--rim-mid);
+  border-radius: var(--r-md);
+  padding: 4px 10px;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  max-height: 30px;
+  box-shadow: var(--shadow-inner);
+}
+
+#breadcrumb .breadcrumb-item {
+  display: flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+#breadcrumb .breadcrumb-sep {
+  color: var(--text-subtle);
+  margin: 0 1px;
+  font-size: 12px;
+}
+
+#breadcrumb .breadcrumb-segment {
+  background: none;
+  border: none;
+  color: var(--accent);
+  cursor: default;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 0 3px;
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+#breadcrumb .breadcrumb-segment:hover {
+  background: var(--accent-light);
+}

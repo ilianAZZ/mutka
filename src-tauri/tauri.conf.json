@@ -1,0 +1,34 @@
+{
+  "productName": "Macows Explorer",
+  "version": "0.1.0",
+  "identifier": "com.macows.explorer",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Macows Explorer",
+        "width": 1100,
+        "height": 700,
+        "minWidth": 620,
+        "minHeight": 420,
+        "decorations": true,
+        "transparent": true,
+        "devtools": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": []
+  }
+}

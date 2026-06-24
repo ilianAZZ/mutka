@@ -1,0 +1,115 @@
+/* ─── File list ──────────────────────────────────────────────────────────────── */
+#file-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  background: rgba(242, 242, 247, 0.82);
+}
+
+[data-theme="dark"] #file-list {
+  background: rgba(18, 18, 22, 0.72);
+}
+
+#file-list .file-list-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-subtle);
+  font-size: 14px;
+}
+
+#file-list .file-list-header {
+  display: grid;
+  grid-template-columns: 1fr 180px 100px 90px;
+  padding: 5px 16px;
+  border-bottom: 1px solid var(--rim-dark);
+  background: var(--glass-heavy);
+  backdrop-filter: var(--blur-light);
+  -webkit-backdrop-filter: var(--blur-light);
+  color: var(--text-mid);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+#file-list .file-list-body {
+  flex: 1;
+}
+
+#file-list .file-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 1fr 180px 100px 90px;
+  padding: 5px 16px;
+  cursor: default;
+  align-items: center;
+  border-radius: var(--r-sm);
+  margin: 1px 6px;
+  transition: background 0.08s;
+}
+
+#file-list .file-row:hover {
+  background: var(--glass-mid);
+  backdrop-filter: var(--blur-light);
+  -webkit-backdrop-filter: var(--blur-light);
+}
+
+#file-list .file-row.selected {
+  background: var(--accent-sel);
+}
+
+#file-list .file-row.selected .col-date,
+#file-list .file-row.selected .col-type,
+#file-list .file-row.selected .col-size {
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+#file-list .file-row.cut {
+  opacity: 0.38;
+}
+
+/* macOS-style selection ring */
+#file-list .file-row.selected::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--r-sm);
+  box-shadow: inset 0 0 0 1px rgba(0, 122, 255, 0.4);
+  pointer-events: none;
+}
+
+#file-list .col-name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+#file-list .col-date,
+#file-list .col-type {
+  color: var(--text-mid);
+  font-size: 11.5px;
+}
+
+#file-list .col-size {
+  color: var(--text-mid);
+  font-size: 11.5px;
+  text-align: right;
+}
+
+#file-list .file-icon {
+  font-size: 17px;
+  flex-shrink: 0;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.12));
+}

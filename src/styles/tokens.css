@@ -1,0 +1,71 @@
+/* ─── Liquid Glass design tokens — LIGHT MODE (default) ─────────────────────── */
+/* See src/STYLE_GUIDE.md for full documentation of every token.                  */
+/* NEVER hardcode colors. Always use var(--token-name).                           */
+:root {
+  /* Surfaces */
+  --glass-heavy:   rgba(255, 255, 255, 0.78);
+  --glass-mid:     rgba(255, 255, 255, 0.55);
+  --glass-light:   rgba(255, 255, 255, 0.30);
+  --glass-subtle:  rgba(255, 255, 255, 0.12);
+
+  /* Borders — the "rim light" that makes glass look 3D */
+  --rim-bright:    rgba(255, 255, 255, 0.70);
+  --rim-mid:       rgba(255, 255, 255, 0.40);
+  --rim-dark:      rgba(0,   0,   0,   0.06);
+
+  /* Blur levels */
+  --blur-heavy:    blur(48px) saturate(200%);
+  --blur-mid:      blur(24px) saturate(180%);
+  --blur-light:    blur(12px) saturate(160%);
+
+  /* Shadows */
+  --shadow-float:  0 8px 40px rgba(0,0,0,0.18), 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-panel:  0 2px 12px rgba(0,0,0,0.10);
+  --shadow-inner:  inset 0 1px 0 rgba(255,255,255,0.65);
+
+  /* Text */
+  --text:          rgba(0, 0, 0, 0.85);
+  --text-mid:      rgba(0, 0, 0, 0.55);
+  --text-subtle:   rgba(0, 0, 0, 0.36);
+
+  /* Accent (macOS Sequoia / 26 blue) */
+  --accent:        #007AFF;
+  --accent-light:  rgba(0, 122, 255, 0.15);
+  --accent-hover:  rgba(0, 122, 255, 0.22);
+  --accent-sel:    rgba(0, 122, 255, 0.28);
+
+  /* Geometry */
+  --r-sm:   6px;
+  --r-md:   10px;
+  --r-lg:   14px;
+  --r-xl:   18px;
+
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  font-size: 13px;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── Dark mode token overrides ─────────────────────────────────────────────── */
+/* Applied by ThemeManager.ts via document.documentElement.setAttribute("data-theme","dark") */
+[data-theme="dark"] {
+  --glass-heavy:   rgba(28,  28,  32,  0.82);
+  --glass-mid:     rgba(40,  40,  46,  0.70);
+  --glass-light:   rgba(58,  58,  66,  0.45);
+  --glass-subtle:  rgba(255, 255, 255, 0.06);
+
+  --rim-bright:    rgba(255, 255, 255, 0.18);
+  --rim-mid:       rgba(255, 255, 255, 0.10);
+  --rim-dark:      rgba(0,   0,   0,   0.35);
+
+  --shadow-float:  0 8px 40px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.25);
+  --shadow-panel:  0 2px 12px rgba(0,0,0,0.30);
+  --shadow-inner:  inset 0 1px 0 rgba(255,255,255,0.10);
+
+  --text:          rgba(255, 255, 255, 0.90);
+  --text-mid:      rgba(255, 255, 255, 0.55);
+  --text-subtle:   rgba(255, 255, 255, 0.30);
+
+  --accent-light:  rgba(0, 122, 255, 0.25);
+  --accent-hover:  rgba(0, 122, 255, 0.35);
+  --accent-sel:    rgba(0, 122, 255, 0.38);
+}

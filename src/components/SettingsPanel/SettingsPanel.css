@@ -1,0 +1,147 @@
+/* ─── Settings panel — slide-in sheet from the right ──────────────────────── */
+
+.settings-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+}
+
+.settings-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 280px;
+  z-index: 201;
+  background: var(--glass-heavy);
+  backdrop-filter: var(--blur-heavy);
+  -webkit-backdrop-filter: var(--blur-heavy);
+  border-left: 1px solid var(--rim-mid);
+  box-shadow: var(--shadow-float);
+  display: flex;
+  flex-direction: column;
+  animation: settings-slide-in 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes settings-slide-in {
+  from { transform: translateX(100%); opacity: 0.5; }
+  to   { transform: translateX(0);    opacity: 1;   }
+}
+
+/* ─── Header ─────────────────────────────────────────────────────────────── */
+.settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--rim-dark);
+  flex-shrink: 0;
+}
+
+[data-theme="dark"] .settings-header {
+  border-bottom-color: var(--rim-mid);
+}
+
+.settings-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.settings-close {
+  background: none;
+  border: none;
+  color: var(--text-subtle);
+  cursor: default;
+  font-size: 12px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, color 0.12s;
+}
+
+.settings-close:hover {
+  background: var(--glass-mid);
+  color: var(--text);
+}
+
+/* ─── Body ───────────────────────────────────────────────────────────────── */
+.settings-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 12px;
+}
+
+/* ─── Section ────────────────────────────────────────────────────────────── */
+.settings-section {
+  margin-bottom: 24px;
+}
+
+.settings-section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-subtle);
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+/* ─── Row ────────────────────────────────────────────────────────────────── */
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  background: var(--glass-mid);
+  backdrop-filter: var(--blur-light);
+  -webkit-backdrop-filter: var(--blur-light);
+  border: 1px solid var(--rim-mid);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-inner);
+}
+
+.settings-label {
+  font-size: 13px;
+  color: var(--text);
+}
+
+/* ─── Theme picker — segmented control ──────────────────────────────────── */
+.theme-picker {
+  display: flex;
+  gap: 2px;
+  background: var(--glass-subtle);
+  border: 1px solid var(--rim-dark);
+  border-radius: calc(var(--r-sm) + 1px);
+  padding: 2px;
+}
+
+[data-theme="dark"] .theme-picker {
+  border-color: var(--rim-mid);
+}
+
+.theme-btn {
+  background: none;
+  border: none;
+  color: var(--text-mid);
+  cursor: default;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 3px 10px;
+  border-radius: var(--r-sm);
+  transition: background 0.12s, color 0.12s, box-shadow 0.12s;
+}
+
+.theme-btn--active {
+  background: var(--glass-heavy);
+  color: var(--text);
+  box-shadow: var(--shadow-panel), inset 0 1px 0 var(--rim-bright);
+}
+
+.theme-btn:not(.theme-btn--active):hover {
+  background: var(--glass-light);
+  color: var(--text);
+}
