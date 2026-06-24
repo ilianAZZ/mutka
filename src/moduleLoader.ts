@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { MacowsModule } from "./core/types";
-import { ModuleRegistry } from "./core/ModuleRegistry";
+import type { MacowsModule } from "./core/module-registry/module-registry.types";
+import { ModuleRegistry } from "./core/module-registry/ModuleRegistry";
 
 interface UserModuleEntry {
   id: string;

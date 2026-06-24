@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileItem, ActionContext, ClipboardState, DialogAPI } from "./core/types";
-import { ModuleRegistry } from "./core/ModuleRegistry";
-import { EventBus } from "./core/EventBus";
+import { ModuleRegistry } from "./core/module-registry/ModuleRegistry";
+import { EventBus } from "./core/event-bus/EventBus";
+import { TabManager, type TabsSnapshot } from "./core/tab-manager/TabManager";
 import { loadModules, loadCommunityModules } from "./moduleLoader";
-import { InputManager } from "./core/InputManager";
+import { InputManager } from "./core/input-manager/InputManager";
 import { FileList } from "./components/FileList";
 import { Breadcrumb } from "./components/Breadcrumb";
 import { ContextMenu } from "./components/ContextMenu";
@@ -12,11 +13,7 @@ import { Dialog, type DialogState } from "./components/Dialog";
 import { SettingsPanel } from "./components/SettingsPanel/SettingsPanel";
 import "./styles/toolbar.css";
 
-// Auto-discover and register all modules in src/modules/*/index.ts.
-// core.navigation is first so its priority-0 open handlers are in place
-// before any other module registers higher-priority overrides.
 loadModules();
-// Community modules load async after built-ins — registered before the user can interact
 loadCommunityModules().catch((e) => console.error("[App] loadCommunityModules:", e));
 InputManager.init();
 
@@ -30,19 +27,46 @@ function isClipboardState(data: unknown): data is ClipboardState {
 }
 
 export function App() {
-  const [currentDir, setCurrentDir] = useState<string>("/");
   const [files, setFiles] = useState<FileItem[]>([]);
   const [selected, setSelected] = useState<FileItem[]>([]);
   const [clipboard, setClipboard] = useState<ClipboardState>({ items: [], operation: null });
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-  const [history, setHistory] = useState<string[]>([]);
-  const [historyIdx, setHistoryIdx] = useState(-1);
   const [flashedBtn, setFlashedBtn] = useState<"back" | "forward" | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [dialogState, setDialogState] = useState<DialogState | null>(null);
   const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Stable DialogAPI — setDialogState is always the same reference so no deps needed
+  // ── Tab state (driven by TabManager via EventBus) ─────────────────────────────
+
+  const [tabsSnap, setTabsSnap] = useState<TabsSnapshot>(() => TabManager.getSnapshot());
+
+  useEffect(() => EventBus.on("tabs:changed", (d) => setTabsSnap(d as TabsSnapshot)), []);
+
+  // ── Global navigation (used when no tab is active) ───────────────────────────
+
+  const [globalDir, setGlobalDir] = useState<string>("/");
+  const [globalHistory, setGlobalHistory] = useState<string[]>([]);
+  const [globalHistoryIdx, setGlobalHistoryIdx] = useState<number>(-1);
+
+  // Sync global nav to the last tab's location when all tabs are closed
+  useEffect(() => {
+    return EventBus.on("tabs:last-closed", (d) => {
+      const { path } = d as { path: string };
+      setGlobalDir(path);
+      setGlobalHistory([path]);
+      setGlobalHistoryIdx(0);
+    });
+  }, []);
+
+  // Derive the current navigation context
+  const currentDir = tabsSnap.currentPath ?? globalDir;
+  const canGoBack = tabsSnap.activeTabId !== null ? tabsSnap.canGoBack : globalHistoryIdx > 0;
+  const canGoForward = tabsSnap.activeTabId !== null
+    ? tabsSnap.canGoForward
+    : globalHistoryIdx < globalHistory.length - 1;
+
+  // ── Dialog API ───────────────────────────────────────────────────────────────
+
   const dialogAPI = useMemo((): DialogAPI => ({
     prompt: (options) => new Promise<string | null>((resolve) => {
       setDialogState({ type: "prompt", options, resolve });
@@ -52,12 +76,55 @@ export function App() {
     }),
   }), []);
 
-  // Sync clipboard React state from EventBus — clipboard module emits after every copy/cut/paste
+  // ── EventBus subscriptions ───────────────────────────────────────────────────
+
   useEffect(() => {
     return EventBus.on("clipboard:changed", (data) => {
       if (isClipboardState(data)) setClipboard(data);
     });
   }, []);
+
+  // ── Navigation ───────────────────────────────────────────────────────────────
+
+  const navigateTo = useCallback((path: string) => {
+    // Delegate to the active tab if one exists
+    if (TabManager.navigateTo(path)) {
+      setSelected([]);
+      return;
+    }
+    const next = [...globalHistory.slice(0, globalHistoryIdx + 1), path];
+    setGlobalHistory(next);
+    setGlobalHistoryIdx(next.length - 1);
+    setGlobalDir(path);
+    setSelected([]);
+  }, [globalHistory, globalHistoryIdx]);
+
+  const goBack = useCallback(() => {
+    if (TabManager.goBack()) { setSelected([]); return; }
+    if (globalHistoryIdx > 0) {
+      setGlobalHistoryIdx(globalHistoryIdx - 1);
+      setGlobalDir(globalHistory[globalHistoryIdx - 1]);
+      setSelected([]);
+      EventBus.emit("navigation:back");
+    }
+  }, [globalHistoryIdx, globalHistory]);
+
+  const goForward = useCallback(() => {
+    if (TabManager.goForward()) { setSelected([]); return; }
+    if (globalHistoryIdx < globalHistory.length - 1) {
+      setGlobalHistoryIdx(globalHistoryIdx + 1);
+      setGlobalDir(globalHistory[globalHistoryIdx + 1]);
+      setSelected([]);
+      EventBus.emit("navigation:forward");
+    }
+  }, [globalHistoryIdx, globalHistory]);
+
+  const goUp = useCallback(() => {
+    const parent = currentDir.split("/").slice(0, -1).join("/") || "/";
+    if (parent !== currentDir) navigateTo(parent);
+  }, [currentDir, navigateTo]);
+
+  // ── File loading ─────────────────────────────────────────────────────────────
 
   useEffect(() => {
     invoke<string>("get_home_dir").then((home) => {
@@ -78,70 +145,19 @@ export function App() {
 
   useEffect(() => { refresh(); }, [refresh]);
 
-  const navigateTo = useCallback((path: string) => {
-    setHistory((prev) => {
-      const next = [...prev.slice(0, historyIdx + 1), path];
-      setHistoryIdx(next.length - 1);
-      return next;
-    });
-    setCurrentDir(path);
-    setSelected([]);
-  }, [historyIdx]);
-
-  const goBack = useCallback(() => {
-    if (historyIdx > 0) {
-      const path = history[historyIdx - 1];
-      setHistoryIdx(historyIdx - 1);
-      setCurrentDir(path);
-      setSelected([]);
-      EventBus.emit("navigation:back");
-    }
-  }, [historyIdx, history]);
-
-  const goForward = useCallback(() => {
-    if (historyIdx < history.length - 1) {
-      const path = history[historyIdx + 1];
-      setHistoryIdx(historyIdx + 1);
-      setCurrentDir(path);
-      setSelected([]);
-      EventBus.emit("navigation:forward");
-    }
-  }, [historyIdx, history]);
-
-  const goUp = useCallback(() => {
-    const parent = currentDir.split("/").slice(0, -1).join("/") || "/";
-    if (parent !== currentDir) navigateTo(parent);
-  }, [currentDir, navigateTo]);
-
-  // Top bar panels (e.g. tab bar) can request navigation via this event
-  useEffect(() => {
-    return EventBus.on("tabs:navigate", (data) => {
-      const { path } = data as { path: string };
-      navigateTo(path);
-    });
-  }, [navigateTo]);
-
-  const handleModifierOpen = useCallback((item: FileItem, modifiers: { ctrl: boolean; meta: boolean }) => {
-    EventBus.emit("file:modifier-open", { item, modifiers });
-  }, []);
+  // ── Action context ────────────────────────────────────────────────────────────
 
   const getContext = useCallback((): ActionContext => ({
     selectedItems: selected,
     currentDirectory: currentDir,
     clipboard,
-    navigation: {
-      navigate: navigateTo,
-      goBack,
-      goForward,
-      goUp,
-      canGoBack: historyIdx > 0,
-      canGoForward: historyIdx < history.length - 1,
-    },
+    navigation: { navigate: navigateTo, goBack, goForward, goUp, canGoBack, canGoForward },
     refresh,
     dialog: dialogAPI,
-  }), [selected, currentDir, clipboard, navigateTo, goBack, goForward, goUp, historyIdx, history.length, refresh, dialogAPI]);
+  }), [selected, currentDir, clipboard, navigateTo, goBack, goForward, goUp, canGoBack, canGoForward, refresh, dialogAPI]);
 
-  // Route keyboard shortcut actions through ModuleRegistry (async, error-isolated per module)
+  // ── Global effects ────────────────────────────────────────────────────────────
+
   useEffect(() => {
     const handler = async (e: Event) => {
       const { actionId } = (e as CustomEvent<{ actionId: string }>).detail;
@@ -151,7 +167,6 @@ export function App() {
     return () => document.removeEventListener("macows:action", handler);
   }, [getContext]);
 
-  // ⌘, to toggle settings
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "," && (e.metaKey || e.ctrlKey)) {
@@ -163,7 +178,6 @@ export function App() {
     return () => document.removeEventListener("keydown", handler);
   }, []);
 
-  // Toolbar button flash animation on navigation events
   useEffect(() => {
     const flash = (dir: "back" | "forward") => {
       if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
@@ -179,6 +193,8 @@ export function App() {
     };
   }, []);
 
+  // ── Handlers ─────────────────────────────────────────────────────────────────
+
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     setContextMenu({ x: e.clientX, y: e.clientY });
@@ -188,6 +204,12 @@ export function App() {
     ModuleRegistry.executeAction(actionId, getContext());
   }, [getContext]);
 
+  const handleModifierOpen = useCallback((item: FileItem, modifiers: { ctrl: boolean; meta: boolean }) => {
+    EventBus.emit("file:modifier-open", { item, modifiers });
+  }, []);
+
+  // ── Render ────────────────────────────────────────────────────────────────────
+
   return (
     <div id="app" onContextMenu={handleContextMenu} onClick={() => setContextMenu(null)}>
       <div id="toolbar">
@@ -195,13 +217,13 @@ export function App() {
           <button
             className={`toolbar-btn${flashedBtn === "back" ? " toolbar-btn--flash" : ""}`}
             onClick={goBack}
-            disabled={historyIdx <= 0}
+            disabled={!canGoBack}
             title="Back (⌘[)"
           >‹</button>
           <button
             className={`toolbar-btn${flashedBtn === "forward" ? " toolbar-btn--flash" : ""}`}
             onClick={goForward}
-            disabled={historyIdx >= history.length - 1}
+            disabled={!canGoForward}
             title="Forward (⌘])"
           >›</button>
           <button className="toolbar-btn" onClick={goUp} title="Up">↑</button>

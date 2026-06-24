@@ -1,5 +1,5 @@
-import type { ThemePreference } from "./types";
-import { EventBus } from "./EventBus";
+import type { ThemePreference } from "./theme-manager.types";
+import { EventBus } from "../event-bus/EventBus";
 
 const STORAGE_KEY = "macows.theme";
 

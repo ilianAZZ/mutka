@@ -8,6 +8,7 @@ interface Props {
   cutItems: FileItem[];
   onSelect: (items: FileItem[]) => void;
   onOpen: (item: FileItem) => void;
+  onModifierOpen?: (item: FileItem, modifiers: { ctrl: boolean; meta: boolean }) => void;
 }
 
 function formatSize(bytes: number): string {
@@ -43,7 +44,7 @@ function FileIcon({ item }: { item: FileItem }) {
   return <span className="file-icon">{icon}</span>;
 }
 
-export function FileList({ files, selected, cutItems, onSelect, onOpen }: Props) {
+export function FileList({ files, selected, cutItems, onSelect, onOpen, onModifierOpen }: Props) {
   const selectedPaths = new Set(selected.map((f) => f.path));
   const cutPaths = new Set(cutItems.map((f) => f.path));
 
@@ -92,7 +93,13 @@ export function FileList({ files, selected, cutItems, onSelect, onOpen }: Props)
                   .filter(Boolean)
                   .join(" ")}
                 onClick={(e) => handleClick(e, item)}
-                onDoubleClick={() => onOpen(item)}
+                onDoubleClick={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && onModifierOpen) {
+                    onModifierOpen(item, { ctrl: e.ctrlKey, meta: e.metaKey });
+                  } else {
+                    onOpen(item);
+                  }
+                }}
               >
                 <span className="col-name">
                   <FileIcon item={item} />

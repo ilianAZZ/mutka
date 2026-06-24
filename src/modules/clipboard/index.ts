@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
-import { MacowsModule, ClipboardState } from "../../core/types";
-import { EventBus } from "../../core/EventBus";
+import type { MacowsModule } from "../../core/module-registry/module-registry.types";
+import type { ClipboardState } from "../../core/types";
+import { EventBus } from "../../core/event-bus/EventBus";
 
 interface ClipboardReadResult {
   paths: string[];

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
-import type { ThemePreference } from "../../core/types";
-import { ThemeManager } from "../../core/ThemeManager";
+import type { ThemePreference } from "../../core/theme-manager/theme-manager.types";
+import { ThemeManager } from "../../core/theme-manager/ThemeManager";
 import "./SettingsPanel.css";
 
 interface SettingsPanelProps {

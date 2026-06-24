@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { MacowsModule } from "../../core/types";
+import type { MacowsModule } from "../../core/module-registry/module-registry.types";
 
 // Default open handlers at priority 0.
 // Any module can register a higher-priority handler to override these.

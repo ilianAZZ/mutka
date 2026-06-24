@@ -1,19 +1,20 @@
-import {
+import type {
   MacowsModule,
   MacowsAction,
   MacowsOpenHandler,
   MacowsSidebarPanel,
-  ActionContext,
-  FileItem,
-} from "./types";
-import { EventBus } from "./EventBus";
-import { ShortcutManager } from "./ShortcutManager";
+  MacowsTopBarPanel,
+} from "./module-registry.types";
+import type { ActionContext, FileItem } from "../types";
+import { EventBus } from "../event-bus/EventBus";
+import { ShortcutManager } from "../shortcut-manager/ShortcutManager";
 
 class ModuleRegistryClass {
   private modules = new Map<string, MacowsModule>();
   private actions = new Map<string, MacowsAction>();
   private openHandlers: MacowsOpenHandler[] = [];
   private sidebarPanels: MacowsSidebarPanel[] = [];
+  private topBarPanels: MacowsTopBarPanel[] = [];
 
   register(module: MacowsModule): void {
     if (this.modules.has(module.id)) {
@@ -36,6 +37,11 @@ class ModuleRegistryClass {
       this.sidebarPanels.push(panel);
     }
 
+    for (const panel of module.topBarPanels ?? []) {
+      this.topBarPanels.push(panel);
+      this.topBarPanels.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    }
+
     module.onMount?.();
     EventBus.emit("module:registered", { moduleId: module.id });
   }
@@ -55,6 +61,10 @@ class ModuleRegistryClass {
 
     this.sidebarPanels = this.sidebarPanels.filter(
       (p) => !module.sidebarPanels?.some((mp) => mp.id === p.id)
+    );
+
+    this.topBarPanels = this.topBarPanels.filter(
+      (p) => !module.topBarPanels?.some((mp) => mp.id === p.id)
     );
 
     module.onUnmount?.();
@@ -100,6 +110,10 @@ class ModuleRegistryClass {
 
   getSidebarPanels(): MacowsSidebarPanel[] {
     return [...this.sidebarPanels];
+  }
+
+  getTopBarPanels(): MacowsTopBarPanel[] {
+    return [...this.topBarPanels];
   }
 
   getModules(): MacowsModule[] {

@@ -1,5 +1,5 @@
-import type { MacowsModule } from "../../core/types";
-import { EventBus } from "../../core/EventBus";
+import type { MacowsModule } from "../../core/module-registry/module-registry.types";
+import { EventBus } from "../../core/event-bus/EventBus";
 
 type Unsub = () => void;
 let unsubNavigate: Unsub | null = null;

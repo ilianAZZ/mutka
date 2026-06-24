@@ -1,6 +1,7 @@
 import { useEffect, useRef } from "react";
 import "./ContextMenu.css";
-import { MacowsAction, ActionContext } from "../core/types";
+import type { MacowsAction } from "../core/module-registry/module-registry.types";
+import type { ActionContext } from "../core/types";
 
 interface Props {
   x: number;

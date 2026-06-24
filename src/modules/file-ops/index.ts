@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { MacowsModule } from "../../core/types";
+import type { MacowsModule } from "../../core/module-registry/module-registry.types";
 
 export const fileOpsModule: MacowsModule = {
   id: "core.file-ops",

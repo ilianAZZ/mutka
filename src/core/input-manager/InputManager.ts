@@ -1,5 +1,5 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { EventBus } from "./EventBus";
+import { EventBus } from "../event-bus/EventBus";
 
 // Emitted events:
 //   "input:mouse-navigate"  payload: { direction: "back" | "forward" }
