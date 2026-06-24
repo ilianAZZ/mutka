@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { FileItem, ActionContext, ClipboardState, DialogAPI } from "./core/types";
 import { ModuleRegistry } from "./core/ModuleRegistry";
 import { EventBus } from "./core/EventBus";
-import { loadModules } from "./moduleLoader";
+import { loadModules, loadCommunityModules } from "./moduleLoader";
 import { InputManager } from "./core/InputManager";
 import { FileList } from "./components/FileList";
 import { Breadcrumb } from "./components/Breadcrumb";
@@ -16,6 +16,8 @@ import "./styles/toolbar.css";
 // core.navigation is first so its priority-0 open handlers are in place
 // before any other module registers higher-priority overrides.
 loadModules();
+// Community modules load async after built-ins — registered before the user can interact
+loadCommunityModules().catch((e) => console.error("[App] loadCommunityModules:", e));
 InputManager.init();
 
 function isClipboardState(data: unknown): data is ClipboardState {
@@ -111,6 +113,18 @@ export function App() {
     if (parent !== currentDir) navigateTo(parent);
   }, [currentDir, navigateTo]);
 
+  // Top bar panels (e.g. tab bar) can request navigation via this event
+  useEffect(() => {
+    return EventBus.on("tabs:navigate", (data) => {
+      const { path } = data as { path: string };
+      navigateTo(path);
+    });
+  }, [navigateTo]);
+
+  const handleModifierOpen = useCallback((item: FileItem, modifiers: { ctrl: boolean; meta: boolean }) => {
+    EventBus.emit("file:modifier-open", { item, modifiers });
+  }, []);
+
   const getContext = useCallback((): ActionContext => ({
     selectedItems: selected,
     currentDirectory: currentDir,
@@ -201,12 +215,18 @@ export function App() {
         </div>
       </div>
 
+      {ModuleRegistry.getTopBarPanels().map((panel) => {
+        const Panel = panel.component;
+        return <Panel key={panel.id} currentDirectory={currentDir} navigate={navigateTo} />;
+      })}
+
       <FileList
         files={files}
         selected={selected}
         cutItems={clipboard.operation === "cut" ? clipboard.items : []}
         onSelect={setSelected}
         onOpen={(item) => ModuleRegistry.resolveOpen(item, getContext())}
+        onModifierOpen={handleModifierOpen}
       />
 
       <div id="statusbar">
