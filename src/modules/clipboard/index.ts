@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { MacowsModule } from "../../core/module-registry/module-registry.types";
 import type { ClipboardState } from "../../core/types";
 import { EventBus } from "../../core/event-bus/EventBus";
+import { Events } from "../../core/event-bus/events";
 
 interface ClipboardReadResult {
   paths: string[];
@@ -9,7 +10,7 @@ interface ClipboardReadResult {
 }
 
 function emitClipboard(state: ClipboardState): void {
-  EventBus.emit("clipboard:changed", state);
+  EventBus.emit(Events.Clipboard.changed, state);
 }
 
 export const clipboardModule: MacowsModule = {

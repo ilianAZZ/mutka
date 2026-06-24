@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { FileItem, ActionContext, ClipboardState, DialogAPI } from "./core/types";
 import { ModuleRegistry } from "./core/module-registry/ModuleRegistry";
 import { EventBus } from "./core/event-bus/EventBus";
+import { Events } from "./core/event-bus/events";
 import { TabManager, type TabsSnapshot } from "./core/tab-manager/TabManager";
 import { loadModules, loadCommunityModules } from "./moduleLoader";
 import { InputManager } from "./core/input-manager/InputManager";
@@ -17,14 +18,6 @@ loadModules();
 loadCommunityModules().catch((e) => console.error("[App] loadCommunityModules:", e));
 InputManager.init();
 
-function isClipboardState(data: unknown): data is ClipboardState {
-  if (typeof data !== "object" || data === null) return false;
-  const d = data as Record<string, unknown>;
-  return (
-    Array.isArray(d.items) &&
-    (d.operation === "copy" || d.operation === "cut" || d.operation === null)
-  );
-}
 
 export function App() {
   const [files, setFiles] = useState<FileItem[]>([]);
@@ -40,7 +33,7 @@ export function App() {
 
   const [tabsSnap, setTabsSnap] = useState<TabsSnapshot>(() => TabManager.getSnapshot());
 
-  useEffect(() => EventBus.on("tabs:changed", (d) => setTabsSnap(d as TabsSnapshot)), []);
+  useEffect(() => EventBus.on(Events.Tabs.changed, (d) => setTabsSnap(d)), []);
 
   // ── Global navigation (used when no tab is active) ───────────────────────────
 
@@ -50,8 +43,7 @@ export function App() {
 
   // Sync global nav to the last tab's location when all tabs are closed
   useEffect(() => {
-    return EventBus.on("tabs:last-closed", (d) => {
-      const { path } = d as { path: string };
+    return EventBus.on(Events.Tabs.lastClosed, ({ path }) => {
       setGlobalDir(path);
       setGlobalHistory([path]);
       setGlobalHistoryIdx(0);
@@ -79,9 +71,7 @@ export function App() {
   // ── EventBus subscriptions ───────────────────────────────────────────────────
 
   useEffect(() => {
-    return EventBus.on("clipboard:changed", (data) => {
-      if (isClipboardState(data)) setClipboard(data);
-    });
+    return EventBus.on(Events.Clipboard.changed, (data) => setClipboard(data));
   }, []);
 
   // ── Navigation ───────────────────────────────────────────────────────────────
@@ -105,7 +95,7 @@ export function App() {
       setGlobalHistoryIdx(globalHistoryIdx - 1);
       setGlobalDir(globalHistory[globalHistoryIdx - 1]);
       setSelected([]);
-      EventBus.emit("navigation:back");
+      EventBus.emit(Events.Navigation.back);
     }
   }, [globalHistoryIdx, globalHistory]);
 
@@ -115,7 +105,7 @@ export function App() {
       setGlobalHistoryIdx(globalHistoryIdx + 1);
       setGlobalDir(globalHistory[globalHistoryIdx + 1]);
       setSelected([]);
-      EventBus.emit("navigation:forward");
+      EventBus.emit(Events.Navigation.forward);
     }
   }, [globalHistoryIdx, globalHistory]);
 
@@ -184,8 +174,8 @@ export function App() {
       setFlashedBtn(dir);
       flashTimerRef.current = setTimeout(() => setFlashedBtn(null), 200);
     };
-    const unsubBack = EventBus.on("navigation:back", () => flash("back"));
-    const unsubForward = EventBus.on("navigation:forward", () => flash("forward"));
+    const unsubBack = EventBus.on(Events.Navigation.back, () => flash("back"));
+    const unsubForward = EventBus.on(Events.Navigation.forward, () => flash("forward"));
     return () => {
       unsubBack();
       unsubForward();
@@ -205,7 +195,7 @@ export function App() {
   }, [getContext]);
 
   const handleModifierOpen = useCallback((item: FileItem, modifiers: { ctrl: boolean; meta: boolean }) => {
-    EventBus.emit("file:modifier-open", { item, modifiers });
+    EventBus.emit(Events.File.modifierOpen, { item, modifiers });
   }, []);
 
   // ── Render ────────────────────────────────────────────────────────────────────

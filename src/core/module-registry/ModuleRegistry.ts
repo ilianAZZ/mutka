@@ -7,6 +7,7 @@ import type {
 } from "./module-registry.types";
 import type { ActionContext, FileItem } from "../types";
 import { EventBus } from "../event-bus/EventBus";
+import { Events } from "../event-bus/events";
 import { ShortcutManager } from "../shortcut-manager/ShortcutManager";
 
 class ModuleRegistryClass {
@@ -43,7 +44,7 @@ class ModuleRegistryClass {
     }
 
     module.onMount?.();
-    EventBus.emit("module:registered", { moduleId: module.id });
+    EventBus.emit(Events.Module.registered, { moduleId: module.id });
   }
 
   unregister(moduleId: string): void {
@@ -69,7 +70,7 @@ class ModuleRegistryClass {
 
     module.onUnmount?.();
     this.modules.delete(moduleId);
-    EventBus.emit("module:unregistered", { moduleId });
+    EventBus.emit(Events.Module.unregistered, { moduleId });
   }
 
   /** Execute a registered action. Errors are caught and logged per-module. */
@@ -81,7 +82,7 @@ class ModuleRegistryClass {
       await action.execute(context);
     } catch (err) {
       console.error(`[ModuleRegistry] Action "${actionId}" failed:`, err);
-      EventBus.emit("error:action", { actionId, error: err });
+      EventBus.emit(Events.Error.action, { actionId, error: err });
     }
   }
 

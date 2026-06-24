@@ -1,5 +1,6 @@
 import type { MacowsModule } from "../../core/module-registry/module-registry.types";
 import { EventBus } from "../../core/event-bus/EventBus";
+import { Events } from "../../core/event-bus/events";
 
 type Unsub = () => void;
 let unsubNavigate: Unsub | null = null;
@@ -11,8 +12,7 @@ export const mouseNavigationModule: MacowsModule = {
   description: "Binds mouse back/forward buttons to history navigation",
   actions: [],
   onMount(): void {
-    unsubNavigate = EventBus.on("input:mouse-navigate", (data) => {
-      const { direction } = data as { direction: "back" | "forward" };
+    unsubNavigate = EventBus.on(Events.Input.mouseNavigate, ({ direction }) => {
       const actionId =
         direction === "back" ? "core.navigation.go-back" : "core.navigation.go-forward";
       document.dispatchEvent(new CustomEvent("macows:action", { detail: { actionId } }));

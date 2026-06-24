@@ -1,4 +1,5 @@
 import { EventBus } from "../event-bus/EventBus";
+import { Events } from "../event-bus/events";
 import type { TabBarTab, TabsSnapshot } from "./tab-manager.types";
 
 export type { TabBarTab, TabsSnapshot };
@@ -49,7 +50,7 @@ class TabManagerClass {
   }
 
   private emit(): void {
-    EventBus.emit("tabs:changed", this.getSnapshot());
+    EventBus.emit(Events.Tabs.changed, this.getSnapshot());
   }
 
   openTab(path: string): void {
@@ -68,7 +69,7 @@ class TabManagerClass {
       this.tabs = [];
       this.activeTabId = null;
       if (closing) {
-        EventBus.emit("tabs:last-closed", { path: closing.history[closing.historyIdx] });
+        EventBus.emit(Events.Tabs.lastClosed, { path: closing.history[closing.historyIdx] });
       }
     } else {
       if (this.activeTabId === id) {
@@ -106,7 +107,7 @@ class TabManagerClass {
       tab.id !== this.activeTabId ? tab : { ...tab, historyIdx: tab.historyIdx - 1 }
     );
     this.emit();
-    EventBus.emit("navigation:back");
+    EventBus.emit(Events.Navigation.back);
     return true;
   }
 
@@ -118,7 +119,7 @@ class TabManagerClass {
       tab.id !== this.activeTabId ? tab : { ...tab, historyIdx: tab.historyIdx + 1 }
     );
     this.emit();
-    EventBus.emit("navigation:forward");
+    EventBus.emit(Events.Navigation.forward);
     return true;
   }
 }

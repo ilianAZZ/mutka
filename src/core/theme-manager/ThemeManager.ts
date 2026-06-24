@@ -1,5 +1,6 @@
 import type { ThemePreference } from "./theme-manager.types";
 import { EventBus } from "../event-bus/EventBus";
+import { Events } from "../event-bus/events";
 
 const STORAGE_KEY = "macows.theme";
 
@@ -27,7 +28,7 @@ class ThemeManagerClass {
       if (this.preference === "system") {
         const resolved = this.getResolved();
         applyResolved(resolved);
-        EventBus.emit("theme:changed", { preference: this.preference, resolved });
+        EventBus.emit(Events.Theme.changed, { preference: this.preference, resolved });
       }
     });
   }
@@ -41,7 +42,7 @@ class ThemeManagerClass {
     localStorage.setItem(STORAGE_KEY, pref);
     const resolved = this.getResolved();
     applyResolved(resolved);
-    EventBus.emit("theme:changed", { preference: pref, resolved });
+    EventBus.emit(Events.Theme.changed, { preference: pref, resolved });
   }
 
   /** Resolves "system" to the actual current theme. */

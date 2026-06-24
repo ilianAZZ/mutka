@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { EventBus } from "../../core/event-bus/EventBus";
+import { Events } from "../../core/event-bus/events";
 import { TabManager, type TabsSnapshot } from "../../core/tab-manager/TabManager";
 import type { TopBarPanelProps } from "../../core/module-registry/module-registry.types";
 import "./TabBar.css";
@@ -7,7 +8,7 @@ import "./TabBar.css";
 export function TabBar(_props: TopBarPanelProps) {
   const [snap, setSnap] = useState<TabsSnapshot>(() => TabManager.getSnapshot());
 
-  useEffect(() => EventBus.on("tabs:changed", (d) => setSnap(d as TabsSnapshot)), []);
+  useEffect(() => EventBus.on(Events.Tabs.changed, (d) => setSnap(d)), []);
 
   if (snap.tabs.length < 2) return null;
 

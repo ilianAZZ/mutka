@@ -1,5 +1,6 @@
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { EventBus } from "../event-bus/EventBus";
+import { Events } from "../event-bus/events";
 
 // Emitted events:
 //   "input:mouse-navigate"  payload: { direction: "back" | "forward" }
@@ -15,7 +16,7 @@ class InputManagerClass {
     // NSEventTypeSwipe and forwards them as "mouse-navigate" Tauri events.
     listen<string>("mouse-navigate", (event) => {
       const direction = event.payload === "back" ? "back" : "forward";
-      EventBus.emit("input:mouse-navigate", { direction });
+      EventBus.emit(Events.Input.mouseNavigate, { direction });
     }).then((unlisten) => {
       this.unlistenTauri = unlisten;
     }).catch(() => {
@@ -33,10 +34,10 @@ class InputManagerClass {
   private readonly handleMouseDown = (e: MouseEvent): void => {
     if (e.button === 3) {
       e.preventDefault();
-      EventBus.emit("input:mouse-navigate", { direction: "back" });
+      EventBus.emit(Events.Input.mouseNavigate, { direction: "back" });
     } else if (e.button === 4) {
       e.preventDefault();
-      EventBus.emit("input:mouse-navigate", { direction: "forward" });
+      EventBus.emit(Events.Input.mouseNavigate, { direction: "forward" });
     }
   };
 }

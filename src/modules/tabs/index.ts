@@ -1,6 +1,6 @@
 import type { MacowsModule, MacowsAction } from "../../core/module-registry/module-registry.types";
-import type { FileItem } from "../../core/types";
 import { EventBus } from "../../core/event-bus/EventBus";
+import { Events } from "../../core/event-bus/events";
 import { TabManager } from "../../core/tab-manager/TabManager";
 import { TabBar } from "./TabBar";
 
@@ -38,11 +38,7 @@ export const tabsModule: MacowsModule = {
   actions: [newTabAction, openInNewTabAction],
   topBarPanels: [{ id: "core.tabs.bar", order: 0, component: TabBar }],
   onMount(): void {
-    unsubModifierOpen = EventBus.on("file:modifier-open", (data) => {
-      const { item, modifiers } = data as {
-        item: FileItem;
-        modifiers: { ctrl: boolean; meta: boolean };
-      };
+    unsubModifierOpen = EventBus.on(Events.File.modifierOpen, ({ item, modifiers }) => {
       if (!item.isDir || (!modifiers.ctrl && !modifiers.meta)) return;
       TabManager.openTab(item.path);
     });
