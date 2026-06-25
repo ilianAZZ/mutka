@@ -1,6 +1,6 @@
 ---
 name: add-sidebar-panel
-description: Explains Macows Explorer sidebar panels (MacowsSidebarPanel + components/Sidebar) and why sandboxed modules cannot contribute them yet.
+description: Explains Mutka sidebar panels (MutkaSidebarPanel + components/Sidebar) and why sandboxed modules cannot contribute them yet.
 ---
 
 # Skill: Sidebar panels
@@ -19,19 +19,19 @@ gap is — not as a recipe a community module can follow.
 
 The panel infrastructure is real and rendered by `App.tsx`:
 
-- `MacowsSidebarPanel` — the panel descriptor type, in
+- `MutkaSidebarPanel` — the panel descriptor type, in
   `src/core/module-registry/module-registry.types.ts`.
 - `src/components/Sidebar/` — the host that renders a tab strip (one icon per panel) and
   shows/hides the active panel.
 - The registry stores panels and `App.tsx` renders them.
 
-Only **core** code can register a `MacowsSidebarPanel` directly. Sandboxed built-in and
+Only **core** code can register a `MutkaSidebarPanel` directly. Sandboxed built-in and
 community modules (the `defineModule` format) cannot contribute one.
 
-## The `MacowsSidebarPanel` shape
+## The `MutkaSidebarPanel` shape
 
 ```typescript
-interface MacowsSidebarPanel {
+interface MutkaSidebarPanel {
   id: string;                         // unique, "owner.panel-name"
   icon: string;                       // emoji or SF Symbol shown in the tab strip
   title: string;                      // tooltip / accessible label

@@ -9,7 +9,7 @@ interface UserModuleEntry {
 }
 
 /**
- * Load community modules installed in ~/.macows/modules/<id>/index.js.
+ * Load community modules installed in ~/.mutka/modules/<id>/index.js.
  *
  * SECURITY MODEL: community code is UNTRUSTED. Unlike built-in modules (which
  * run in-process), each community module is loaded into an isolated Web Worker
@@ -62,7 +62,7 @@ export async function loadBuiltinSandboxModules(): Promise<void> {
 }
 
 // Dev-only: load community modules from the repo's ./dev-modules folder instead
-// of ~/.macows/modules, so the isolated worker path is testable in `tauri dev`
+// of ~/.mutka/modules, so the isolated worker path is testable in `tauri dev`
 // without installing anything. `?raw` gives the file source as a string.
 const devModuleSources = import.meta.glob<string>(
   "../dev-modules/*/index.js",

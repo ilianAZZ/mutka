@@ -1,4 +1,4 @@
-# Macows Explorer
+# Mutka
 
 > A community-driven, modular file explorer for macOS — built with Tauri 2, React 18 and the macOS 26 Liquid Glass design language.
 
@@ -9,9 +9,9 @@
 
 ---
 
-## What is Macows Explorer?
+## What is Mutka?
 
-Macows Explorer ships a minimal, rock-solid core and lets the **community build everything else as modules**. Even built-in features (copy/paste, file creation, navigation) are modules themselves. The core provides infrastructure only — registry, event bus, shortcut manager, and a permission-checked capability gateway — so anyone outside this repo can extend the app without touching core code.
+Mutka ships a minimal, rock-solid core and lets the **community build everything else as modules**. Even built-in features (copy/paste, file creation, navigation) are modules themselves. The core provides infrastructure only — registry, event bus, shortcut manager, and a permission-checked capability gateway — so anyone outside this repo can extend the app without touching core code.
 
 Every module — built-in or community — is the same shape: `export default defineModule({ ... })`. It imports nothing from the core and reaches the system **only** through a `host` object, where every call is checked against the permissions the module declared. Built-in modules run in-process; untrusted community modules run isolated in a Web Worker.
 
@@ -30,7 +30,7 @@ Every module — built-in or community — is the same shape: `export default de
 
 ## Features
 
-- **Modular architecture** — drop a file under `src/sandbox-builtins/` (built-in) or install a module at `~/.macows/modules/` (community); both are auto-discovered. No `App.tsx` changes needed.
+- **Modular architecture** — drop a file under `src/sandbox-builtins/` (built-in) or install a module at `~/.mutka/modules/` (community); both are auto-discovered. No `App.tsx` changes needed.
 - **Sandboxed by permission** — every module declares the capabilities it uses; the gateway denies any call whose permission wasn't declared. Community modules run isolated in a Web Worker.
 - **Liquid Glass UI** — native macOS 26 vibrancy (`NSVisualEffectView`) with CSS-variable-based theming and automatic dark/light mode.
 - **Keyboard-first** — conflict-detecting shortcut registry; every command is addressable by ID.
@@ -57,8 +57,8 @@ xcode-select --install   # if not already installed
 ## Getting started
 
 ```bash
-git clone https://github.com/ilianAZZ/Macows-Explorer.git
-cd Macows-Explorer
+git clone https://github.com/ilianAZZ/mutka.git
+cd mutka
 npm install
 npm run tauri dev        # opens app window with hot-reload
 ```
@@ -77,7 +77,7 @@ npm run tauri build      # outputs a signed .app in src-tauri/target/release/bun
 ## Project structure
 
 ```text
-Macows-Explorer/
+mutka/
 ├── src/                    React + TypeScript frontend
 │   ├── core/               Infrastructure only (registry, event bus, shortcuts, sandbox)
 │   │   ├── types.ts        Foundation types shared across subsystems
@@ -96,7 +96,7 @@ Macows-Explorer/
 ```
 
 Community modules are NOT in this repo — they live on the user's disk at
-`~/.macows/modules/<id>/index.js`. See [`COMMUNITY_MODULES.md`](COMMUNITY_MODULES.md).
+`~/.mutka/modules/<id>/index.js`. See [`COMMUNITY_MODULES.md`](COMMUNITY_MODULES.md).
 
 ---
 

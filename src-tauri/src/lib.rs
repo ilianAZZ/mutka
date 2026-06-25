@@ -75,5 +75,5 @@ pub fn run() {
             read_module_file,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running macows explorer");
+        .expect("error while running mutka explorer");
 }

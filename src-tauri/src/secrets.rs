@@ -1,6 +1,6 @@
 // ─── Keychain (the `secrets` capability) ─────────────────────────────────────
 // Stores credentials in the macOS Keychain instead of plaintext localStorage.
-// `service` is namespaced per module by the gateway (e.g. "macows.core.webdav").
+// `service` is namespaced per module by the gateway (e.g. "mutka.core.webdav").
 
 #[tauri::command]
 pub fn secret_set(service: String, account: String, password: String) -> Result<(), String> {

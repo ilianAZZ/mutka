@@ -1,7 +1,7 @@
 {
-  "productName": "Macows Explorer",
+  "productName": "Mutka",
   "version": "0.1.0",
-  "identifier": "com.macows.explorer",
+  "identifier": "app.mutka",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Macows Explorer",
+        "title": "Mutka",
         "width": 1100,
         "height": 700,
         "minWidth": 620,
@@ -40,8 +40,8 @@
     ],
     "category": "Utility",
     "shortDescription": "Community-driven modular file explorer for macOS",
-    "longDescription": "Macows Explorer is a fast, macOS file explorer built on a community-first modular architecture. Every feature — copy/paste, navigation, file operations — is a swappable module. Built with Tauri 2 and React 18.",
-    "copyright": "© 2026 Macows Explorer contributors",
+    "longDescription": "Mutka is a fast, macOS file explorer built on a community-first modular architecture. Every feature — copy/paste, navigation, file operations — is a swappable module. Built with Tauri 2 and React 18.",
+    "copyright": "© 2026 Mutka contributors",
     "macOS": {
       "minimumSystemVersion": "10.14"
     }

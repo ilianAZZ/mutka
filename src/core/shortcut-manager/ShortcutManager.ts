@@ -2,7 +2,7 @@ import { EventBus } from "../event-bus/EventBus";
 import { Events } from "../event-bus/events";
 import { isEditableElement } from "../menu/menuZone";
 
-const STORAGE_KEY = "macows.keybinds";
+const STORAGE_KEY = "mutka.keybinds";
 
 export interface KeyBinding {
   actionId: string;

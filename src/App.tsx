@@ -21,7 +21,7 @@ import { FileList } from "./components/FileList/FileList";
 import { Sidebar } from "./components/Sidebar/Sidebar";
 import { Places } from "./components/Places/Places";
 import { TabBar } from "./components/TabBar/TabBar";
-import type { MacowsSidebarPanel, SidebarPanelProps, SidebarItemGroup } from "./core/module-registry/module-registry.types";
+import type { MutkaSidebarPanel, SidebarPanelProps, SidebarItemGroup } from "./core/module-registry/module-registry.types";
 import { Breadcrumb } from "./components/Breadcrumb/Breadcrumb";
 import { ContextMenu } from "./components/ContextMenu/ContextMenu";
 import { Dialog, type DialogState } from "./components/Dialog/Dialog";
@@ -69,7 +69,7 @@ export function App() {
 
   // ── Sidebar panels (contributed by modules, may load async) ──────────────────
 
-  const [sidebarPanels, setSidebarPanels] = useState<MacowsSidebarPanel[]>(
+  const [sidebarPanels, setSidebarPanels] = useState<MutkaSidebarPanel[]>(
     () => ModuleRegistry.getSidebarPanels()
   );
   const [sidebarItemGroups, setSidebarItemGroups] = useState<SidebarItemGroup[]>(
@@ -176,7 +176,7 @@ export function App() {
   useEffect(() => {
     invoke<string>("get_home_dir").then((home) => {
       setHomeDir(home);
-      const saved = localStorage.getItem("macows.lastDir");
+      const saved = localStorage.getItem("mutka.lastDir");
       // Only restore a local path on launch; a remote (provider) path may not be
       // mounted yet, so fall back home.
       navigateTo(saved && saved.startsWith("/") ? saved : home);
@@ -188,7 +188,7 @@ export function App() {
       const items = await FileSystemRegistry.readDir(currentDir);
       ListingStore.setItems(items);
       setLoadError(null);
-      if (currentDir.startsWith("/")) localStorage.setItem("macows.lastDir", currentDir);
+      if (currentDir.startsWith("/")) localStorage.setItem("mutka.lastDir", currentDir);
     } catch (err) {
       console.error("[App] readDir failed:", err);
       ListingStore.setItems([]);

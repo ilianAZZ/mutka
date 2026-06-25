@@ -1,4 +1,4 @@
-# Macows Explorer — Architecture
+# Mutka — Architecture
 
 > Keep this document in sync whenever you change the core layer, the module
 > runtime, or the data flow.
@@ -234,8 +234,8 @@ sequenceDiagram
     Loader->>Host: new LocalHost(def) | new SandboxHost(source)
     Host->>Host: run setup(host) → module registers its command/open handlers
     Host->>PM: registerProxyModule(manifest, runtime)
-    PM->>MR: register(MacowsModule)
-    Note over MR: each command → MacowsAction (when → isVisible)<br/>bind shortcut · sort openHandlers by priority<br/>emit("module:registered")
+    PM->>MR: register(MutkaModule)
+    Note over MR: each command → MutkaAction (when → isVisible)<br/>bind shortcut · sort openHandlers by priority<br/>emit("module:registered")
   end
   App->>App: AppBridge.connect(provider) [once]
   App->>MR: ModuleRegistry.init()  // subscribe to "action:dispatch"

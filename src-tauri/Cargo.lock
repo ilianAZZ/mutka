@@ -2200,24 +2200,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
 
 [[package]]
-name = "macows-explorer"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "block",
- "keyring",
- "native-tls",
- "objc",
- "serde",
- "serde_json",
- "tauri",
- "tauri-build",
- "tauri-plugin-drag",
- "ureq",
- "window-vibrancy 0.5.3",
-]
-
-[[package]]
 name = "malloc_buf"
 version = "0.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2307,6 +2289,24 @@ dependencies = [
  "serde",
  "thiserror 2.0.18",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "mutka"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "block",
+ "keyring",
+ "native-tls",
+ "objc",
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-drag",
+ "ureq",
+ "window-vibrancy 0.5.3",
 ]
 
 [[package]]

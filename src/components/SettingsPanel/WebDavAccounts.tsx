@@ -14,8 +14,8 @@ import { Events } from "../../core/event-bus/events";
 interface Account { id: string; name: string; url: string; username: string }
 interface Draft { id: string | null; name: string; url: string; username: string; password: string }
 
-const ACCOUNTS_KEY = "macows.modcfg.core.webdav.accounts";
-const SECRETS_SERVICE = "macows.core.webdav";
+const ACCOUNTS_KEY = "mutka.modcfg.core.webdav.accounts";
+const SECRETS_SERVICE = "mutka.core.webdav";
 const EMPTY_DRAFT: Draft = { id: null, name: "", url: "", username: "", password: "" };
 
 function loadAccounts(): Account[] {

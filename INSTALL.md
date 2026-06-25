@@ -1,4 +1,4 @@
-# Macows Explorer — Installation Guide
+# Mutka — Installation Guide
 
 ## Prerequisites
 
@@ -30,7 +30,7 @@ xcode-select --install
 ## Run in development
 
 ```bash
-cd Macows-Explorer
+cd mutka
 
 # Install JS dependencies
 npm install
@@ -50,14 +50,14 @@ Hot-reload is active: saving a `.tsx` file updates the UI instantly without rest
 npm run tauri build
 ```
 
-Output: `src-tauri/target/release/bundle/macos/Macows Explorer.app`
+Output: `src-tauri/target/release/bundle/macos/Mutka.app`
 
 ---
 
 ## Project structure
 
 ```text
-Macows-Explorer/
+mutka/
 ├── src-tauri/              # Rust backend
 │   ├── src/
 │   │   ├── main.rs         # Entry point (calls lib.rs)
@@ -122,7 +122,7 @@ export default defineModule({
 });
 ```
 
-A community module is the same object literal, dropped in `~/.macows/modules/<id>/index.js`
+A community module is the same object literal, dropped in `~/.mutka/modules/<id>/index.js`
 (without the `defineModule` import), and runs isolated in a Web Worker. See
 `COMMUNITY_MODULES.md`.
 

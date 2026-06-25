@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from "react";
-import type { MacowsSidebarPanel, SidebarPanelProps } from "../../core/module-registry/module-registry.types";
+import type { MutkaSidebarPanel, SidebarPanelProps } from "../../core/module-registry/module-registry.types";
 import { SidebarTab } from "./SidebarTab";
 import "./Sidebar.css";
 
@@ -7,7 +7,7 @@ interface SidebarProps {
   /** Which edge this sidebar occupies. Determines tab-strip placement. */
   side: "left" | "right";
   /** Panels assigned to this side, in registration order. */
-  panels: MacowsSidebarPanel[];
+  panels: MutkaSidebarPanel[];
   /** Shared props handed to every panel component. */
   panelProps: SidebarPanelProps;
 }
@@ -34,7 +34,7 @@ export function Sidebar({ side, panels, panelProps }: SidebarProps) {
     [panels, activeId]
   );
 
-  const handleTabClick = useCallback((panel: MacowsSidebarPanel) => {
+  const handleTabClick = useCallback((panel: MutkaSidebarPanel) => {
     setActiveId((current) => {
       if (current === panel.id) {
         setCollapsed((c) => !c);

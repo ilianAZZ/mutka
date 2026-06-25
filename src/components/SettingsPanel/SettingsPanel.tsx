@@ -94,7 +94,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "macows-keybinds.json";
+    a.download = "mutka-keybinds.json";
     a.click();
     URL.revokeObjectURL(url);
   }, []);

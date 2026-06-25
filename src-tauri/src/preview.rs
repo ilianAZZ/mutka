@@ -54,8 +54,8 @@ mod ql {
     // Build (once) and return the shared data source object.
     fn data_source() -> Id {
         *DATA_SOURCE.get_or_init(|| unsafe {
-            let mut decl = ClassDecl::new("MacowsQLDataSource", class!(NSObject))
-                .expect("MacowsQLDataSource already registered");
+            let mut decl = ClassDecl::new("MutkaQLDataSource", class!(NSObject))
+                .expect("MutkaQLDataSource already registered");
             decl.add_method(
                 sel!(numberOfPreviewItemsInPreviewPanel:),
                 number_of_items as extern "C" fn(&Object, Sel, Id) -> isize,

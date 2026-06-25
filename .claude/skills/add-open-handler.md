@@ -1,6 +1,6 @@
 ---
 name: add-open-handler
-description: Add an open handler to a Macows Explorer module to intercept double-click behavior for specific file types or folders.
+description: Add an open handler to a Mutka module to intercept double-click behavior for specific file types or folders.
 ---
 
 # Skill: Add an open handler
@@ -18,6 +18,7 @@ under that handler's `handler` id. `match` is data (not a predicate) because a f
 can't cross the worker boundary — the host evaluates it.
 
 Built-in defaults (priority 0, from `src/sandbox-builtins/navigation.ts`):
+
 - folder (`isDir: true`) → `host.nav.navigate(item.path)`
 - file (`isDir: false`) → `host.fs.openItem(item.path)` (macOS system open)
 
@@ -38,12 +39,12 @@ A module overrides these by registering a handler with a HIGHER priority.
 
 ## Priority guide
 
-| Priority | Meaning |
-|---|---|
-| 0 | Core default — used by `core.navigation` |
-| 1–9 | Soft override — this module prefers to handle this type |
-| 10–50 | Hard override — always handles this in-app |
-| 51–100 | Reserved for user-configured overrides |
+| Priority | Meaning                                                 |
+| -------- | ------------------------------------------------------- |
+| 0        | Core default — used by `core.navigation`                |
+| 1–9      | Soft override — this module prefers to handle this type |
+| 10–50    | Hard override — always handles this in-app              |
+| 51–100   | Reserved for user-configured overrides                  |
 
 ## Step-by-step
 
@@ -122,6 +123,6 @@ host.onOpen("open-custom", async (item) => {
 - Every capability the handler calls (`host.nav`, `host.tabs`, `host.fs`, …) must be
   declared in `permissions[]`, or the gateway denies it.
 - The declarative `openHandlers` + `host.onOpen` shape is the AUTHOR API. The
-  `MacowsOpenHandler` interface in `module-registry.types.ts` (with `matches()` /
+  `MutkaOpenHandler` interface in `module-registry.types.ts` (with `matches()` /
   `handle()` functions) is the internal registry shape that a runtime builds from your
   declaration — you do not write it directly.

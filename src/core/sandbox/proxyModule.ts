@@ -1,5 +1,5 @@
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
-import type { MacowsAction, MacowsOpenHandler } from "../module-registry/module-registry.types";
+import type { MutkaAction, MutkaOpenHandler } from "../module-registry/module-registry.types";
 import { SelectionStore } from "../stores/SelectionStore";
 import { ClipboardStore } from "../stores/ClipboardStore";
 import { ListingStore } from "../stores/ListingStore";
@@ -37,12 +37,12 @@ export interface ProxyRuntime {
 
 /**
  * Surface a module's declared commands + open handlers to the rest of the app as
- * an ordinary MacowsModule, regardless of which runtime backs it. Each action /
+ * an ordinary MutkaModule, regardless of which runtime backs it. Each action /
  * handler proxies into the runtime; the runtime decides whether that crosses a
  * worker boundary or stays in-process.
  */
 export function registerProxyModule(manifest: SandboxManifest, runtime: ProxyRuntime): void {
-  const actions: MacowsAction[] = manifest.commands.map((c) => ({
+  const actions: MutkaAction[] = manifest.commands.map((c) => ({
     id: c.id,
     label: c.label,
     icon: c.icon,
@@ -54,7 +54,7 @@ export function registerProxyModule(manifest: SandboxManifest, runtime: ProxyRun
     execute: () => runtime.run(c.id, appSnapshot()),
   }));
 
-  const openHandlers: MacowsOpenHandler[] = manifest.openHandlers.map((h) => ({
+  const openHandlers: MutkaOpenHandler[] = manifest.openHandlers.map((h) => ({
     id: h.id,
     priority: h.priority,
     matches: (item) => matchesItem(h.match, item),

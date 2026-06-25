@@ -1,9 +1,9 @@
 // =============================================================================
-// MACOWS EXPLORER — SHARED FOUNDATION TYPES
+// MUTKA — SHARED FOUNDATION TYPES
 //
 // Types used across multiple subsystems that don't belong to a single core file.
 // Module-specific types live next to their owner:
-//   MacowsModule, MacowsAction, etc. → core/module-registry/module-registry.types.ts
+//   MutkaModule, MutkaAction, etc. → core/module-registry/module-registry.types.ts
 //   ThemePreference                  → core/theme-manager/theme-manager.types.ts
 //   TabBarTab, TabsSnapshot          → core/tab-manager/tab-manager.types.ts
 // =============================================================================

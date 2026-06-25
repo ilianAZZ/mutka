@@ -1,9 +1,9 @@
-import type { MacowsSidebarPanel } from "../../core/module-registry/module-registry.types";
+import type { MutkaSidebarPanel } from "../../core/module-registry/module-registry.types";
 
 interface SidebarTabProps {
-  panel: MacowsSidebarPanel;
+  panel: MutkaSidebarPanel;
   isActive: boolean;
-  onClick: (panel: MacowsSidebarPanel) => void;
+  onClick: (panel: MutkaSidebarPanel) => void;
 }
 
 /** A single icon button in the sidebar tab strip. */

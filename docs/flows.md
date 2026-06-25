@@ -115,7 +115,7 @@ sequenceDiagram
     W->>SH: {t:"ready", manifest}   // permissions known before any host-call
     W->>W: run setup(host) — registers commands / open handlers / subscriptions
     SH->>PM: registerProxyModule(manifest, runtime)
-    PM->>MR: register(MacowsModule)
+    PM->>MR: register(MutkaModule)
     Note over MR: menu items, when clicked, post {t:"run"} to the worker;<br/>every host-call is gated by dispatchCapability
 ```
 
@@ -124,7 +124,7 @@ the world is postMessage, and `protocol.ts` defines every shape allowed to cross
 
 `loadDevModules()` (DEV only) loads repo `dev-modules/*/index.js` as `?raw` source
 through this exact same path, so the isolated runtime is testable without installing
-anything into `~/.macows/modules/`.
+anything into `~/.mutka/modules/`.
 
 ---
 

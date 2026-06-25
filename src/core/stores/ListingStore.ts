@@ -3,7 +3,7 @@ import { EventBus } from "../event-bus/EventBus";
 import { Events } from "../event-bus/events";
 import type { SortKey, SortState } from "./listing.types";
 
-const SORT_STORAGE_KEY = "macows.sort";
+const SORT_STORAGE_KEY = "mutka.sort";
 
 function loadSort(): SortState {
   try {

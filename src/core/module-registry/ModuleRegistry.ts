@@ -1,8 +1,8 @@
 import type {
-  MacowsModule,
-  MacowsAction,
-  MacowsOpenHandler,
-  MacowsSidebarPanel,
+  MutkaModule,
+  MutkaAction,
+  MutkaOpenHandler,
+  MutkaSidebarPanel,
   ContextMenuGroup,
   SidebarItem,
   SidebarItemGroup,
@@ -27,10 +27,10 @@ function viewContext(): BaseContext {
 }
 
 class ModuleRegistryClass {
-  private modules = new Map<string, MacowsModule>();
-  private actions = new Map<string, MacowsAction>();
-  private openHandlers: MacowsOpenHandler[] = [];
-  private sidebarPanels: MacowsSidebarPanel[] = [];
+  private modules = new Map<string, MutkaModule>();
+  private actions = new Map<string, MutkaAction>();
+  private openHandlers: MutkaOpenHandler[] = [];
+  private sidebarPanels: MutkaSidebarPanel[] = [];
   private sidebarItems: SidebarItem[] = [];
   private dynamicSidebarItems = new Map<string, SidebarItem[]>(); // moduleId → items set at runtime
   private cleanups = new Map<string, (() => void)[]>();
@@ -43,7 +43,7 @@ class ModuleRegistryClass {
     EventBus.on(Events.Action.dispatch, ({ actionId }) => this.executeAction(actionId));
   }
 
-  register(module: MacowsModule): void {
+  register(module: MutkaModule): void {
     if (this.modules.has(module.id)) {
       console.warn(`[ModuleRegistry] "${module.id}" already registered.`);
       return;
@@ -144,7 +144,7 @@ class ModuleRegistryClass {
     );
 
     const groupOrder: (string | undefined)[] = [];
-    const grouped = new Map<string | undefined, MacowsAction[]>();
+    const grouped = new Map<string | undefined, MutkaAction[]>();
 
     for (const action of visible) {
       const cat = action.contextMenuCategory;
@@ -158,7 +158,7 @@ class ModuleRegistryClass {
     return groupOrder.map((label) => ({ label, actions: grouped.get(label)! }));
   }
 
-  getSidebarPanels(): MacowsSidebarPanel[] {
+  getSidebarPanels(): MutkaSidebarPanel[] {
     return [...this.sidebarPanels];
   }
 

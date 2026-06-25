@@ -1,4 +1,4 @@
-# Macows Explorer — Visual Style Guide
+# Mutka — Visual Style Guide
 
 ## Design language: macOS 26 Liquid Glass
 

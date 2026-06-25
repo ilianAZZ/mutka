@@ -1,7 +1,7 @@
 // EXAMPLE COMMUNITY MODULE — untrusted, runs ISOLATED in a Web Worker.
 //
 // In dev it is loaded from this repo folder (see loadDevModules in moduleLoader).
-// In production the same file would live in ~/.macows/modules/com.dir-stats/index.js.
+// In production the same file would live in ~/.mutka/modules/com.dir-stats/index.js.
 // It imports NOTHING — everything it can do arrives through `host`, and every
 // host capability is gated by the permissions it declares below.
 //

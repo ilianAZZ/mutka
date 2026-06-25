@@ -1,8 +1,8 @@
-# Macows Explorer — Project Guide for AI Agents
+# Mutka — Project Guide for AI Agents
 
 ## What this project is
 
-Macows Explorer is a **community-driven, modular file explorer for macOS** built with:
+Mutka is a **community-driven, modular file explorer for macOS** built with:
 
 - **Tauri 2** (Rust backend + native WebView)
 - **React 18 + TypeScript** (frontend)
@@ -33,7 +33,7 @@ The core (`src/core/`) provides: registry, module runtime + permission gateway,
 event bus, shortcut manager, type definitions.
 The core NEVER contains feature logic (no copy, no navigate, no rename).
 Feature logic lives in modules: built-ins in `src/sandbox-builtins/<name>.ts`,
-community modules on disk in `~/.macows/modules/<id>/index.js`.
+community modules on disk in `~/.mutka/modules/<id>/index.js`.
 
 ### 4. Community-first architecture
 
@@ -79,7 +79,7 @@ Subsequent runs are fast (<5s for Rust changes, instant for TS/CSS changes).
 ## Project structure
 
 ```text
-Macows-Explorer/
+mutka/
 ├── CLAUDE.md                    ← you are here (project overview)
 ├── INSTALL.md                   ← end-user install guide
 ├── docs/                        ← architecture.md, flows.md, events.md
@@ -118,13 +118,13 @@ Macows-Explorer/
 │   │   │   ├── gateway.ts       ← THE permission barrier (dispatchCapability)
 │   │   │   ├── whenClause.ts    ← evaluates serializable visibility clauses
 │   │   │   ├── eventWhitelist.ts← events a sandboxed module may subscribe to
-│   │   │   ├── proxyModule.ts   ← turns a manifest into a MacowsModule
+│   │   │   ├── proxyModule.ts   ← turns a manifest into a MutkaModule
 │   │   │   ├── LocalHost.ts     ← in-process runtime (trusted built-ins)
 │   │   │   ├── SandboxHost.ts   ← Web Worker runtime (untrusted community)
 │   │   │   └── sandbox.worker.ts← the isolated realm community code runs in
 │   │   ├── module-registry/
 │   │   │   ├── ModuleRegistry.ts        ← register/unregister, dispatch actions/opens
-│   │   │   └── module-registry.types.ts ← MacowsModule/Action/permissions contract
+│   │   │   └── module-registry.types.ts ← MutkaModule/Action/permissions contract
 │   │   ├── app-bridge/AppBridge.ts      ← lets nav/dialog/refresh caps reach App state
 │   │   ├── event-bus/{EventBus,events}.ts ← typed global event bus (EventMap)
 │   │   ├── shortcut-manager/ShortcutManager.ts ← keyboard shortcut registry
@@ -202,17 +202,19 @@ The same format runs in two interchangeable runtimes, differing only in transpor
 
 ### Capabilities and the permissions they require
 
-| Capability | Required permission | Backed by |
-| --- | --- | --- |
-| `fs.readDir`, `fs.openItem` | `fs:read` | Rust `read_dir` / `open_item` |
-| `fs.copyFiles`/`moveFiles`/`deleteItem`/`renameItem`/`createFile`/`createFolder` | `fs:write` | Rust FS commands |
-| `board.readFiles` | `clipboard:read` | Rust `clipboard_read_files` |
-| `board.writeFiles` | `clipboard:write` | Rust `clipboard_write_files` |
-| `nav.navigate`/`goBack`/`goForward`/`goUp` | `navigation` | AppBridge |
-| `tabs.openTab`/`openTabInBackground`/`isActive` | `navigation` | TabManager |
-| `dialog.prompt`/`confirm` | `dialog` | AppBridge |
-| `app.refresh` | `fs:read` | AppBridge |
-| `sys.homeDir` | `fs:read` | Rust `get_home_dir` |
+| Capability                                                                       | Required permission | Backed by                                           |
+| -------------------------------------------------------------------------------- | ------------------- | --------------------------------------------------- |
+| `fs.readDir`, `fs.openItem`                                                      | `fs:read`           | Rust `read_dir` / `open_item`                       |
+| `fs.readBytes`                                                                   | `fs:read`           | Rust `read_file_base64` (decoded to a `Uint8Array`) |
+| `fs.cloudStatus`                                                                 | `fs:read`           | Rust `cloud_status` (`SF_DATALESS` stat flag)       |
+| `fs.copyFiles`/`moveFiles`/`deleteItem`/`renameItem`/`createFile`/`createFolder` | `fs:write`          | Rust FS commands                                    |
+| `board.readFiles`                                                                | `clipboard:read`    | Rust `clipboard_read_files`                         |
+| `board.writeFiles`                                                               | `clipboard:write`   | Rust `clipboard_write_files`                        |
+| `nav.navigate`/`goBack`/`goForward`/`goUp`                                       | `navigation`        | AppBridge                                           |
+| `tabs.openTab`/`openTabInBackground`/`isActive`                                  | `navigation`        | TabManager                                          |
+| `dialog.prompt`/`confirm`                                                        | `dialog`            | AppBridge                                           |
+| `app.refresh`                                                                    | `fs:read`           | AppBridge                                           |
+| `sys.homeDir`                                                                    | `fs:read`           | Rust `get_home_dir`                                 |
 
 `ModulePermission`: `fs:read`, `fs:write`, `clipboard:read`, `clipboard:write`,
 `navigation`, `dialog`, `network`, `shell` (the last two are reserved — no capability
@@ -237,14 +239,14 @@ App.tsx (module scope) fires three loaders from src/moduleLoader.ts:
           └── new SandboxHost(source).register()   ← exercises the worker path locally
 
 Each host: gets the module's manifest (setup runs in its runtime), then
-registerProxyModule() turns the manifest into a MacowsModule and registers it:
-  ├── stores each command as a MacowsAction (its when-clause → isVisible predicate)
+registerProxyModule() turns the manifest into a MutkaModule and registers it:
+  ├── stores each command as a MutkaAction (its when-clause → isVisible predicate)
   ├── binds each command.shortcut via ShortcutManager
   └── stores each openHandler sorted by priority (desc)
 ```
 
 Adding a built-in: drop a `.ts` file in `src/sandbox-builtins/`. Adding a community
-module: place `index.js` in `~/.macows/modules/<id>/`. No App.tsx changes needed.
+module: place `index.js` in `~/.mutka/modules/<id>/`. No App.tsx changes needed.
 
 ### How a keyboard shortcut / command executes
 
@@ -297,7 +299,7 @@ Note: only `capabilities.ts` (and a few App-level reads) call `invoke()`. Module
 > These are documented here so no agent makes these decisions silently.
 
 - **Module registry URL**: Where is the community module registry hosted, and how does
-  `~/.macows/modules/` get populated? (npm tag? Custom JSON endpoint? GitHub topic?)
+  `~/.mutka/modules/` get populated? (npm tag? Custom JSON endpoint? GitHub topic?)
 - **`network` / `shell` permissions**: declared in the enum but no capability backs them
   yet. What operations should they unlock, and through which Rust commands?
 - **Sandbox module UI**: worker modules can contribute commands and open handlers but not

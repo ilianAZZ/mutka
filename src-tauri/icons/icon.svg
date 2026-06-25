@@ -1,54 +1,38 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
   <defs>
-    <!-- Folder gradient: sky blue → Apple blue → deep navy -->
-    <linearGradient id="g" x1="256" y1="48" x2="256" y2="472" gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="#5AD4FF"/>
-      <stop offset="42%"  stop-color="#0A84FF"/>
-      <stop offset="100%" stop-color="#003BB8"/>
+    <!-- Squircle background: deep indigo → near-black -->
+    <linearGradient id="mbg" x1="48" y1="48" x2="464" y2="464" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#3B2D7A"/>
+      <stop offset="100%" stop-color="#101019"/>
     </linearGradient>
 
-    <!-- Liquid-glass shine: spans the whole folder top → mid -->
-    <linearGradient id="s" x1="256" y1="48" x2="256" y2="260" gradientUnits="userSpaceOnUse">
-      <stop offset="0%"   stop-color="white" stop-opacity="0.38"/>
+    <!-- The path stroke: the colour "changes" along the bend (violet → blue → cyan) -->
+    <linearGradient id="mstroke" x1="48" y1="464" x2="464" y2="48" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="#7C5CFF"/>
+      <stop offset="50%"  stop-color="#4F8CFF"/>
+      <stop offset="100%" stop-color="#2FD9D0"/>
+    </linearGradient>
+
+    <!-- Liquid-glass specular highlight, top-down -->
+    <linearGradient id="mspec" x1="256" y1="48" x2="256" y2="300" gradientUnits="userSpaceOnUse">
+      <stop offset="0%"   stop-color="white" stop-opacity="0.32"/>
       <stop offset="100%" stop-color="white" stop-opacity="0"/>
     </linearGradient>
   </defs>
 
-  <!-- Entire folder as ONE path — tab and body unified, no anti-alias seam.
-       Trace: tab top-left corner → tab top → tab top-right → tab right side →
-              body top (right of tab) → body top-right → body right → body bottom-right →
-              body bottom → body bottom-left → left side back to start (via Z). -->
-  <path d="M44 76
-           Q44 48 72 48
-           L192 48
-           Q220 48 228 76
-           L228 104
-           L424 104
-           Q468 104 468 148
-           L468 428
-           Q468 472 424 472
-           L88 472
-           Q44 472 44 428
-           Z"
-        fill="url(#g)"/>
+  <!-- Squircle -->
+  <rect x="48" y="48" width="416" height="416" rx="96" fill="url(#mbg)"/>
+  <rect x="48" y="48" width="416" height="416" rx="96" fill="url(#mspec)"/>
 
-  <!-- Liquid-glass shine overlay (same outline) -->
-  <path d="M44 76
-           Q44 48 72 48
-           L192 48
-           Q220 48 228 76
-           L228 104
-           L424 104
-           Q468 104 468 148
-           L468 428
-           Q468 472 424 472
-           L88 472
-           Q44 472 44 428
-           Z"
-        fill="url(#s)"/>
-
-  <!-- Explorer ">" chevron -->
-  <path d="M204 218 L320 292 L204 366"
-        stroke="white" stroke-width="28" stroke-linecap="round" stroke-linejoin="round"
-        fill="none" opacity="0.85"/>
+  <!-- The bend: a single fluid stroke that serpentines into an "M" — a road that turns -->
+  <path d="M160 360
+           L160 216
+           Q160 168 208 168
+           Q256 168 256 216
+           L256 304
+           Q256 360 304 360
+           Q352 360 352 296
+           L352 152"
+        fill="none" stroke="url(#mstroke)" stroke-width="52"
+        stroke-linecap="round" stroke-linejoin="round"/>
 </svg>

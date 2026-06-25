@@ -1,4 +1,4 @@
-# Macows Explorer — Module System Roadmap & Feature Ledger
+# Mutka — Module System Roadmap & Feature Ledger
 
 Source of truth for the unified, permission-gated module system.
 
@@ -12,10 +12,10 @@ Every module — built-in or community — is a `defineModule({ id, permissions,
 commands, openHandlers, setup })` default export that imports nothing and reaches
 the system only through `host.*`. The difference is only *where it runs*:
 
-| Runtime | File | For | Cost |
-| --- | --- | --- | --- |
-| **LocalHost** | `core/sandbox/LocalHost.ts` | Built-in (trusted) | in-process, no overhead |
-| **SandboxHost** | `core/sandbox/SandboxHost.ts` | Community (untrusted) | isolated Web Worker |
+| Runtime         | File                          | For                   | Cost                    |
+| --------------- | ----------------------------- | --------------------- | ----------------------- |
+| **LocalHost**   | `core/sandbox/LocalHost.ts`   | Built-in (trusted)    | in-process, no overhead |
+| **SandboxHost** | `core/sandbox/SandboxHost.ts` | Community (untrusted) | isolated Web Worker     |
 
 Both load the same format and gate every capability through the same
 `core/sandbox/gateway.ts` → `core/sandbox/capabilities.ts`. Swapping a module
@@ -38,6 +38,7 @@ sandbox.worker. Plus `core/app-bridge/AppBridge.ts` (nav/dialog/refresh).
 
 **All 5 built-in modules migrated to the unified format** (`src/sandbox-builtins/`)
 and the legacy `src/modules/*` + `src/core/services/*` **deleted**:
+
 - [x] `clipboard.ts` — copy/cut/paste (`board`, `fs`)
 - [x] `file-ops.ts` — new file/folder, rename, delete (`fs`, `dialog`)
 - [x] `navigation.ts` — go back/forward + open handlers folder→navigate, file→system (`nav`, `fs`)
@@ -46,10 +47,11 @@ and the legacy `src/modules/*` + `src/core/services/*` **deleted**:
 - [x] `reveal.ts` — example built-in (Open with System)
 
 Other:
+
 - [x] TabBar moved from a module panel to core UI (`components/TabBar/`), rendered by App.tsx
 - [x] `ModuleRegistry` stripped of the old context/service plumbing (`buildContext`, `tracePermissions`, `connect`); now `init()` + simple `executeAction`/`resolveOpen`
 - [x] `types.ts` trimmed (removed `FsAPI`, `ClipboardAPI`, `ActionContext`)
-- [x] Loaders: `loadBuiltinSandboxModules` (LocalHost), `loadCommunityModules` (`~/.macows`, SandboxHost), `loadDevModules` (repo `dev-modules/`, DEV only)
+- [x] Loaders: `loadBuiltinSandboxModules` (LocalHost), `loadCommunityModules` (`~/.mutka`, SandboxHost), `loadDevModules` (repo `dev-modules/`, DEV only)
 - [x] Example community module `dev-modules/com.dir-stats/index.js`
 
 `tsc --noEmit` ✅ · `vite build` ✅ (worker emits as its own chunk).
@@ -70,6 +72,7 @@ Other:
 ## NOT validated yet ⚠️ (needs `npm run tauri dev` — can't launch Tauri here)
 
 Run the app and confirm each ported feature still works:
+
 - [ ] Copy/cut/paste (⌘C/⌘X/⌘V), New File/Folder, Rename (F2), Delete (⌘⌫)
 - [ ] Double-click folder navigates; double-click file opens; ⌘[ / ⌘]
 - [ ] Tabs: ⌘T, "Open in New Tab", ctrl/⌘-double-click a folder; TabBar renders
@@ -85,7 +88,7 @@ Run the app and confirm each ported feature still works:
 - [x] All docs rewritten to the unified architecture (root + src + core + components
       + src-tauri CLAUDE.md, docs/{architecture,flows,events}.md, COMMUNITY_MODULES.md,
       README, INSTALL, and the `.claude/skills/*` authoring guides).
-- [x] Dead code removed: top-bar panels (`MacowsTopBarPanel`/`topBarPanels`/`getTopBarPanels`),
+- [x] Dead code removed: top-bar panels (`MutkaTopBarPanel`/`topBarPanels`/`getTopBarPanels`),
       toolbar contributions (`showInToolbar`/`getToolbarActions`), `getModules`/`ModuleManifest`.
 - [x] UX wins: middle-click tab close, middle-click folder → background tab, column
       sorting (persisted), internal drag-and-drop move, customizable keybinds + import/export,
@@ -126,7 +129,7 @@ into a WebDAV folder and drag-drop both upload.
 
 **Multi-account + Keychain** ✅: accounts `{ id, name, url, username }` in `config`; each
 PASSWORD in the macOS **Keychain** via the new `secrets` capability (Rust `keyring` →
-`secret_set/get/delete`, namespaced `macows.<moduleId>`). Scheme is per-account
+`secret_set/get/delete`, namespaced `mutka.<moduleId>`). Scheme is per-account
 (`webdav:<accountId>/…`). Settings → WebDAV Accounts manages add/edit/rename/remove
 (`components/SettingsPanel/WebDavAccounts.tsx`), emitting `webdav:accounts-changed`. Each
 account is a renamable, ✕-removable entry under "Cloud" in the Places sidebar.
@@ -142,13 +145,13 @@ build. Local **caching** of opened files is still naive (re-downloads each open)
 - [ ] Community (worker) providers: needs a provider-call RPC + a worker-safe XML parser.
 - [ ] More capabilities as needed: `shell`, broader `sys`.
 - [ ] Sandboxed custom UI: constrained host-rendered components vs. iframe webview
-      (this is what unblocks module-contributed sidebar panels — the `MacowsSidebarPanel`
+      (this is what unblocks module-contributed sidebar panels — the `MutkaSidebarPanel`
       infra exists but the sandbox format can't fill it yet).
 - [ ] Native drag-out to Finder (NSDragging, Rust) — currently `dragDropEnabled:false`
       for internal HTML5 DnD, which disables OS↔app native drag.
 
 ## Open questions (before the marketplace)
 
-- Module signing / integrity (anyone can drop a file in `~/.macows/modules`)
+- Module signing / integrity (anyone can drop a file in `~/.mutka/modules`)
 - Permission **consent UI** — show `manifest.permissions` before first run
 - Per-`run` watchdog/timeout (a worker can busy-loop) + RPC rate/size limits

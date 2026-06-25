@@ -1,9 +1,9 @@
 ---
 name: new-module
-description: Create a new Macows Explorer module with commands and open handlers using defineModule. Use when adding any new feature to the app.
+description: Create a new Mutka module with commands and open handlers using defineModule. Use when adding any new feature to the app.
 ---
 
-# Skill: Create a new Macows Explorer module
+# Skill: Create a new Mutka module
 
 Use this skill whenever asked to add a new feature, command, or open handler to the app.
 
@@ -13,7 +13,7 @@ passed to `setup(host)`. Built-in and community modules use the identical shape.
 
 - **Built-in** modules live at `src/sandbox-builtins/<name>.ts` and run in-process via
   `LocalHost`.
-- **Community** modules are plain ESM at `~/.macows/modules/<id>/index.js` and run
+- **Community** modules are plain ESM at `~/.mutka/modules/<id>/index.js` and run
   ISOLATED in a Web Worker via `SandboxHost`. They cannot import `defineModule`, so they
   `export default { ... }` the same object literal.
 
@@ -23,14 +23,16 @@ denies the call.
 ## Step-by-step
 
 ### 1. Choose the module ID
+
 Format: `core.<name>` for built-ins, `<author>.<name>` for community modules.
 The ID is permanent — it can never be renamed after users install the module.
 
 ### 2. Create the file
 
-```
+```text
 src/sandbox-builtins/<name>.ts        ← built-in (in this repo)
-~/.macows/modules/<id>/index.js       ← community (on the user's disk)
+~/.mutka/modules/<id>/index.js       ← community (on the user's disk)
+
 ```
 
 One file per module. Keep it small.
@@ -69,6 +71,7 @@ export default defineModule({
     });
   },
 });
+
 ```
 
 A community module is byte-identical except it drops the `import` and exports the
@@ -85,17 +88,18 @@ The host evaluates `when` against the live snapshot.
 
 ### 5. The `host` API (all async)
 
-| Group | Methods | Permission |
-|---|---|---|
-| `host.fs` | `readDir`, `openItem`, `copyFiles`, `moveFiles`, `deleteItem`, `renameItem`, `createFile`, `createFolder` | `fs:read` / `fs:write` |
-| `host.board` | `readFiles`, `writeFiles(paths, "copy" \| "cut")` | `clipboard:read` / `clipboard:write` |
-| `host.nav` | `navigate`, `goBack`, `goForward`, `goUp` | `navigation` |
-| `host.tabs` | `openTab`, `openTabInBackground`, `isActive` | `navigation` |
-| `host.dialog` | `prompt({ message, placeholder?, defaultValue? })`, `confirm({ message, detail?, destructive? })` | `dialog` |
-| `host.sys` | `homeDir` | `fs:read` |
-| `host.refresh()` | re-read the current directory after a mutation | `fs:read` |
+| Group            | Methods                                                                                                   | Permission                           |
+| ---------------- | --------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| `host.fs`        | `readDir`, `openItem`, `copyFiles`, `moveFiles`, `deleteItem`, `renameItem`, `createFile`, `createFolder` | `fs:read` / `fs:write`               |
+| `host.board`     | `readFiles`, `writeFiles(paths, "copy" \| "cut")`                                                         | `clipboard:read` / `clipboard:write` |
+| `host.nav`       | `navigate`, `goBack`, `goForward`, `goUp`                                                                 | `navigation`                         |
+| `host.tabs`      | `openTab`, `openTabInBackground`, `isActive`                                                              | `navigation`                         |
+| `host.dialog`    | `prompt({ message, placeholder?, defaultValue? })`, `confirm({ message, detail?, destructive? })`         | `dialog`                             |
+| `host.sys`       | `homeDir`                                                                                                 | `fs:read`                            |
+| `host.refresh()` | re-read the current directory after a mutation                                                            | `fs:read`                            |
 
 Plus, registered inside `setup`:
+
 - `host.onCommand(id, (snapshot) => {})` — run when a command fires.
 - `host.onOpen(handlerId, (item) => {})` — run when an open handler matches (see `add-open-handler`).
 - `host.events.on(event, handler)` — subscribe to a whitelisted event (`"input:mouse-navigate"`, `"file:modifier-open"`).
@@ -118,7 +122,7 @@ gateway) — modules never call `invoke` directly.
 ## No registration step
 
 Built-in modules are auto-discovered by `src/moduleLoader.ts` (`import.meta.glob` over
-`src/sandbox-builtins/*.ts`). Community modules are loaded from `~/.macows/modules/`.
+`src/sandbox-builtins/*.ts`). Community modules are loaded from `~/.mutka/modules/`.
 No `App.tsx` changes are ever needed.
 
 ## Checklist before finishing

@@ -1,13 +1,13 @@
 {
-  "name": "macows-explorer",
+  "name": "mutka",
   "version": "0.1.0",
   "description": "Community-driven macOS file explorer with a modular architecture",
-  "author": "Macows Explorer contributors",
+  "author": "Mutka contributors",
   "license": "MIT",
-  "homepage": "https://github.com/ilianAZZ/Macows-Explorer",
+  "homepage": "https://github.com/ilianAZZ/mutka",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ilianAZZ/Macows-Explorer.git"
+    "url": "git+https://github.com/ilianAZZ/mutka.git"
   },
   "keywords": [
     "macos",

@@ -7,7 +7,7 @@ import type { MenuZone } from "../menu/menuZone";
 //
 // These are the shapes ModuleRegistry stores. Module AUTHORS do not write these
 // directly — they write `defineModule({...})` (see core/sandbox/defineModule.ts),
-// and a runtime (LocalHost / SandboxHost) turns the module into the MacowsModule
+// and a runtime (LocalHost / SandboxHost) turns the module into the MutkaModule
 // below via proxyModule.ts. Keep this file about what the registry + UI consume.
 // =============================================================================
 
@@ -53,7 +53,7 @@ export type BuiltinContextMenuCategory =
 export interface ContextMenuGroup {
   /** Category label shown as a small header. Undefined for the default (no-header) group. */
   label?: string;
-  actions: MacowsAction[];
+  actions: MutkaAction[];
 }
 
 // ─── Sidebar items (declarative left-menu entries) ────────────────────────────
@@ -101,7 +101,7 @@ export interface SidebarItemGroup {
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
 
-export interface MacowsAction {
+export interface MutkaAction {
   /** Globally unique ID, format: "module-id.action-name", e.g. "core.clipboard.copy" */
   id: string;
   /** Human-readable label shown in menus and tooltips */
@@ -147,7 +147,7 @@ export interface MacowsAction {
 
 // ─── Open handlers ────────────────────────────────────────────────────────────
 
-export interface MacowsOpenHandler {
+export interface MutkaOpenHandler {
   /** Globally unique ID, format: "module-id.handler-name" */
   id: string;
   /**
@@ -173,7 +173,7 @@ export interface SidebarPanelProps {
   refresh: () => void;
 }
 
-export interface MacowsSidebarPanel {
+export interface MutkaSidebarPanel {
   /** Globally unique ID, format: "module-id.panel-name" */
   id: string;
   /** Icon shown in the sidebar tab strip (emoji or SF Symbol name) */
@@ -190,7 +190,7 @@ export interface MacowsSidebarPanel {
 
 // ─── Module contract (built by proxyModule.ts from a defineModule) ────────────
 
-export interface MacowsModule {
+export interface MutkaModule {
   /** Unique module ID. Follows the "author.name" convention. */
   id: string;
   /** Display name. */
@@ -202,13 +202,13 @@ export interface MacowsModule {
   /** Permissions this module declared — enforced by the capability gateway. */
   permissions?: readonly ModulePermission[];
   /** Actions this module contributes. */
-  actions: MacowsAction[];
+  actions: MutkaAction[];
   /** Open handlers this module contributes (optional). */
-  openHandlers?: MacowsOpenHandler[];
+  openHandlers?: MutkaOpenHandler[];
   /** Declarative left-sidebar entries this module contributes (optional). */
   sidebarItems?: SidebarItem[];
   /** Sidebar panels this module contributes (optional). */
-  sidebarPanels?: MacowsSidebarPanel[];
+  sidebarPanels?: MutkaSidebarPanel[];
   /** Called once after registration. Return unsub fn(s) to run on unregister. */
   onMount?: () => (() => void) | (() => void)[] | void;
   /** Called once before unregistration, for non-EventBus cleanup (timers, etc.). */

@@ -1,5 +1,5 @@
 // ─── Community module discovery ──────────────────────────────────────────────
-// Lists and reads community modules installed in ~/.macows/modules/. Reads are
+// Lists and reads community modules installed in ~/.mutka/modules/. Reads are
 // restricted to that directory so a module can never be loaded from elsewhere.
 
 use std::fs;
@@ -7,7 +7,7 @@ use serde::Serialize;
 
 fn modules_dir() -> std::path::PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
-    std::path::PathBuf::from(home).join(".macows").join("modules")
+    std::path::PathBuf::from(home).join(".mutka").join("modules")
 }
 
 #[derive(Serialize)]
@@ -17,7 +17,7 @@ pub struct UserModuleEntry {
     pub entry_path: String,
 }
 
-/// List community modules installed in ~/.macows/modules/.
+/// List community modules installed in ~/.mutka/modules/.
 /// Returns one entry per subdirectory that contains an index.js.
 /// Returns an empty list (not an error) if the directory doesn't exist yet.
 #[tauri::command]
@@ -49,12 +49,12 @@ pub fn list_user_modules() -> Result<Vec<UserModuleEntry>, String> {
 }
 
 /// Read a community module file as a UTF-8 string.
-/// Restricted to ~/.macows/modules/ — returns an error for any other path.
+/// Restricted to ~/.mutka/modules/ — returns an error for any other path.
 #[tauri::command]
 pub fn read_module_file(path: String) -> Result<String, String> {
     let allowed = modules_dir().to_string_lossy().to_string();
     if !path.starts_with(&allowed) {
-        return Err(format!("Access denied: {} is outside ~/.macows/modules", path));
+        return Err(format!("Access denied: {} is outside ~/.mutka/modules", path));
     }
     fs::read_to_string(&path).map_err(|e| format!("Cannot read {}: {}", path, e))
 }

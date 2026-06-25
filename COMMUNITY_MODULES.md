@@ -1,6 +1,6 @@
 # Community Modules — Developer Guide
 
-Macows Explorer is built around a module system. Every feature — clipboard, navigation,
+Mutka is built around a module system. Every feature — clipboard, navigation,
 file ops — is a module, and they all use the **same format** you'll use here. A community
 module is a single ESM file that `export default`s a `defineModule(...)` object. It imports
 nothing: everything it can do arrives through the `host` it's given, and every `host` call
@@ -15,12 +15,12 @@ capability calls. This is by design (see [Security model](#security-model)).
 
 ## How modules are loaded
 
-At startup Macows scans `~/.macows/modules/` and loads each module into its own isolated
+At startup Mutka scans `~/.mutka/modules/` and loads each module into its own isolated
 worker, after the built-in modules (so built-in open handlers at priority 0 are registered
 before your overrides).
 
 ```text
-~/.macows/modules/
+~/.mutka/modules/
   com.dir-stats/
     index.js        ← your module, a single ESM file (required)
 ```
@@ -43,7 +43,7 @@ A module is an object with `id`, `name`, `version`, `permissions`, optional `com
 the real `dev-modules/com.dir-stats/index.js`):
 
 ```javascript
-// ~/.macows/modules/com.dir-stats/index.js
+// ~/.mutka/modules/com.dir-stats/index.js
 //
 // Untrusted, runs ISOLATED in a Web Worker. Imports NOTHING — everything it can
 // do arrives through `host`, and every host call is gated by the permissions
@@ -143,6 +143,7 @@ column. Calling one without declaring its permission **throws**.
 | `host.refresh()` | re-read the current directory                                                                             | `fs:read`                                             |
 
 Non-privileged helpers (no permission needed):
+
 - `host.onCommand(id, handler)` / `host.onOpen(handlerId, handler)` — register handlers.
 - `host.events.on(event, handler)` — subscribe to a **whitelisted** app event (currently
   only `"input:mouse-navigate"` and `"file:modifier-open"`). Other events are ignored.
@@ -160,9 +161,9 @@ Declare every capability you use in `permissions`:
 ## Installing a module
 
 ```bash
-mkdir -p ~/.macows/modules/com.dir-stats
-cp index.js ~/.macows/modules/com.dir-stats/index.js
-# restart Macows Explorer
+mkdir -p ~/.mutka/modules/com.dir-stats
+cp index.js ~/.mutka/modules/com.dir-stats/index.js
+# restart Mutka
 ```
 
 The module loads on next launch into its own isolated worker.
@@ -208,7 +209,7 @@ that, nothing more.
 
 ## Open questions (tracked in CLAUDE.md)
 
-- **Registry URL**: npm tag `macows-module`? Custom JSON endpoint? GitHub topic?
+- **Registry URL**: npm tag `mutka-module`? Custom JSON endpoint? GitHub topic?
 - **Module namespace**: `author.name` (current) vs `@author/name`?
 - **Custom UI from a worker**: sidebar panels from a sandboxed module are not supported yet
   (rendering React across the worker boundary is a separate problem). Core UI may register

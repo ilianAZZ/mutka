@@ -110,7 +110,7 @@ pub fn http_download(req: HttpDownloadArgs) -> Result<String, String> {
     }
     let resp = request.call().map_err(|e| e.to_string())?;
 
-    let dest = std::env::temp_dir().join("macows-cache").join(&req.filename);
+    let dest = std::env::temp_dir().join("mutka-cache").join(&req.filename);
     if let Some(parent) = dest.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
