@@ -44,7 +44,8 @@ of app state used only by `isVisible`/`isEnabled`/`when` predicates — modules 
 through it).
 
 Types that belong to a single subsystem live next to their owner:
-- `MacowsModule`, `MacowsAction`, `MacowsOpenHandler`, `MacowsSidebarPanel`,
+
+- `MutkaModule`, `MutkaAction`, `MutkaOpenHandler`, `MutkaSidebarPanel`,
   `ModulePermission`, `ContextMenuCategories` → `module-registry/module-registry.types.ts`
 - `ThemePreference` → `theme-manager/theme-manager.types.ts`
 - `TabBarTab`, `TabsSnapshot` → `tab-manager/tab-manager.types.ts`
@@ -61,14 +62,15 @@ them. Modules act through their OWN `host`, not through an injected context — 
 only stores actions/handlers and reads app state for visibility checks.
 
 Public API:
-```typescript
+
+```ts
 ModuleRegistry.init(): void                         // wire the "action:dispatch" bus listener once
-ModuleRegistry.register(module: MacowsModule): void
+ModuleRegistry.register(module: MutkaModule): void
 ModuleRegistry.unregister(moduleId: string): void
 ModuleRegistry.executeAction(actionId: string): Promise<void>
 ModuleRegistry.resolveOpen(item: FileItem): Promise<void>
 ModuleRegistry.getContextMenuActions(context: BaseContext, zone: MenuZone): ContextMenuGroup[]
-ModuleRegistry.getSidebarPanels(): MacowsSidebarPanel[]
+ModuleRegistry.getSidebarPanels(): MutkaSidebarPanel[]
 ```
 
 - `init()` runs once from `App.tsx`; it subscribes to the `"action:dispatch"` EventBus
@@ -81,10 +83,10 @@ ModuleRegistry.getSidebarPanels(): MacowsSidebarPanel[]
   each action's `isVisible`, then groups by `contextMenuCategory` into `ContextMenuGroup[]`.
   Right-clicks in an editable field resolve to `"editable"` and show the native menu instead.
 
-`module-registry.types.ts` is the INTERNAL registry contract (`MacowsModule`,
-`MacowsAction`, `MacowsOpenHandler`, `MacowsSidebarPanel`, `ModulePermission`,
+`module-registry.types.ts` is the INTERNAL registry contract (`MutkaModule`,
+`MutkaAction`, `MutkaOpenHandler`, `MutkaSidebarPanel`, `ModulePermission`,
 `ContextMenuCategories`). Authors do NOT write these — they write `defineModule(...)` and
-`sandbox/proxyModule.ts` converts a manifest into a `MacowsModule` the registry stores.
+`sandbox/proxyModule.ts` converts a manifest into a `MutkaModule` the registry stores.
 
 Modules are auto-discovered by `src/moduleLoader.ts`; they are never registered by hand in
 `App.tsx`. Built-in open handlers register at priority 0 first, so community modules can
@@ -100,19 +102,19 @@ or `getModules()` — those were removed.
 
 The module execution + permission layer. Files:
 
-| File | Responsibility |
-| --- | --- |
-| `defineModule.ts` | Author-facing helper. Types only — returns its argument unchanged. |
-| `hostProxy.ts` | Builds the `host` object (`fs`, `board`, `nav`, `tabs`, `dialog`, `sys`, `refresh`, `onCommand`, `onOpen`, `events.on`, `log`). All methods async. |
-| `capabilities.ts` | THE gateway vocabulary. Maps each capability to its required permission and the operation that fulfils it. The ONLY file that calls `invoke` / `AppBridge` / `TabManager`. |
-| `gateway.ts` | The permission barrier. Checks the manifest declared the required permission, then runs the capability. No declaration → throws. |
-| `LocalHost.ts` | In-process runtime for built-ins. |
-| `SandboxHost.ts` | Web-Worker runtime for community modules. |
-| `sandbox.worker.ts` | The worker entry that loads untrusted source and proxies host-calls. |
-| `protocol.ts` | The only shapes allowed to cross the host↔worker boundary (structured-clone safe): `SandboxCommand`, `SandboxOpenHandler`, `WhenClause`, `SandboxManifest`, `HostSnapshot`, wire messages. |
-| `proxyModule.ts` | Turns a manifest into a `MacowsModule` and registers it. |
-| `whenClause.ts` | Evaluates a declarative `when` clause against `BaseContext` (host-side). |
-| `eventWhitelist.ts` | The set of events a module may subscribe to via `host.events.on`. |
+| File                | Responsibility                                                                                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `defineModule.ts`   | Author-facing helper. Types only — returns its argument unchanged.                                                                                                                         |
+| `hostProxy.ts`      | Builds the `host` object (`fs`, `board`, `nav`, `tabs`, `dialog`, `sys`, `refresh`, `onCommand`, `onOpen`, `events.on`, `log`). All methods async.                                         |
+| `capabilities.ts`   | THE gateway vocabulary. Maps each capability to its required permission and the operation that fulfils it. The ONLY file that calls `invoke` / `AppBridge` / `TabManager`.                 |
+| `gateway.ts`        | The permission barrier. Checks the manifest declared the required permission, then runs the capability. No declaration → throws.                                                           |
+| `LocalHost.ts`      | In-process runtime for built-ins.                                                                                                                                                          |
+| `SandboxHost.ts`    | Web-Worker runtime for community modules.                                                                                                                                                  |
+| `sandbox.worker.ts` | The worker entry that loads untrusted source and proxies host-calls.                                                                                                                       |
+| `protocol.ts`       | The only shapes allowed to cross the host↔worker boundary (structured-clone safe): `SandboxCommand`, `SandboxOpenHandler`, `WhenClause`, `SandboxManifest`, `HostSnapshot`, wire messages. |
+| `proxyModule.ts`    | Turns a manifest into a `MutkaModule` and registers it.                                                                                                                                    |
+| `whenClause.ts`     | Evaluates a declarative `when` clause against `BaseContext` (host-side).                                                                                                                   |
+| `eventWhitelist.ts` | The set of events a module may subscribe to via `host.events.on`.                                                                                                                          |
 
 Permissions: `fs:read`, `fs:write`, `clipboard:read`, `clipboard:write`, `navigation`,
 `dialog`, `network`, `shell`. A module must declare every one it uses.
@@ -151,19 +153,19 @@ events via declaration merging on `EventMap` (see the comment in `events.ts`).
 
 #### Known events (keep this in sync with `events.ts`)
 
-| Event | Payload | Notes |
-| --- | --- | --- |
-| `theme:changed` | `{ preference; resolved }` | from `ThemeManager` |
-| `clipboard:changed` | `ClipboardState` | from `ClipboardStore` / clipboard module |
-| `navigation:back` / `navigation:forward` | `undefined` | toolbar flash animation |
-| `file:modifier-open` | `{ item; modifiers }` | ctrl/⌘-open of an item (subscribable by modules) |
-| `module:registered` / `module:unregistered` | `{ moduleId }` | sidebar-panel refresh |
-| `error:action` | `{ actionId; error }` | failed action |
-| `input:mouse-navigate` | `{ direction }` | mouse back/forward (subscribable by modules) |
-| `tabs:changed` | `TabsSnapshot` | any tab-state mutation |
-| `tabs:last-closed` | `{ path }` | last tab closed → global nav resumes |
-| `action:dispatch` | `{ actionId }` | a shortcut/menu requests an action run |
-| `selection:changed` | `{ items }` | from `SelectionStore` |
+| Event                                       | Payload                    | Notes                                            |
+| ------------------------------------------- | -------------------------- | ------------------------------------------------ |
+| `theme:changed`                             | `{ preference; resolved }` | from `ThemeManager`                              |
+| `clipboard:changed`                         | `ClipboardState`           | from `ClipboardStore` / clipboard module         |
+| `navigation:back` / `navigation:forward`    | `undefined`                | toolbar flash animation                          |
+| `file:modifier-open`                        | `{ item; modifiers }`      | ctrl/⌘-open of an item (subscribable by modules) |
+| `module:registered` / `module:unregistered` | `{ moduleId }`             | sidebar-panel refresh                            |
+| `error:action`                              | `{ actionId; error }`      | failed action                                    |
+| `input:mouse-navigate`                      | `{ direction }`            | mouse back/forward (subscribable by modules)     |
+| `tabs:changed`                              | `TabsSnapshot`             | any tab-state mutation                           |
+| `tabs:last-closed`                          | `{ path }`                 | last tab closed → global nav resumes             |
+| `action:dispatch`                           | `{ actionId }`             | a shortcut/menu requests an action run           |
+| `selection:changed`                         | `{ items }`                | from `SelectionStore`                            |
 
 Of these, modules may subscribe ONLY to the whitelisted set in
 `sandbox/eventWhitelist.ts` (currently `input:mouse-navigate`, `file:modifier-open`).
@@ -222,7 +224,7 @@ authoritative read source the registry uses to build a `BaseContext` for visibil
 
 ### `theme-manager/ThemeManager.ts` — Dark / Light
 
-Reads the preference from `localStorage` `"macows.theme"` (falls back to `"system"`),
+Reads the preference from `localStorage` `"mutka.theme"` (falls back to `"system"`),
 applies `data-theme` on `<html>`, and emits `"theme:changed"` when it resolves.
 
 ```typescript
@@ -250,6 +252,7 @@ ThemeManager.getResolved(): "dark" | "light"
 ## Adding to the core
 
 Adding a new core file requires answering YES to ALL:
+
 - [ ] Is it shared infrastructure used by multiple modules or components?
 - [ ] Does it have zero feature logic (no specific FS behavior, no UI rendering)?
 - [ ] Can it be reasoned about without knowing any specific module?
