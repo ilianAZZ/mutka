@@ -48,8 +48,10 @@ fn is_package_extension(extension: &Option<String>) -> bool {
 }
 
 #[tauri::command]
-pub fn read_dir(path: String, show_hidden: bool) -> Result<Vec<FileItem>, String> {
+pub fn read_dir(app: tauri::AppHandle, path: String, show_hidden: bool) -> Result<Vec<FileItem>, String> {
     let entries = fs::read_dir(&path).map_err(|e| e.to_string())?;
+    // Watch the directory we are now showing (re-arms the single live watcher).
+    crate::watcher::arm(&app, &path);
     let mut items = Vec::new();
 
     for entry in entries.flatten() {

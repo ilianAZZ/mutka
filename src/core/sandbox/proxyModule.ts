@@ -28,6 +28,8 @@ export interface ProxyRuntime {
   runOpen: (handlerId: string, item: FileItem) => void;
   /** Produce a column's cell value for an item in the backing runtime. */
   runColumn: (columnId: string, item: FileItem) => Promise<ColumnCell | null>;
+  /** Run a UI-event handler (button/list/form) in the backing runtime. */
+  runUIEvent: (handlerId: string, value: unknown) => void;
   /** Tear down the backing runtime on unregister. */
   dispose: () => void;
 }
@@ -68,6 +70,12 @@ export function registerProxyModule(manifest: SandboxManifest, runtime: ProxyRun
   // it calls back into this runtime only to produce a value for a matching cell.
   ColumnsRegistry.register(manifest.id, manifest.columns, runtime.runColumn);
 
+  // Declarative panels / settings sections carry only data; the React layer
+  // wraps each in the core <DeclarativeView>, reading the UINode the module
+  // renders into the matching UIStore surface. Tag each with its owning module.
+  const declarativePanels = manifest.panels.map((p) => ({ ...p, moduleId: manifest.id }));
+  const settingsSections = manifest.settingsSections.map((s) => ({ ...s, moduleId: manifest.id }));
+
   ModuleRegistry.register({
     id: manifest.id,
     name: manifest.name,
@@ -77,6 +85,9 @@ export function registerProxyModule(manifest: SandboxManifest, runtime: ProxyRun
     actions,
     openHandlers,
     sidebarItems: manifest.sidebarItems,
+    declarativePanels,
+    settingsSections,
+    runUIEvent: (handlerId, value) => runtime.runUIEvent(handlerId, value),
     onUnmount: () => {
       FileIconRegistry.unregister(manifest.id);
       ColumnsRegistry.unregister(manifest.id);

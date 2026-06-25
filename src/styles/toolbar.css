@@ -125,6 +125,7 @@
 
 /* ─── Status bar ─────────────────────────────────────────────────────────────── */
 #statusbar {
+  position: relative;
   height: 24px;
   background: var(--glass-heavy);
   backdrop-filter: var(--blur-light);

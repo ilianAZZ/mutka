@@ -1,0 +1,144 @@
+/* Declarative UI — native rendering of a module's serializable UINode tree.
+   All colours are design tokens; modules never inject CSS or components. */
+
+.dv-surface {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.dv-empty {
+  padding: 16px 12px;
+  color: var(--text-subtle);
+  font-size: 12px;
+  text-align: center;
+}
+
+/* ── Layout ──────────────────────────────────────────────────────────────── */
+.dv-vstack { display: flex; flex-direction: column; }
+.dv-hstack { display: flex; flex-direction: row; align-items: center; }
+
+.dv-divider { border: none; border-top: 1px solid var(--seg-divider); margin: 4px 0; width: 100%; }
+.dv-spacer { flex: 0 0 auto; }
+
+/* ── Text ────────────────────────────────────────────────────────────────── */
+.dv-text { color: var(--text); line-height: 1.4; }
+.dv-text--sm { font-size: 11px; }
+.dv-text--md { font-size: 13px; }
+.dv-text--lg { font-size: 16px; }
+.dv-text--medium { font-weight: 500; }
+.dv-text--bold { font-weight: 700; }
+.dv-text--muted { color: var(--text-subtle); }
+
+.dv-emoji { font-size: 13px; line-height: 1; }
+.dv-icon { display: inline-flex; align-items: center; color: var(--text-mid); }
+
+/* ── Key/value row ───────────────────────────────────────────────────────── */
+.dv-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 12px;
+}
+.dv-row-label { display: inline-flex; align-items: center; gap: 6px; color: var(--text-mid); }
+.dv-row-value { color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* ── Badge ───────────────────────────────────────────────────────────────── */
+.dv-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: var(--r-sm);
+  background: var(--ctl-bg);
+  color: var(--text-mid);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+.dv-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: none;
+  border-radius: var(--r-md);
+  background: var(--ctl-bg);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.dv-btn:hover { background: var(--ctl-bg-hover); }
+.dv-btn:active { background: var(--ctl-bg-active); }
+.dv-btn:disabled { opacity: 0.45; cursor: default; }
+.dv-btn--primary { background: var(--accent); color: #fff; }
+.dv-btn--primary:hover { background: var(--accent-hover); }
+.dv-btn--danger { background: var(--ctl-bg); color: #ff5f56; }
+
+/* ── List ────────────────────────────────────────────────────────────────── */
+.dv-list { display: flex; flex-direction: column; }
+.dv-list-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+}
+.dv-list-row--clickable { cursor: pointer; }
+.dv-list-row--clickable:hover { background: var(--row-hover); }
+.dv-list-label { color: var(--text); flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dv-list-detail { color: var(--text-subtle); font-size: 11px; }
+
+/* ── Image ───────────────────────────────────────────────────────────────── */
+.dv-image { max-width: 100%; border-radius: var(--r-sm); display: block; }
+
+/* ── Forms ───────────────────────────────────────────────────────────────── */
+.dv-form { display: flex; flex-direction: column; gap: 10px; }
+.dv-form-field { display: flex; flex-direction: column; gap: 4px; }
+.dv-form-label { font-size: 12px; color: var(--text-mid); }
+.dv-form-hint { font-size: 11px; color: var(--text-subtle); }
+.dv-form-check { display: inline-flex; align-items: center; gap: 8px; }
+
+.dv-input {
+  width: 100%;
+  padding: 6px 9px;
+  border: 1px solid var(--seg-divider);
+  border-radius: var(--r-md);
+  background: var(--ctl-bg);
+  color: var(--text);
+  font-size: 12px;
+  box-sizing: border-box;
+}
+.dv-input:focus { outline: none; border-color: var(--accent); }
+.dv-input--area { min-height: 64px; resize: vertical; font-family: inherit; }
+
+/* ── Modal ───────────────────────────────────────────────────────────────── */
+.dv-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: var(--blur-light);
+  -webkit-backdrop-filter: var(--blur-light);
+}
+.dv-modal {
+  min-width: 320px;
+  max-width: 480px;
+  max-height: 70vh;
+  overflow-y: auto;
+  padding: 16px;
+  background: var(--glass-heavy);
+  border: 1px solid var(--rim-mid);
+  border-radius: var(--r-xl);
+  box-shadow: var(--shadow-float);
+}

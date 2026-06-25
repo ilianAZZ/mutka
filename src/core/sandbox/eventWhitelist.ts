@@ -12,6 +12,7 @@ export const SUBSCRIBABLE_EVENTS = new Set<string>([
   "file:external-drop",
   "sidebar:item-remove",
   "webdav:accounts-changed",
+  "directory:changed",
 ]);
 
 export function isSubscribable(event: string): boolean {

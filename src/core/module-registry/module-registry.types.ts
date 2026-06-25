@@ -30,6 +30,7 @@ export type ModulePermission =
   | "network"        // makes outbound network requests (host-proxied HTTP)
   | "storage"        // reads/writes its own persisted config (per-module namespace)
   | "secrets"        // reads/writes its own credentials in the macOS Keychain
+  | "ui"             // renders declarative panels/popups/settings + status-bar items
   | "shell";         // executes shell or system commands
 
 // ─── Context menu categories ──────────────────────────────────────────────────
@@ -189,6 +190,30 @@ export interface MutkaSidebarPanel {
   component: ComponentType<SidebarPanelProps>;
 }
 
+// ─── Declarative contributions (rendered from a serializable UINode tree) ──────
+// A sandboxed module cannot ship a React component, so it contributes a panel /
+// settings section as DATA and fills it via host.ui.render(surfaceId, node). The
+// registry stores the bare contribution (with its owning moduleId); the React
+// layer wraps each in the core <DeclarativeView>. See core/sandbox/protocol.ts
+// for the author-facing PanelContribution / SettingsSectionContribution shapes.
+
+export interface DeclarativePanelContribution {
+  /** Owning module id (used to scope the UIStore surface + UI-event dispatch). */
+  moduleId: string;
+  /** Surface id within the module (== the contributed panel id). */
+  id: string;
+  title: string;
+  icon: string;
+  side?: "left" | "right";
+  defaultWidth?: number;
+}
+
+export interface SettingsSectionContribution {
+  moduleId: string;
+  id: string;
+  title: string;
+}
+
 // ─── Module contract (built by proxyModule.ts from a defineModule) ────────────
 
 export interface MutkaModule {
@@ -208,8 +233,14 @@ export interface MutkaModule {
   openHandlers?: MutkaOpenHandler[];
   /** Declarative left-sidebar entries this module contributes (optional). */
   sidebarItems?: SidebarItem[];
-  /** Sidebar panels this module contributes (optional). */
+  /** Sidebar panels this module contributes as React components (core UI only). */
   sidebarPanels?: MutkaSidebarPanel[];
+  /** Declarative side-pane panels filled from a UINode tree (sandbox-friendly). */
+  declarativePanels?: DeclarativePanelContribution[];
+  /** Declarative settings sections filled from a UINode tree (sandbox-friendly). */
+  settingsSections?: SettingsSectionContribution[];
+  /** Dispatch a UI-event (button/list/form interaction) into this module's runtime. */
+  runUIEvent?: (handlerId: string, value: unknown) => void;
   /** Called once after registration. Return unsub fn(s) to run on unregister. */
   onMount?: () => (() => void) | (() => void)[] | void;
   /** Called once before unregistration, for non-EventBus cleanup (timers, etc.). */

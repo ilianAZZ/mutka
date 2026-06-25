@@ -9,7 +9,7 @@
 // asking the host (which checks permissions).
 // =============================================================================
 
-import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandler, type ColumnProvider } from "./hostProxy";
+import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandler, type ColumnProvider, type UIEventHandler, type ProviderHandler } from "./hostProxy";
 import type { HostToWorker, WorkerToHost, SandboxManifest } from "./protocol";
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
@@ -18,6 +18,8 @@ const post = (m: WorkerToHost): void => ctx.postMessage(m);
 const commands = new Map<string, CommandHandler>();
 const opens = new Map<string, OpenHandler>();
 const columns = new Map<string, ColumnProvider>();
+const uiEvents = new Map<string, UIEventHandler>();
+const providers = new Map<string, ProviderHandler>(); // `${scheme}:${method}` → handler
 const events = new Map<string, EventHandler>();
 const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: unknown) => void }>();
 let callSeq = 0;
@@ -60,6 +62,23 @@ ctx.onmessage = async (e: MessageEvent<HostToWorker>): Promise<void> => {
       }
       break;
     }
+    case "ui-event":
+      await safeRun(uiEvents.get(msg.handler), msg.value, `ui-event "${msg.handler}"`);
+      break;
+    case "provider": {
+      const handler = providers.get(`${msg.scheme}:${msg.method}`);
+      if (!handler) {
+        post({ t: "provider-result", id: msg.id, ok: false, error: `provider "${msg.scheme}" has no "${msg.method}" handler` });
+        break;
+      }
+      try {
+        const value = await (handler as (...a: unknown[]) => unknown)(...msg.args);
+        post({ t: "provider-result", id: msg.id, ok: true, value: value ?? null });
+      } catch (err) {
+        post({ t: "provider-result", id: msg.id, ok: false, error: String(err) });
+      }
+      break;
+    }
     case "event": {
       const handler = events.get(msg.event);
       if (handler) handler(msg.payload);
@@ -89,6 +108,8 @@ interface RawModule {
   fileSystemProviders?: SandboxManifest["fileSystemProviders"];
   fileIcons?: SandboxManifest["fileIcons"];
   columns?: SandboxManifest["columns"];
+  panels?: SandboxManifest["panels"];
+  settingsSections?: SandboxManifest["settingsSections"];
   setup?: (host: ReturnType<typeof createHostProxy>) => void | Promise<void>;
 }
 
@@ -115,6 +136,8 @@ async function loadModule(source: string): Promise<void> {
       fileSystemProviders: def.fileSystemProviders ?? [],
       fileIcons: def.fileIcons ?? [],
       columns: def.columns ?? [],
+      panels: def.panels ?? [],
+      settingsSections: def.settingsSections ?? [],
     };
     // Report BEFORE setup runs, so the host knows this module's permissions
     // before any host-call can be served.
@@ -125,7 +148,8 @@ async function loadModule(source: string): Promise<void> {
       registerCommand: (id, fn) => commands.set(id, fn),
       registerOpen: (id, fn) => opens.set(id, fn),
       registerColumn: (id, fn) => columns.set(id, fn),
-      registerProvider: (scheme) => post({ t: "log", level: "warn", args: [`file system providers are not supported in sandboxed modules: "${scheme}"`] }),
+      registerUIEvent: (id, fn) => uiEvents.set(id, fn),
+      registerProvider: (scheme, method, fn) => providers.set(`${scheme}:${method}`, fn),
       setSidebarItems: (items) => post({ t: "sidebar", items }),
       subscribe: (event, fn) => { events.set(event, fn); post({ t: "subscribe", event }); },
       post,

@@ -31,8 +31,9 @@ one file. Do NOT `import` from `@tauri-apps/api`, the core, or anything else; yo
 to, and it won't resolve.
 
 > **Dev tip:** during `tauri dev`, modules in this repo's `dev-modules/<id>/index.js` are
-> loaded through the same isolated worker path, so you can iterate without installing. A
-> complete working example lives at `dev-modules/com.dir-stats/index.js`.
+> loaded through the same isolated worker path, so you can iterate without installing.
+> Working examples: `dev-modules/com.dir-stats/index.js` (a command) and
+> `dev-modules/com.folder-inspector/index.js` (a declarative panel + form + status item).
 
 ---
 
@@ -127,6 +128,64 @@ when: { clipboard: "hasItems" }   // e.g. a Paste command
 
 ---
 
+## Rendering UI — declarative, no React (requires `ui`)
+
+Your module runs in a worker, so it **cannot ship a React component**. Instead you describe
+UI as a serializable **`UINode` tree** and the host renders it natively. You can fill four
+surfaces, all with the same node format:
+
+- **A side-pane panel** — declare `panels: [{ id, title, icon, side?, defaultWidth? }]`.
+- **A settings section** — declare `settingsSections: [{ id, title }]`.
+- **A status-bar item** (dynamic) — `host.statusbar.set({ id, text, icon, badge, onClick })`.
+- **A modal** — `host.ui.modal(node)` to open, `host.ui.modal(null)` to close.
+
+Fill a panel/section by rendering into its surface id: `host.ui.render(surfaceId, node)`.
+Re-render anytime to update it (e.g. from a `selection:changed` or `directory:changed` event).
+
+```javascript
+export default {
+  id: "acme.inspector",
+  name: "Inspector",
+  version: "1.0.0",
+  permissions: ["ui"],
+  panels: [{ id: "panel", title: "Inspector", icon: "info", side: "right" }],
+  setup(host) {
+    const render = (n) => host.ui.render("panel", {
+      type: "vstack", gap: 8, children: [
+        { type: "text", text: `${n} selected`, weight: "bold" },
+        { type: "divider" },
+        { type: "button", label: "Say hi", action: "hi", variant: "primary" },
+        { type: "form", action: "save", submitLabel: "Save",
+          schema: { type: "object", required: ["name"],
+            properties: { name: { type: "string", title: "Name" } } } },
+      ],
+    });
+    host.events.on("app:ready", () => render(0));
+    host.events.on("selection:changed", (p) => render((p.items || []).length));
+    host.onUIEvent("hi", () => host.ui.modal({ type: "text", text: "Hi!" }));
+    host.onUIEvent("save", (values) => host.log("form:", values)); // values = the form object
+  },
+};
+```
+
+**Nodes:** `vstack` / `hstack` (layout), `text`, `row` (label+value), `button`, `list`,
+`badge`, `icon`, `image` (data-URI only), `divider`, `spacer`, and `form`. Buttons, list rows
+and forms carry an `action` id you handle with `host.onUIEvent(id, handler)` — a form's handler
+receives the collected values object.
+
+**Forms** are a `form` node carrying a **`schema`** in a JSON-Schema-subset (`type: "object"`
+with `properties` + `required`). It's the standard format — generate it from zod with
+`z.toJSONSchema()` (zod v4) or `zod-to-json-schema`, then re-validate the returned values with
+your zod schema inside the worker.
+
+**Status bar** items: `{ id, text?, icon?, tint?, badge?, tooltip?, side?, onClick? }` where
+`onClick` is `{ command: "<id>" }` or `{ popover: "<surfaceId>" }` (render that surface first).
+Colours (`tint`) must be `var(--…)` design tokens; anything else is dropped.
+
+> A complete working example lives at `dev-modules/com.folder-inspector/index.js`.
+
+---
+
 ## The `host` API
 
 Every method is **async** (returns a Promise) and gated by the permission in the right
@@ -138,23 +197,32 @@ column. Calling one without declaring its permission **throws**.
 | `host.board`     | `readFiles`, `writeFiles(paths, "copy"\|"cut")`                                                           | `clipboard:read` / `clipboard:write`                  |
 | `host.nav`       | `navigate`, `goBack`, `goForward`, `goUp`                                                                 | `navigation`                                          |
 | `host.tabs`      | `openTab`, `openTabInBackground`, `isActive`                                                              | `navigation`                                          |
-| `host.dialog`    | `prompt`, `confirm`                                                                                       | `dialog`                                              |
-| `host.sys`       | `homeDir`                                                                                                 | `fs:read`                                             |
+| `host.dialog`    | `prompt`, `confirm`, `choose`                                                                            | `dialog`                                              |
+| `host.ui`        | `render(surfaceId, node)`, `clear(surfaceId)`, `modal(node\|null)`                                       | `ui`                                                  |
+| `host.statusbar` | `set(item)`, `remove(itemId)`                                                                             | `ui`                                                  |
+| `host.net`       | `request`, `download`, `upload`                                                                          | `network`                                             |
+| `host.config`    | `get(key)`, `set(key, value)`                                                                            | `storage`                                             |
+| `host.secrets`   | `get(key)`, `set(key, value)`, `delete(key)`                                                             | `secrets`                                             |
+| `host.sys`       | `homeDir`, `lastDir`, `writeTempFile`, `quickLook`, `appsForFile`, `openWith`, …                          | `fs:read` (most) · `fs:temp` (`writeTempFile`)        |
 | `host.refresh()` | re-read the current directory                                                                             | `fs:read`                                             |
 
 Non-privileged helpers (no permission needed):
 
 - `host.onCommand(id, handler)` / `host.onOpen(handlerId, handler)` — register handlers.
-- `host.events.on(event, handler)` — subscribe to a **whitelisted** app event (currently
-  only `"input:mouse-navigate"` and `"file:modifier-open"`). Other events are ignored.
+- `host.onColumn(id, provider)` — produce a custom list-column cell value.
+- `host.onUIEvent(id, handler)` — handle a button/list/form interaction in your declarative UI.
+- `host.events.on(event, handler)` — subscribe to a **whitelisted** app event (`app:ready`,
+  `selection:changed`, `directory:changed`, `input:mouse-navigate`, `file:modifier-open`,
+  `file:middle-open`, `file:open-no-app`, `file:external-drop`, `sidebar:item-remove`). Other
+  events are ignored.
 - `host.log(...args)` — forwarded to the app console, prefixed with your module id.
 
 ### Permissions
 
 Declare every capability you use in `permissions`:
 
-`fs:read` · `fs:write` · `clipboard:read` · `clipboard:write` · `navigation` · `dialog` ·
-`network` · `shell`.
+`fs:read` · `fs:write` · `fs:temp` · `clipboard:read` · `clipboard:write` · `navigation` ·
+`view` · `dialog` · `network` · `storage` · `secrets` · `ui` · `shell`.
 
 ---
 
@@ -211,7 +279,8 @@ that, nothing more.
 
 - **Registry URL**: npm tag `mutka-module`? Custom JSON endpoint? GitHub topic?
 - **Module namespace**: `author.name` (current) vs `@author/name`?
-- **Custom UI from a worker**: sidebar panels from a sandboxed module are not supported yet
-  (rendering React across the worker boundary is a separate problem). Core UI may register
-  panels directly today.
+- **Richer UI from a worker**: sandboxed modules now render declarative panels, settings,
+  modals and status-bar items (see "Rendering UI" above). The `UINode` vocabulary is
+  deliberately small — custom layout/animation and a panel's direct read of the current
+  directory are still open.
 - **Code signing**: trust model for distributed modules.

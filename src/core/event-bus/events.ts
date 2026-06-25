@@ -50,6 +50,15 @@ export interface EventMap {
   "home:changed": { homeDir: string };
   /** Emitted by SettingsStore when the settings overlay opens or closes. */
   "settings:changed": { open: boolean };
+  /** A module's declarative UI surface (panel/settings/popover/modal) changed. */
+  "ui:changed": { moduleId: string; surfaceId: string };
+  /** A module added/removed/updated a bottom status-bar item. */
+  "statusbar:changed": undefined;
+  /**
+   * The current directory changed on disk (host watches the active dir only).
+   * Whitelisted so modules can refresh a git status, recount, etc. — debounced.
+   */
+  "directory:changed": { path: string };
   /**
    * Files dropped from outside the app (e.g. Finder) onto a folder. The UI reads
    * the dropped File objects to base64; a module imports them via host capabilities.
@@ -117,6 +126,15 @@ export const Events = {
   },
   Settings: {
     changed: "settings:changed",
+  },
+  Ui: {
+    changed: "ui:changed",
+  },
+  StatusBar: {
+    changed: "statusbar:changed",
+  },
+  Directory: {
+    changed: "directory:changed",
   },
   App: {
     ready: "app:ready",

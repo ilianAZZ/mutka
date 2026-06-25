@@ -10,8 +10,11 @@ import { ListingStore } from "../stores/ListingStore";
 import { ViewStore } from "../stores/ViewStore";
 import { HomeStore } from "../stores/HomeStore";
 import { SettingsStore } from "../stores/SettingsStore";
+import { UIStore } from "../stores/UIStore";
+import { StatusBarStore } from "../stores/StatusBarStore";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
 import { DragService } from "../drag/DragService";
+import type { UINode, StatusBarItem } from "./protocol";
 
 /** localStorage key for the last visited local directory (restored at launch). */
 export const LAST_DIR_KEY = "mutka.lastDir";
@@ -119,6 +122,20 @@ export function createCapabilityTable(): CapabilityTable {
     // Toggle the settings overlay (driven by the core.settings command on ⌘,).
     settings: {
       toggle: { permission: "view", run: async () => { SettingsStore.toggle(); return null; } },
+    },
+    // Declarative UI: render a serializable UINode tree into a named surface (a
+    // panel, settings section, status-bar popover) or the app-wide modal. The
+    // host renders it natively — no module code draws pixels. See protocol.ts.
+    ui: {
+      render: { permission: "ui", run: async ([surfaceId, node], moduleId) => { UIStore.render(moduleId, surfaceId as string, node as UINode); return null; } },
+      clear:  { permission: "ui", run: async ([surfaceId], moduleId) => { UIStore.clear(moduleId, surfaceId as string); return null; } },
+      modal:  { permission: "ui", run: async ([node], moduleId) => { UIStore.setModal(moduleId, (node as UINode | null) ?? null); return null; } },
+    },
+    // Bottom status-bar items (e.g. a git branch widget). Upsert/remove by id;
+    // clicking runs a command or opens a popover (a `ui` surface).
+    statusbar: {
+      set:    { permission: "ui", run: async ([item], moduleId) => { StatusBarStore.set(moduleId, item as StatusBarItem); return null; } },
+      remove: { permission: "ui", run: async ([itemId], moduleId) => { StatusBarStore.remove(moduleId, itemId as string); return null; } },
     },
     sys: {
       homeDir:     { permission: "fs:read", run: () => invoke("get_home_dir") },

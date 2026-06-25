@@ -5,6 +5,7 @@ import { ShortcutManager, type KeyBinding } from "../../core/shortcut-manager/Sh
 import { ModuleRegistry } from "../../core/module-registry/ModuleRegistry";
 import { ViewStore } from "../../core/stores/ViewStore";
 import { WebDavAccounts } from "./WebDavAccounts";
+import { DeclarativePanel } from "../Declarative/DeclarativePanel";
 import "./SettingsPanel.css";
 
 interface SettingsPanelProps {
@@ -190,6 +191,17 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
           </section>
 
           <WebDavAccounts />
+
+          {ModuleRegistry.getSettingsSections().map((section) => (
+            <section key={`${section.moduleId}.${section.id}`} className="settings-section">
+              <h2 className="settings-section-title">{section.title}</h2>
+              <DeclarativePanel
+                moduleId={section.moduleId}
+                surfaceId={section.id}
+                emptyHint="This module has no settings yet."
+              />
+            </section>
+          ))}
         </div>
       </aside>
     </>

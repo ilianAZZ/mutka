@@ -1,6 +1,6 @@
 import { EventBus } from "../event-bus/EventBus";
 import type { EventMap } from "../event-bus/events";
-import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandler, type ColumnProvider, type ProviderHandler, type ProviderMethod } from "./hostProxy";
+import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandler, type ColumnProvider, type UIEventHandler, type ProviderHandler, type ProviderMethod } from "./hostProxy";
 import { dispatchCapability } from "./gateway";
 import { registerProxyModule } from "./proxyModule";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
@@ -25,6 +25,7 @@ export class LocalHost {
   private readonly commands = new Map<string, CommandHandler>();
   private readonly opens = new Map<string, OpenHandler>();
   private readonly columns = new Map<string, ColumnProvider>();
+  private readonly uiEvents = new Map<string, UIEventHandler>();
   private readonly providers = new Map<string, ProviderHandler>();
   private readonly eventUnsubs: Array<() => void> = [];
   private readonly registeredSchemes: string[] = [];
@@ -42,6 +43,8 @@ export class LocalHost {
       fileSystemProviders: def.fileSystemProviders ?? [],
       fileIcons: def.fileIcons ?? [],
       columns: def.columns ?? [],
+      panels: def.panels ?? [],
+      settingsSections: def.settingsSections ?? [],
     };
   }
 
@@ -51,6 +54,7 @@ export class LocalHost {
       registerCommand: (id, fn) => this.commands.set(id, fn),
       registerOpen: (id, fn) => this.opens.set(id, fn),
       registerColumn: (id, fn) => this.columns.set(id, fn),
+      registerUIEvent: (id, fn) => this.uiEvents.set(id, fn),
       registerProvider: (scheme, method, fn) => this.providers.set(`${scheme}:${method}`, fn),
       setSidebarItems: (items) => ModuleRegistry.setDynamicSidebarItems(this.manifest.id, items),
       subscribe: (event, fn) => this.subscribe(event, fn),
@@ -76,6 +80,7 @@ export class LocalHost {
       run: (id, snap) => this.run(this.commands.get(id), snap, `command "${id}"`),
       runOpen: (id, item) => this.run(this.opens.get(id), item, `open handler "${id}"`),
       runColumn: (id, item) => this.runColumn(id, item),
+      runUIEvent: (id, value) => this.run(this.uiEvents.get(id), value, `ui-event "${id}"`),
       dispose: () => this.dispose(),
     });
   }
@@ -113,6 +118,7 @@ export class LocalHost {
     this.commands.clear();
     this.opens.clear();
     this.columns.clear();
+    this.uiEvents.clear();
     this.providers.clear();
   }
 }

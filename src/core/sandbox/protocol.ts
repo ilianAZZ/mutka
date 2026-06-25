@@ -126,6 +126,131 @@ export interface FileIconContribution {
   image: string;
 }
 
+// ─── Declarative UI (a serializable view tree) ───────────────────────────────
+// A sandboxed module cannot hand a React component across postMessage, so its UI
+// is described as DATA — a tree of UINodes — and the host renders it with native
+// Liquid Glass components. The same tree fills a right-pane panel, a popup, a
+// settings section, or a status-bar popover. Interactions reference an `action`
+// id the module registered with host.onUIEvent(id, …); the host posts the event
+// back to the module's runtime. Everything here is structured-clone safe.
+
+/** Text emphasis for a `text` node. */
+export type UITextWeight = "normal" | "medium" | "bold";
+/** Relative text size for a `text` node. */
+export type UITextSize = "sm" | "md" | "lg";
+/** Visual intent for a `button` node. */
+export type UIButtonVariant = "default" | "primary" | "danger";
+
+/** One row in a `list` node — clicking it fires `action` with `value` (or `id`). */
+export interface UIListItem {
+  id: string;
+  label: string;
+  detail?: string;
+  /** Icon registry key or emoji. */
+  icon?: string;
+  /** Text colour — MUST be a `var(--…)` token; anything else is dropped. */
+  tint?: string;
+  /** UI-event handler id fired on click (registered via host.onUIEvent). */
+  action?: string;
+  /** Payload passed to the handler; defaults to the item's `id`. */
+  value?: unknown;
+}
+
+/** A single declarative UI node. Rendered host-side, never as innerHTML. */
+export type UINode =
+  | { type: "vstack"; gap?: number; children: UINode[] }
+  | { type: "hstack"; gap?: number; align?: "start" | "center" | "end"; children: UINode[] }
+  | { type: "text"; text: string; tint?: string; weight?: UITextWeight; size?: UITextSize; muted?: boolean }
+  | { type: "row"; label: string; value?: string; icon?: string }
+  | { type: "button"; label: string; action: string; icon?: string; variant?: UIButtonVariant; value?: unknown }
+  | { type: "list"; items: UIListItem[] }
+  | { type: "badge"; text: string; tint?: string }
+  | { type: "icon"; name: string }
+  | { type: "divider" }
+  | { type: "spacer"; size?: number }
+  /** An image — `src` MUST be a data:image/… URI (rendered via <img src> only). */
+  | { type: "image"; src: string; alt?: string }
+  /** A form built from a JSON-Schema subset; submitting fires `action` with the values object. */
+  | { type: "form"; schema: FormSchema; action: string; submitLabel?: string };
+
+// ─── Form schema (a JSON-Schema Draft-7 subset) ──────────────────────────────
+// The standard, serializable wire format for module forms. Module authors may
+// generate it from zod (zod v4 `z.toJSONSchema()` or `zod-to-json-schema`) — the
+// host never imports zod, it only renders this shape. On submit the host returns
+// the collected values to the module, which can re-validate with its own schema.
+
+/** Renders as: text input, number input, checkbox, or (with `enum`) a select. */
+export interface FormProperty {
+  type: "string" | "number" | "integer" | "boolean";
+  title?: string;
+  description?: string;
+  default?: string | number | boolean;
+  /** Allowed values → rendered as a select. */
+  enum?: string[];
+  /** Optional labels parallel to `enum` (falls back to the value). */
+  enumLabels?: string[];
+  /** String rendering hint. `textarea` → multiline, `password` → masked. */
+  format?: "password" | "textarea" | "email" | "path";
+  minimum?: number;
+  maximum?: number;
+  minLength?: number;
+  maxLength?: number;
+}
+
+export interface FormSchema {
+  type: "object";
+  properties: Record<string, FormProperty>;
+  /** Keys that must be non-empty before the form can submit. */
+  required?: string[];
+}
+
+// ─── A right/left-pane panel a module contributes (filled with a UINode) ──────
+
+export interface PanelContribution {
+  /** Surface id — render into it via host.ui.render(id, node). */
+  id: string;
+  /** Tab tooltip / accessible label. */
+  title: string;
+  /** Icon registry key or emoji shown in the sidebar tab strip. */
+  icon: string;
+  /** Preferred edge. Defaults to "right". */
+  side?: "left" | "right";
+  /** Default panel width in px (clamped 180–480). */
+  defaultWidth?: number;
+}
+
+// ─── A settings section a module contributes (filled with a UINode) ───────────
+
+export interface SettingsSectionContribution {
+  /** Surface id — render into it via host.ui.render(id, node). */
+  id: string;
+  /** Section header shown in the Settings panel. */
+  title: string;
+}
+
+// ─── A bottom status-bar item a module contributes (dynamic, via capability) ──
+
+/** What happens when a status-bar item is clicked. */
+export type StatusBarAction =
+  | { command: string }   // run a registered command id
+  | { popover: string };  // open a popover rendering the UINode at this surface id
+
+export interface StatusBarItem {
+  /** Unique within the owning module. */
+  id: string;
+  text?: string;
+  /** Icon registry key or emoji. */
+  icon?: string;
+  /** Text/icon colour — MUST be a `var(--…)` token; anything else is dropped. */
+  tint?: string;
+  /** A short pill (e.g. "↑2", "3"). */
+  badge?: string;
+  tooltip?: string;
+  /** Which end of the bar. Defaults to "right". */
+  side?: "left" | "right";
+  onClick?: StatusBarAction;
+}
+
 // ─── What a module reports about itself after loading ────────────────────────
 
 export interface SandboxManifest {
@@ -138,12 +263,16 @@ export interface SandboxManifest {
   openHandlers: SandboxOpenHandler[];
   /** Declarative left-sidebar entries. */
   sidebarItems: SidebarItem[];
-  /** URI schemes this module provides a virtual file system for (LocalHost only). */
+  /** URI schemes this module provides a virtual file system for. */
   fileSystemProviders: string[];
   /** File-type icon overrides (by extension) this module contributes. */
   fileIcons: FileIconContribution[];
   /** Custom list-view columns this module contributes. */
   columns: ColumnContribution[];
+  /** Declarative side-pane panels this module contributes. */
+  panels: PanelContribution[];
+  /** Declarative settings sections this module contributes. */
+  settingsSections: SettingsSectionContribution[];
 }
 
 /** Serializable snapshot of app state handed to a command when it runs. */
@@ -162,6 +291,8 @@ export type WorkerToHost =
   | { t: "host-call"; id: number; cap: string; method: string; args: unknown[] }
   | { t: "column-result"; id: number; ok: true; value: ColumnCell | null }
   | { t: "column-result"; id: number; ok: false; error: string }
+  | { t: "provider-result"; id: number; ok: true; value: unknown }
+  | { t: "provider-result"; id: number; ok: false; error: string }
   | { t: "subscribe"; event: string }
   | { t: "sidebar"; items: SidebarItem[] }
   | { t: "log"; level: "log" | "warn" | "error"; args: unknown[] }
@@ -174,4 +305,12 @@ export type HostToWorker =
   | { t: "run"; commandId: string; snapshot: HostSnapshot }
   | { t: "open"; handlerId: string; item: FileItem }
   | { t: "column"; id: number; columnId: string; item: FileItem }
+  /** Run a UI-event handler the module registered with host.onUIEvent. */
+  | { t: "ui-event"; handler: string; value: unknown }
+  /** Ask the module's file-system provider to handle one operation. */
+  | { t: "provider"; id: number; scheme: string; method: ProviderMethod; args: unknown[] }
   | { t: "event"; event: string; payload: unknown };
+
+/** The file-system provider operations a module may implement (mirrors hostProxy). */
+export type ProviderMethod =
+  | "list" | "openFile" | "createFolder" | "createFile" | "deleteItem" | "renameItem" | "copyFiles" | "moveFiles";

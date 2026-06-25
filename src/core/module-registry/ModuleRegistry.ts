@@ -3,6 +3,8 @@ import type {
   MutkaAction,
   MutkaOpenHandler,
   MutkaSidebarPanel,
+  DeclarativePanelContribution,
+  SettingsSectionContribution,
   ContextMenuGroup,
   SidebarItem,
   SidebarItemGroup,
@@ -14,6 +16,8 @@ import { Events } from "../event-bus/events";
 import { ShortcutManager } from "../shortcut-manager/ShortcutManager";
 import { SelectionStore } from "../stores/SelectionStore";
 import { ClipboardStore } from "../stores/ClipboardStore";
+import { UIStore } from "../stores/UIStore";
+import { StatusBarStore } from "../stores/StatusBarStore";
 import { AppBridge } from "../app-bridge/AppBridge";
 
 /** Read-only view of app state for isVisible/isEnabled predicates. */
@@ -31,6 +35,8 @@ class ModuleRegistryClass {
   private actions = new Map<string, MutkaAction>();
   private openHandlers: MutkaOpenHandler[] = [];
   private sidebarPanels: MutkaSidebarPanel[] = [];
+  private declarativePanels: DeclarativePanelContribution[] = [];
+  private settingsSections: SettingsSectionContribution[] = [];
   private sidebarItems: SidebarItem[] = [];
   private dynamicSidebarItems = new Map<string, SidebarItem[]>(); // moduleId → items set at runtime
   private cleanups = new Map<string, (() => void)[]>();
@@ -64,6 +70,14 @@ class ModuleRegistryClass {
       this.sidebarPanels.push(panel);
     }
 
+    for (const panel of module.declarativePanels ?? []) {
+      this.declarativePanels.push(panel);
+    }
+
+    for (const section of module.settingsSections ?? []) {
+      this.settingsSections.push(section);
+    }
+
     for (const item of module.sidebarItems ?? []) {
       this.sidebarItems.push(item);
     }
@@ -90,10 +104,14 @@ class ModuleRegistryClass {
     this.sidebarPanels = this.sidebarPanels.filter(
       (p) => !module.sidebarPanels?.some((mp) => mp.id === p.id)
     );
+    this.declarativePanels = this.declarativePanels.filter((p) => p.moduleId !== moduleId);
+    this.settingsSections = this.settingsSections.filter((s) => s.moduleId !== moduleId);
     this.sidebarItems = this.sidebarItems.filter(
       (i) => !module.sidebarItems?.some((mi) => mi.id === i.id)
     );
     this.dynamicSidebarItems.delete(moduleId);
+    UIStore.disposeModule(moduleId);
+    StatusBarStore.disposeModule(moduleId);
 
     for (const unsub of this.cleanups.get(moduleId) ?? []) unsub();
     this.cleanups.delete(moduleId);
@@ -160,6 +178,24 @@ class ModuleRegistryClass {
 
   getSidebarPanels(): MutkaSidebarPanel[] {
     return [...this.sidebarPanels];
+  }
+
+  /** Declarative (UINode-backed) side-pane panels contributed by modules. */
+  getDeclarativePanels(): DeclarativePanelContribution[] {
+    return [...this.declarativePanels];
+  }
+
+  /** Declarative settings sections contributed by modules. */
+  getSettingsSections(): SettingsSectionContribution[] {
+    return [...this.settingsSections];
+  }
+
+  /**
+   * Route a UI-event (a button/list/form interaction in a module's declarative
+   * UI) into that module's runtime, where its onUIEvent handler runs.
+   */
+  dispatchUIEvent(moduleId: string, handlerId: string, value: unknown): void {
+    this.modules.get(moduleId)?.runUIEvent?.(handlerId, value);
   }
 
   /**

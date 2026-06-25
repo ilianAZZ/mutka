@@ -4,8 +4,8 @@ This folder is the **skeleton of the app**. It has zero features.
 Modules and components depend on it; it depends on nothing inside `src/` outside core.
 
 Each subsystem lives in its own folder (`module-registry/`, `sandbox/`, `app-bridge/`,
-`event-bus/`, `shortcut-manager/`, `input-manager/`, `theme-manager/`, `tab-manager/`,
-`stores/`). `types.ts` holds the cross-cutting foundation types.
+`event-bus/`, `shortcut-manager/`, `input-manager/`, `file-watch/`, `theme-manager/`,
+`tab-manager/`, `stores/`). `types.ts` holds the cross-cutting foundation types.
 
 ---
 
@@ -105,7 +105,7 @@ The module execution + permission layer. Files:
 | File                | Responsibility                                                                                                                                                                             |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `defineModule.ts`   | Author-facing helper. Types only — returns its argument unchanged.                                                                                                                         |
-| `hostProxy.ts`      | Builds the `host` object (`fs`, `board`, `nav`, `tabs`, `dialog`, `sys`, `refresh`, `onCommand`, `onOpen`, `events.on`, `log`). All methods async.                                         |
+| `hostProxy.ts`      | Builds the `host` object (`fs`, `board`, `nav`, `tabs`, `dialog`, `ui`, `statusbar`, `sys`, `refresh`, `onCommand`, `onOpen`, `onColumn`, `onUIEvent`, `events.on`, `log`). All methods async. |
 | `capabilities.ts`   | THE gateway vocabulary. Maps each capability to its required permission and the operation that fulfils it. The ONLY file that calls `invoke` / `AppBridge` / `TabManager`.                 |
 | `gateway.ts`        | The permission barrier. Checks the manifest declared the required permission, then runs the capability. No declaration → throws.                                                           |
 | `LocalHost.ts`      | In-process runtime for built-ins.                                                                                                                                                          |
@@ -117,8 +117,9 @@ The module execution + permission layer. Files:
 | `eventWhitelist.ts` | The set of events a module may subscribe to via `host.events.on`.                                                                                                                          |
 
 Permissions: `fs:read`, `fs:write`, `fs:temp`, `clipboard:read`, `clipboard:write`,
-`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `shell`. A module must
-declare every one it uses. `fs:temp` (writing a short-lived file to the OS temp dir) is a
+`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `ui`, `shell`. A module must
+declare every one it uses. `ui` gates declarative UI surfaces (`ui.*`) and status-bar items
+(`statusbar.*`). `fs:temp` (writing a short-lived file to the OS temp dir) is a
 deliberately weaker sibling of `fs:write` — e.g. `core.drop-import` needs it to stage
 Finder drops before copying them in.
 
@@ -173,11 +174,15 @@ events via declaration merging on `EventMap` (see the comment in `events.ts`).
 | `tabs:last-closed`                          | `{ path }`                 | last tab closed → global nav resumes             |
 | `action:dispatch`                           | `{ actionId }`             | a shortcut/menu requests an action run           |
 | `selection:changed`                         | `{ items }`                | from `SelectionStore`                            |
+| `ui:changed`                                | `{ moduleId; surfaceId }`  | a module's declarative UI surface/modal changed  |
+| `statusbar:changed`                         | `undefined`                | a module status-bar item changed                 |
+| `directory:changed`                         | `{ path }`                 | current dir changed on disk (subscribable, debounced) |
 
 Of these, modules may subscribe ONLY to the whitelisted set in
 `sandbox/eventWhitelist.ts` (currently `app:ready`, `input:mouse-navigate`,
 `selection:changed`, `file:modifier-open`, `file:middle-open`, `file:open-no-app`,
-`file:external-drop`, `sidebar:item-remove`, `webdav:accounts-changed`).
+`file:external-drop`, `sidebar:item-remove`, `webdav:accounts-changed`, `directory:changed`).
+`ui:changed` / `statusbar:changed` are host-internal (React mirrors them) and not subscribable.
 
 ---
 
@@ -237,6 +242,10 @@ and modules drive them through capabilities (never by importing the store):
   `core.home` via the `home` capability; any module may override it.
 - `SettingsStore.ts` — whether the settings overlay is open, emits `"settings:changed"`.
   Flipped by `core.settings` (⌘,) via the `settings` capability.
+- `UIStore.ts` — each module's declarative `UINode` surfaces + the active modal, emits
+  `"ui:changed"`. Written by the `ui` capability; read by `components/Declarative/`.
+- `StatusBarStore.ts` — bottom status-bar items per module, emits `"statusbar:changed"`.
+  Written by the `statusbar` capability; read by `components/StatusBar/`.
 
 `SelectionStore` + `ClipboardStore` are also the read source the registry uses to build a
 `BaseContext` for visibility checks.

@@ -36,6 +36,10 @@ base64 = "0.22"
 # Native OS drag-out (NSDraggingSession with file URLs) so rows dragged to Finder
 # or another app carry the real files, not just their text paths.
 tauri-plugin-drag = "2"
+# Watch the directory currently in view (FSEvents on macOS) so the UI and modules
+# (git status, recounts, …) react to on-disk changes. One non-recursive watcher,
+# re-armed by read_dir; the frontend debounces. See src/watcher.rs.
+notify = "6"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2"

@@ -1,6 +1,8 @@
-import type { WorkerToHost, HostSnapshot, ColumnCell } from "./protocol";
+import type { WorkerToHost, HostSnapshot, ColumnCell, ProviderMethod, UINode, StatusBarItem } from "./protocol";
 import type { FileItem } from "../types";
 import type { SidebarItem } from "../module-registry/module-registry.types";
+
+export type { ProviderMethod } from "./protocol";
 
 // The `host` object handed to a module's setup(). Every method is a thin stub
 // that asks the host to run a capability and awaits the reply. The module has no
@@ -17,9 +19,9 @@ export type OpenFileHandler = (path: string) => void | Promise<void>;
 export type WriteHandler = (path: string) => void | Promise<void>;
 export type RenameProviderHandler = (from: string, to: string) => void | Promise<void>;
 export type TransferHandler = (paths: string[], dest: string) => void | Promise<void>;
-export type ProviderMethod =
-  | "list" | "openFile" | "createFolder" | "createFile" | "deleteItem" | "renameItem" | "copyFiles" | "moveFiles";
 export type ProviderHandler = ListHandler | OpenFileHandler | WriteHandler | RenameProviderHandler | TransferHandler;
+/** A UI-event handler (button/list/form interaction) registered via host.onUIEvent. */
+export type UIEventHandler = (value: unknown) => void | Promise<void>;
 
 /** Options for host.net.request — a host-proxied HTTP call (bypasses CORS). */
 export interface NetRequestOptions {
@@ -102,6 +104,22 @@ export interface SandboxHostApi {
   settings: {
     toggle(): Promise<unknown>;
   };
+  /** Render declarative UI (a serializable UINode tree). Gated by `ui`. */
+  ui: {
+    /** Render/replace the UINode shown in a named surface (panel/settings/popover). */
+    render(surfaceId: string, node: UINode): Promise<unknown>;
+    /** Clear a surface so it renders empty. */
+    clear(surfaceId: string): Promise<unknown>;
+    /** Open a modal with `node`, or pass null to close the current one. */
+    modal(node: UINode | null): Promise<unknown>;
+  };
+  /** Bottom status-bar items (e.g. a git widget). Gated by `ui`. */
+  statusbar: {
+    /** Add or replace one status-bar item (keyed by its id). */
+    set(item: StatusBarItem): Promise<unknown>;
+    /** Remove a status-bar item by id. */
+    remove(itemId: string): Promise<unknown>;
+  };
   sys: {
     homeDir(): Promise<unknown>;
     /** The last visited local directory (for restoring navigation at launch). */
@@ -145,6 +163,8 @@ export interface SandboxHostApi {
   onOpen(handlerId: string, handler: OpenHandler): void;
   /** Register the value provider for one of this module's custom columns. */
   onColumn(columnId: string, provider: ColumnProvider): void;
+  /** Register a handler fired when a button/list/form in this module's UI is used. */
+  onUIEvent(handlerId: string, handler: UIEventHandler): void;
   /** Register the directory-listing handler for a file system provider scheme. */
   onList(scheme: string, handler: ListHandler): void;
   /** Register the file-open handler for a file system provider scheme. */
@@ -174,6 +194,7 @@ interface Transport {
   registerCommand: (commandId: string, handler: CommandHandler) => void;
   registerOpen: (handlerId: string, handler: OpenHandler) => void;
   registerColumn: (columnId: string, provider: ColumnProvider) => void;
+  registerUIEvent: (handlerId: string, handler: UIEventHandler) => void;
   registerProvider: (scheme: string, method: ProviderMethod, handler: ProviderHandler) => void;
   setSidebarItems: (items: SidebarItem[]) => void;
   subscribe: (event: string, handler: EventHandler) => void;
@@ -231,6 +252,15 @@ export function createHostProxy(t: Transport): SandboxHostApi {
     settings: {
       toggle: () => callHost("settings", "toggle", []),
     },
+    ui: {
+      render: (surfaceId, node) => callHost("ui", "render", [surfaceId, node]),
+      clear:  (surfaceId) => callHost("ui", "clear", [surfaceId]),
+      modal:  (node) => callHost("ui", "modal", [node]),
+    },
+    statusbar: {
+      set:    (item) => callHost("statusbar", "set", [item]),
+      remove: (itemId) => callHost("statusbar", "remove", [itemId]),
+    },
     sys: {
       homeDir: () => callHost("sys", "homeDir", []),
       lastDir: () => callHost("sys", "lastDir", []),
@@ -260,6 +290,7 @@ export function createHostProxy(t: Transport): SandboxHostApi {
     onCommand: (commandId, handler) => t.registerCommand(commandId, handler),
     onOpen: (handlerId, handler) => t.registerOpen(handlerId, handler),
     onColumn: (columnId, provider) => t.registerColumn(columnId, provider),
+    onUIEvent: (handlerId, handler) => t.registerUIEvent(handlerId, handler),
     onList: (scheme, handler) => t.registerProvider(scheme, "list", handler),
     onOpenFile: (scheme, handler) => t.registerProvider(scheme, "openFile", handler),
     onCreateFolder: (scheme, handler) => t.registerProvider(scheme, "createFolder", handler),

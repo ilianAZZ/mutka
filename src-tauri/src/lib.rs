@@ -16,6 +16,7 @@ mod modules;
 mod mouse_nav;
 mod preview;
 mod secrets;
+mod watcher;
 #[cfg(target_os = "macos")]
 mod traffic_lights;
 

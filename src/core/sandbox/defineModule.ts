@@ -1,4 +1,4 @@
-import type { SandboxCommand, SandboxOpenHandler, FileIconContribution, ColumnContribution } from "./protocol";
+import type { SandboxCommand, SandboxOpenHandler, FileIconContribution, ColumnContribution, PanelContribution, SettingsSectionContribution } from "./protocol";
 import type { ModulePermission, SidebarItem } from "../module-registry/module-registry.types";
 import type { SandboxHostApi } from "./hostProxy";
 
@@ -35,9 +35,24 @@ export interface SandboxModuleDef {
    */
   columns?: ColumnContribution[];
   /**
+   * Declarative side-pane panels. Each declares a tab (id/title/icon/side); fill
+   * it from setup with host.ui.render(id, node) — a serializable UINode tree the
+   * host renders natively. Buttons/lists/forms in the tree fire UI-event handlers
+   * registered via host.onUIEvent(id, handler). Requires the `ui` permission.
+   */
+  panels?: PanelContribution[];
+  /**
+   * Declarative settings sections shown inside the app's Settings panel. Same
+   * model as `panels`: declare {id, title}, fill via host.ui.render(id, node).
+   * Requires the `ui` permission.
+   */
+  settingsSections?: SettingsSectionContribution[];
+  /**
    * URI schemes this module provides a virtual file system for (e.g. "nextcloud").
    * Register the handlers in setup with host.onList(scheme, …) / host.onOpenFile(…).
-   * Supported for built-in (in-process) modules only — see TODO.md.
+   * Works in BOTH runtimes: built-ins call providers in-process; community modules
+   * serve each op over a worker round-trip. Note the worker realm has no DOM APIs
+   * (DOMParser, etc.), so providers needing those should ship as built-ins.
    */
   fileSystemProviders?: string[];
   /**

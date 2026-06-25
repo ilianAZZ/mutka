@@ -11,6 +11,7 @@ import { ListingStore } from "./core/stores/ListingStore";
 import type { SortKey } from "./core/stores/listing.types";
 import { loadCommunityModules, loadBuiltinSandboxModules, loadDevModules } from "./moduleLoader";
 import { InputManager } from "./core/input-manager/InputManager";
+import { DirectoryWatcher } from "./core/file-watch/DirectoryWatcher";
 import { useColumns } from "./hooks/useColumns";
 import { useColumnWidths } from "./hooks/useColumnWidths";
 import { useStoreSnapshots } from "./hooks/useStoreSnapshots";
@@ -32,6 +33,9 @@ import type { SidebarPanelProps } from "./core/module-registry/module-registry.t
 import { ContextMenu } from "./components/ContextMenu/ContextMenu";
 import { Dialog } from "./components/Dialog/Dialog";
 import { SettingsPanel } from "./components/SettingsPanel/SettingsPanel";
+import { StatusBar } from "./components/StatusBar/StatusBar";
+import { DeclarativeModal } from "./components/Declarative/DeclarativeModal";
+import { useActiveModal } from "./hooks/useActiveModal";
 import "./styles/toolbar.css";
 
 // Resolves once every module is registered, so `app:ready` (the launch hook
@@ -42,6 +46,7 @@ const modulesReady = Promise.all([
   loadDevModules().catch((e) => console.error("[App] loadDevModules:", e)),
 ]);
 InputManager.init();
+DirectoryWatcher.init();
 
 /** Read a dropped File as base64 (no data-URL prefix), for write_temp_file. */
 function readFileBase64(file: File): Promise<string> {
@@ -63,6 +68,7 @@ export function App() {
   const { rightPanels, sidebarItemGroups } = useSidebarContributions();
   const { dialogAPI, dialogState, closeDialog } = useDialog();
   const flashedBtn = useToolbarFlash();
+  const activeModal = useActiveModal();
 
   // ── Side-effect-only hooks ───────────────────────────────────────────────────
   useNativeThemeSync();
@@ -203,13 +209,11 @@ export function App() {
           <Sidebar side="right" panels={rightPanels} panelProps={panelProps} />
         </div>
 
-        <div id="statusbar">
-          <span>{listing.items.length} item{listing.items.length !== 1 ? "s" : ""}</span>
-          {selected.length > 0 && <span> · {selected.length} selected</span>}
-          {clipboard.operation && (
-            <span> · {clipboard.items.length} in clipboard ({clipboard.operation})</span>
-          )}
-        </div>
+        <StatusBar
+          itemCount={listing.items.length}
+          selectedCount={selected.length}
+          clipboard={clipboard}
+        />
       </div>
 
       {contextMenu && menuGroups.length > 0 && (
@@ -226,6 +230,8 @@ export function App() {
       {showSettings && <SettingsPanel onClose={() => SettingsStore.setOpen(false)} />}
 
       {dialogState && <Dialog state={dialogState} onClose={closeDialog} />}
+
+      {activeModal && <DeclarativeModal moduleId={activeModal.moduleId} node={activeModal.node} />}
     </div>
   );
 }

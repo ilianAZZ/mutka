@@ -25,6 +25,9 @@ constants — never raw strings.
 | `Events.Selection.changed` | `"selection:changed"` | `{ items }` | `SelectionStore` | `App.tsx` → `setSelected()` |
 | `Events.Tabs.changed` | `"tabs:changed"` | `TabsSnapshot` | `TabManager` | `App.tsx` → `setTabsSnap()` |
 | `Events.Tabs.lastClosed` | `"tabs:last-closed"` | `{ path }` | `TabManager` | `App.tsx` → sync global nav state |
+| `Events.Ui.changed` | `"ui:changed"` | `{ moduleId, surfaceId }` | `UIStore` (via `ui` capability) | `DeclarativePanel` / `DeclarativeModal` re-render |
+| `Events.StatusBar.changed` | `"statusbar:changed"` | `undefined` | `StatusBarStore` (via `statusbar` capability) | `StatusBar` → re-read items |
+| `Events.Directory.changed` | `"directory:changed"` | `{ path }` | `DirectoryWatcher` (Rust `notify`) | `core.auto-refresh` + modules |
 
 ---
 
@@ -39,6 +42,9 @@ Anything else is ignored with a `console.warn`.
 |---|---|
 | `"input:mouse-navigate"` | `core.mouse-navigation` (back/forward buttons) |
 | `"file:modifier-open"` | `core.tabs` (ctrl/⌘-click a folder → open in a tab) |
+| `"directory:changed"` | `core.auto-refresh` (re-read list when the dir changes on disk) |
+| `"selection:changed"` | declarative panels reacting to the selection |
+| `"app:ready"` · `"file:middle-open"` · `"file:open-no-app"` · `"file:external-drop"` · `"sidebar:item-remove"` · `"webdav:accounts-changed"` | various |
 
 For a worker module, `SandboxHost` subscribes on the EventBus and re-posts the payload
 over postMessage; for a built-in, `LocalHost` subscribes directly. Either way the

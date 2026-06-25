@@ -85,7 +85,8 @@ mutka/
 ├── docs/                        ← architecture.md, flows.md, events.md
 │
 ├── dev-modules/                 ← repo-local community modules (DEV only)
-│   └── com.dir-stats/index.js   ← example untrusted module, worker-loaded
+│   ├── com.dir-stats/index.js   ← example untrusted module, worker-loaded
+│   └── com.folder-inspector/index.js ← example: declarative panel + form + status item
 │
 ├── src/                         ← React + TypeScript frontend
 │   ├── CLAUDE.md                ← frontend architecture rules
@@ -103,6 +104,7 @@ mutka/
 │   │   ├── home.ts              ← on app:ready: resolve home dir → HomeStore, restore last dir
 │   │   ├── settings.ts          ← open settings (⌘,) → toggles SettingsStore
 │   │   ├── drop-import.ts       ← import files dropped from Finder (temp file → copy)
+│   │   ├── auto-refresh.ts      ← re-read the list on "directory:changed" (file watch)
 │   │   └── reveal.ts            ← example: open with system default app
 │   │
 │   ├── styles/                  ← global CSS split by concern
@@ -132,9 +134,10 @@ mutka/
 │   │   ├── event-bus/{EventBus,events}.ts ← typed global event bus (EventMap)
 │   │   ├── shortcut-manager/ShortcutManager.ts ← keyboard shortcut registry
 │   │   ├── input-manager/InputManager.ts       ← raw input → semantic events
+│   │   ├── file-watch/DirectoryWatcher.ts      ← relays Rust `directory-changed` → bus
 │   │   ├── theme-manager/{ThemeManager,…}.ts    ← dark/light/system theme
 │   │   ├── tab-manager/{TabManager,…}.ts         ← tab state + history
-│   │   └── stores/{SelectionStore,ClipboardStore}.ts ← reactive state owners
+│   │   └── stores/{SelectionStore,ClipboardStore,UIStore,StatusBarStore,…}.ts ← reactive state owners
 │   │
 │   └── components/              ← reusable UI components (no business logic)
 │       ├── CLAUDE.md
@@ -142,6 +145,8 @@ mutka/
 │       ├── Breadcrumb/          ← clickable path segments
 │       ├── ContextMenu/         ← floating Liquid Glass context menu
 │       ├── Dialog/              ← Liquid Glass modal (prompt + confirm)
+│       ├── Declarative/         ← renders module UINode trees (view/form/panel/modal)
+│       ├── StatusBar/           ← bottom bar: core counts + module status items
 │       ├── SettingsPanel/       ← theme picker and app settings
 │       ├── Sidebar/             ← hosts module-contributed sidebar panels
 │       └── TabBar/              ← tab strip
@@ -164,7 +169,8 @@ A module is a plain ESM file that `export default defineModule({ id, name, versi
 permissions, commands, openHandlers, setup })`. **Authors import nothing from the core.**
 Inside `setup(host)` the module receives a `host` object — its ONLY way to reach the
 system. Every privileged call (`host.fs.*`, `host.board.*`, `host.nav.*`, `host.tabs.*`,
-`host.dialog.*`, `host.refresh()`) is checked against the module's declared `permissions`.
+`host.dialog.*`, `host.ui.*`, `host.statusbar.*`, `host.refresh()`) is checked against the
+module's declared `permissions`.
 
 The same format runs in two interchangeable runtimes, differing only in transport:
 
@@ -220,14 +226,47 @@ The same format runs in two interchangeable runtimes, differing only in transpor
 | `home.get`                                                                       | `fs:read`           | HomeStore (the app home dir, not the OS home)       |
 | `home.set`                                                                       | `view`              | HomeStore (any module may override the home dir)    |
 | `settings.toggle`                                                                | `view`              | SettingsStore (open/close the settings overlay)     |
+| `ui.render`/`clear`/`modal`                                                      | `ui`                | UIStore (declarative UINode surfaces + the modal)   |
+| `statusbar.set`/`remove`                                                         | `ui`                | StatusBarStore (bottom status-bar items)            |
 | `sys.homeDir`                                                                    | `fs:read`           | Rust `get_home_dir` (the OS home dir)               |
 | `sys.lastDir`                                                                    | `fs:read`           | localStorage (last visited dir, for launch restore) |
 | `sys.writeTempFile`                                                              | `fs:temp`           | Rust `write_temp_file` (lower-risk than `fs:write`) |
 
 `ModulePermission`: `fs:read`, `fs:write`, `fs:temp`, `clipboard:read`, `clipboard:write`,
-`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `shell` (`shell` is
+`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `ui`, `shell` (`shell` is
 reserved — no capability uses it yet). `fs:temp` writes only to the OS temp dir, so it is
-deliberately weaker than `fs:write`.
+deliberately weaker than `fs:write`. `ui` gates declarative UI + status-bar contributions.
+
+### Declarative UI — how a sandboxed module renders (no React, no JSX)
+
+A worker module cannot hand a React component across `postMessage`, so it describes its UI
+as **data**: a serializable `UINode` tree (see `protocol.ts`). The host renders it natively
+with Liquid Glass widgets (`components/Declarative/`). Modules never inject markup, CSS, or
+components — only JSON. The same tree fills four surfaces:
+
+- **A side-pane panel** — declare `panels: [{ id, title, icon, side?, defaultWidth? }]`, then
+  fill it from `setup` with `host.ui.render(id, node)`.
+- **A modal** — `host.ui.modal(node)` to open, `host.ui.modal(null)` to close.
+- **A settings section** — declare `settingsSections: [{ id, title }]`, fill with `host.ui.render(id, node)`.
+- **A status-bar popover** — a `StatusBarItem` whose `onClick` is `{ popover: surfaceId }`.
+
+**Forms** are a `form` node carrying a `FormSchema` — a **JSON-Schema Draft-7 subset** (the
+standard wire format). Authors may generate it from zod (`z.toJSONSchema()` / `zod-to-json-schema`);
+the host never imports zod, it just renders the schema and returns the collected values.
+
+**Interactions** (a button click, a list-row click, a form submit) carry an `action` id the
+module registered with `host.onUIEvent(id, handler)`; the host routes the event back into the
+module's runtime via `ModuleRegistry.dispatchUIEvent`. Status-bar items are dynamic — upserted
+with `host.statusbar.set(item)` and removed with `host.statusbar.remove(id)`.
+
+### File watching (current directory only)
+
+The host watches **only the directory in view** — Rust arms a single non-recursive `notify`
+watcher inside `read_dir` (re-armed on every navigation) and emits `directory-changed`.
+`core/file-watch/DirectoryWatcher.ts` debounces it and re-broadcasts as the whitelisted
+`directory:changed` event. Modules subscribe via `host.events.on("directory:changed", …)`;
+the built-in `core.auto-refresh` uses it to re-read the list. No module-requested watchers,
+so the cost is bounded.
 
 ---
 
@@ -314,10 +353,15 @@ Note: only `capabilities.ts` (and a few App-level reads) call `invoke()`. Module
 
 - **Module registry URL**: Where is the community module registry hosted, and how does
   `~/.mutka/modules/` get populated? (npm tag? Custom JSON endpoint? GitHub topic?)
-- **`network` / `shell` permissions**: declared in the enum but no capability backs them
-  yet. What operations should they unlock, and through which Rust commands?
-- **Sandbox module UI**: worker modules can contribute commands and open handlers but not
-  sidebar panels (custom UI in a worker is unsolved). How should isolated modules render UI?
+- **`shell` permission**: declared in the enum but no capability backs it yet. What
+  operations should it unlock, and through which Rust commands? (`network` is now backed
+  by the `net.*` capabilities.)
+- **Sandbox module UI** — RESOLVED: worker modules now render via a declarative `UINode`
+  tree (`host.ui.*`, `host.statusbar.*`, the `ui` permission). See "Declarative UI" above.
+  Open follow-ups: the node vocabulary is intentionally small (no custom layout/animation),
+  and a declarative panel has no direct read of the current directory — it must track state
+  from the whitelisted events it subscribes to. Widen the node set / events as real modules
+  need them.
 - **Module namespace**: Convention for community module IDs — `author.module-name` (used
   today, e.g. `com.dir-stats`) or `@author/module-name`?
 - **Minimum macOS version**: Liquid Glass / NSVisualEffectView requires macOS 10.14+. Tauri 2 requires macOS 10.13+.

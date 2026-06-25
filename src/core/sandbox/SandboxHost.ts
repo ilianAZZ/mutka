@@ -4,7 +4,8 @@ import { dispatchCapability } from "./gateway";
 import { registerProxyModule } from "./proxyModule";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
 import { isSubscribable } from "./eventWhitelist";
-import type { WorkerToHost, HostToWorker, SandboxManifest, ColumnCell } from "./protocol";
+import { FileSystemRegistry } from "../file-system/FileSystemRegistry";
+import type { WorkerToHost, HostToWorker, SandboxManifest, ColumnCell, ProviderMethod } from "./protocol";
 import type { FileItem } from "../types";
 
 /**
@@ -25,6 +26,10 @@ export class SandboxHost {
   // worker's own host-call pending map).
   private columnSeq = 0;
   private readonly columnPending = new Map<number, { resolve: (v: ColumnCell | null) => void; reject: (e: Error) => void }>();
+  // Host→worker→host calls for file-system-provider operations (list/openFile/…).
+  private providerSeq = 0;
+  private readonly providerPending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+  private readonly registeredSchemes: string[] = [];
 
   constructor(source: string) {
     this.worker = new Worker(new URL("./sandbox.worker.ts", import.meta.url), { type: "module" });
@@ -38,10 +43,30 @@ export class SandboxHost {
   /** Await the worker's manifest, then surface its commands to ModuleRegistry. */
   async register(): Promise<void> {
     const manifest = await this.ready;
+
+    // A community module may now back a virtual file system: each provider op is
+    // a host→worker→host round-trip (the worker holds the handler). The worker
+    // realm lacks DOM APIs (DOMParser, etc.), so providers that need them should
+    // still ship as built-ins — but pure network/JSON providers work here.
+    for (const scheme of manifest.fileSystemProviders) {
+      FileSystemRegistry.registerProvider(scheme, {
+        list: (path) => this.runProvider(scheme, "list", [path]) as Promise<FileItem[]>,
+        openFile: (path) => this.runProvider(scheme, "openFile", [path]) as Promise<void>,
+        createFolder: (path) => this.runProvider(scheme, "createFolder", [path]) as Promise<void>,
+        createFile: (path) => this.runProvider(scheme, "createFile", [path]) as Promise<void>,
+        deleteItem: (path) => this.runProvider(scheme, "deleteItem", [path]) as Promise<void>,
+        renameItem: (from, to) => this.runProvider(scheme, "renameItem", [from, to]) as Promise<void>,
+        copyFiles: (paths, dest) => this.runProvider(scheme, "copyFiles", [paths, dest]) as Promise<void>,
+        moveFiles: (paths, dest) => this.runProvider(scheme, "moveFiles", [paths, dest]) as Promise<void>,
+      });
+      this.registeredSchemes.push(scheme);
+    }
+
     registerProxyModule(manifest, {
       run: (commandId, snapshot) => this.send({ t: "run", commandId, snapshot }),
       runOpen: (handlerId, item) => this.send({ t: "open", handlerId, item }),
       runColumn: (columnId, item) => this.runColumn(columnId, item),
+      runUIEvent: (handler, value) => this.send({ t: "ui-event", handler, value }),
       dispose: () => this.dispose(),
     });
   }
@@ -54,10 +79,21 @@ export class SandboxHost {
     });
   }
 
+  private runProvider(scheme: string, method: ProviderMethod, args: unknown[]): Promise<unknown> {
+    const id = ++this.providerSeq;
+    return new Promise<unknown>((resolve, reject) => {
+      this.providerPending.set(id, { resolve, reject });
+      this.send({ t: "provider", id, scheme, method, args });
+    });
+  }
+
   private dispose(): void {
     for (const unsub of this.eventUnsubs) unsub();
     for (const { reject } of this.columnPending.values()) reject(new Error("module disposed"));
     this.columnPending.clear();
+    for (const { reject } of this.providerPending.values()) reject(new Error("module disposed"));
+    this.providerPending.clear();
+    for (const scheme of this.registeredSchemes) FileSystemRegistry.unregisterProvider(scheme);
     this.worker.terminate();
   }
 
@@ -94,6 +130,14 @@ export class SandboxHost {
         const pending = this.columnPending.get(msg.id);
         if (!pending) break;
         this.columnPending.delete(msg.id);
+        if (msg.ok) pending.resolve(msg.value);
+        else pending.reject(new Error(msg.error));
+        break;
+      }
+      case "provider-result": {
+        const pending = this.providerPending.get(msg.id);
+        if (!pending) break;
+        this.providerPending.delete(msg.id);
         if (msg.ok) pending.resolve(msg.value);
         else pending.reject(new Error(msg.error));
         break;
