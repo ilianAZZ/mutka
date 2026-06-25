@@ -7,7 +7,10 @@
   width: 210px;
   flex-shrink: 0;
   overflow-y: auto;
-  padding: 12px 10px 16px;
+  /* Top padding clears the native macOS traffic lights, which the window draws
+     over the content (titleBarStyle "Overlay"). The native overlay title bar
+     keeps the top strip draggable, so no app-region CSS is needed. */
+  padding: 36px 10px 16px;
   background: var(--glass-mid);
   backdrop-filter: var(--blur-mid);
   -webkit-backdrop-filter: var(--blur-mid);

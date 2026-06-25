@@ -100,6 +100,9 @@ mutka/
 │   │   ├── file-ops.ts          ← new file, new folder, rename (F2), delete (⌘⌫)
 │   │   ├── tabs.ts              ← new tab (⌘T), open-in-new-tab, modifier-open
 │   │   ├── mouse-navigation.ts  ← back/forward mouse buttons (no commands)
+│   │   ├── home.ts              ← on app:ready: resolve home dir → HomeStore, restore last dir
+│   │   ├── settings.ts          ← open settings (⌘,) → toggles SettingsStore
+│   │   ├── drop-import.ts       ← import files dropped from Finder (temp file → copy)
 │   │   └── reveal.ts            ← example: open with system default app
 │   │
 │   ├── styles/                  ← global CSS split by concern
@@ -214,11 +217,17 @@ The same format runs in two interchangeable runtimes, differing only in transpor
 | `tabs.openTab`/`openTabInBackground`/`isActive`                                  | `navigation`        | TabManager                                          |
 | `dialog.prompt`/`confirm`                                                        | `dialog`            | AppBridge                                           |
 | `app.refresh`                                                                    | `fs:read`           | AppBridge                                           |
-| `sys.homeDir`                                                                    | `fs:read`           | Rust `get_home_dir`                                 |
+| `home.get`                                                                       | `fs:read`           | HomeStore (the app home dir, not the OS home)       |
+| `home.set`                                                                       | `view`              | HomeStore (any module may override the home dir)    |
+| `settings.toggle`                                                                | `view`              | SettingsStore (open/close the settings overlay)     |
+| `sys.homeDir`                                                                    | `fs:read`           | Rust `get_home_dir` (the OS home dir)               |
+| `sys.lastDir`                                                                    | `fs:read`           | localStorage (last visited dir, for launch restore) |
+| `sys.writeTempFile`                                                              | `fs:temp`           | Rust `write_temp_file` (lower-risk than `fs:write`) |
 
-`ModulePermission`: `fs:read`, `fs:write`, `clipboard:read`, `clipboard:write`,
-`navigation`, `dialog`, `network`, `shell` (the last two are reserved — no capability
-uses them yet).
+`ModulePermission`: `fs:read`, `fs:write`, `fs:temp`, `clipboard:read`, `clipboard:write`,
+`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `shell` (`shell` is
+reserved — no capability uses it yet). `fs:temp` writes only to the OS temp dir, so it is
+deliberately weaker than `fs:write`.
 
 ---
 
@@ -243,6 +252,11 @@ registerProxyModule() turns the manifest into a MutkaModule and registers it:
   ├── stores each command as a MutkaAction (its when-clause → isVisible predicate)
   ├── binds each command.shortcut via ShortcutManager
   └── stores each openHandler sorted by priority (desc)
+
+Once ALL loaders resolve AND AppBridge is connected, App emits `app:ready` — the
+launch hook. `core.home` listens for it to resolve the home dir into HomeStore and
+run the initial navigation. (Emitted after registration so subscriptions are wired,
+and after AppBridge.connect so `host.nav.navigate` reaches real React state.)
 ```
 
 Adding a built-in: drop a `.ts` file in `src/sandbox-builtins/`. Adding a community

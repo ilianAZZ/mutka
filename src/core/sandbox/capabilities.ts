@@ -8,8 +8,13 @@ import { FileSystemRegistry } from "../file-system/FileSystemRegistry";
 import { SelectionStore } from "../stores/SelectionStore";
 import { ListingStore } from "../stores/ListingStore";
 import { ViewStore } from "../stores/ViewStore";
+import { HomeStore } from "../stores/HomeStore";
+import { SettingsStore } from "../stores/SettingsStore";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
 import { DragService } from "../drag/DragService";
+
+/** localStorage key for the last visited local directory (restored at launch). */
+export const LAST_DIR_KEY = "mutka.lastDir";
 
 /**
  * THE GATEWAY VOCABULARY. Every privileged operation a module (built-in OR
@@ -105,8 +110,23 @@ export function createCapabilityTable(): CapabilityTable {
       // handler can claim it), the keyboard equivalent of a double-click.
       activate: { permission: "navigation",  run: async ([item]) => ModuleRegistry.resolveOpen(item as FileItem) },
     },
+    // The app's home directory (a store, not the OS home): `core.home` resolves it
+    // at launch, any module may override it. Read with sys.homeDir for the OS value.
+    home: {
+      get: { permission: "fs:read", run: async () => HomeStore.homeDir },
+      set: { permission: "view",    run: async ([p]) => { HomeStore.setHomeDir(p as string); return null; } },
+    },
+    // Toggle the settings overlay (driven by the core.settings command on ⌘,).
+    settings: {
+      toggle: { permission: "view", run: async () => { SettingsStore.toggle(); return null; } },
+    },
     sys: {
       homeDir:     { permission: "fs:read", run: () => invoke("get_home_dir") },
+      // Last visited local directory, restored at launch. Null on first run.
+      lastDir:     { permission: "fs:read", run: async () => localStorage.getItem(LAST_DIR_KEY) },
+      // Write a dropped file's bytes to a temp file, returning its path. Lower-risk
+      // than fs:write (OS temp dir only), so it has its own `fs:temp` permission.
+      writeTempFile: { permission: "fs:temp", run: ([filename, base64]) => invoke("write_temp_file", { filename, contentBase64: base64 }) },
       quickLook:   { permission: "fs:read", run: ([p]) => invoke("quick_look", { path: p }) },
       // Refresh the live Quick Look panel to a new path (no-op unless it is open).
       previewUpdate: { permission: "fs:read", run: ([p]) => invoke("preview_update", { path: p }) },

@@ -187,8 +187,8 @@ Module handler runs
 App.tsx listeners update React state → re-render
 ```
 
-**`invoke()`** is called only by `core/sandbox/capabilities.ts` (plus a couple of
-App-level reads) — never by modules.
+**`invoke()`** is called only by `core/sandbox/capabilities.ts` — never by modules, and
+no longer by the UI (`App.tsx` reaches Rust only through capabilities, via modules).
 
 **Modules declare permissions once** (`permissions: ["fs:write", "clipboard:write"]`)
 and every capability call is enforced against that list at the gateway.

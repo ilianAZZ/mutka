@@ -12,6 +12,8 @@ import type { ListingSnapshot } from "../stores/listing.types";
  *   }
  */
 export interface EventMap {
+  /** Emitted once after modules are loaded and AppBridge is connected. The launch hook. */
+  "app:ready": undefined;
   "theme:changed": { preference: ThemePreference; resolved: "dark" | "light" };
   "clipboard:changed": ClipboardState;
   "navigation:back": undefined;
@@ -44,6 +46,15 @@ export interface EventMap {
   "columns:cell-resolved": undefined;
   /** A column was resized — the list re-reads persisted widths. */
   "columns:widths-changed": undefined;
+  /** Emitted by HomeStore when the app's home directory changes. */
+  "home:changed": { homeDir: string };
+  /** Emitted by SettingsStore when the settings overlay opens or closes. */
+  "settings:changed": { open: boolean };
+  /**
+   * Files dropped from outside the app (e.g. Finder) onto a folder. The UI reads
+   * the dropped File objects to base64; a module imports them via host capabilities.
+   */
+  "file:external-drop": { files: { name: string; base64: string }[]; dest: string };
 }
 
 /** Typed event name constants. Use `Events.Namespace.name` instead of bare strings. */
@@ -62,6 +73,7 @@ export const Events = {
     modifierOpen: "file:modifier-open",
     middleOpen: "file:middle-open",
     openNoApp: "file:open-no-app",
+    externalDrop: "file:external-drop",
   },
   Module: {
     registered: "module:registered",
@@ -99,5 +111,14 @@ export const Events = {
   },
   Webdav: {
     accountsChanged: "webdav:accounts-changed",
+  },
+  Home: {
+    changed: "home:changed",
+  },
+  Settings: {
+    changed: "settings:changed",
+  },
+  App: {
+    ready: "app:ready",
   },
 } as const satisfies { [ns: string]: { [name: string]: keyof EventMap } };

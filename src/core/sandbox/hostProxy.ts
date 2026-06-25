@@ -91,8 +91,23 @@ export interface SandboxHostApi {
     /** Show a single-choice list. Resolves with the chosen option's value, or null. */
     choose(options: { message: string; options: { label: string; value: string; detail?: string; icon?: string }[] }): Promise<unknown>;
   };
+  /** The app's home directory store (distinct from the OS home, sys.homeDir). */
+  home: {
+    /** Read the current app home directory. */
+    get(): Promise<unknown>;
+    /** Set the app home directory (any module may override it). */
+    set(path: string): Promise<unknown>;
+  };
+  /** Toggle the settings overlay open/closed. */
+  settings: {
+    toggle(): Promise<unknown>;
+  };
   sys: {
     homeDir(): Promise<unknown>;
+    /** The last visited local directory (for restoring navigation at launch). */
+    lastDir(): Promise<unknown>;
+    /** Write bytes (base64) to a temp file and return its path. Gated by `fs:temp`. */
+    writeTempFile(filename: string, base64: string): Promise<unknown>;
     quickLook(path: string): Promise<unknown>;
     /** Refresh an already-open Quick Look panel to preview `path` (else no-op). */
     previewUpdate(path: string): Promise<unknown>;
@@ -209,8 +224,17 @@ export function createHostProxy(t: Transport): SandboxHostApi {
       confirm: (options) => callHost("dialog", "confirm", [options]),
       choose:  (options) => callHost("dialog", "choose", [options]),
     },
+    home: {
+      get: () => callHost("home", "get", []),
+      set: (path) => callHost("home", "set", [path]),
+    },
+    settings: {
+      toggle: () => callHost("settings", "toggle", []),
+    },
     sys: {
       homeDir: () => callHost("sys", "homeDir", []),
+      lastDir: () => callHost("sys", "lastDir", []),
+      writeTempFile: (filename, base64) => callHost("sys", "writeTempFile", [filename, base64]),
       quickLook: (path) => callHost("sys", "quickLook", [path]),
       previewUpdate: (path) => callHost("sys", "previewUpdate", [path]),
       appsForFile: (path) => callHost("sys", "appsForFile", [path]),

@@ -103,7 +103,7 @@ Read as **row → column**: "the row component does X to the column component."
 
 | from ↓ \ to → | App | Registry | EventBus | Runtime | Gateway | Stores | Rust |
 | --- | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
-| **App** | — | init / resolveOpen | subscribe | — | AppBridge.connect | set / read | get_home_dir, read_dir |
+| **App** | — | init / resolveOpen | subscribe / emit | — | AppBridge.connect | set / read | — |
 | **Registry** | — | — | on(dispatch) / emit | execute / runOpen | — | read (visibility) | — |
 | **EventBus** | notify | notify | — | forward (whitelist) | — | — | — |
 | **Runtime** | — | registerProxyModule | on (whitelist) | — | dispatchCapability | — | — |
@@ -182,10 +182,15 @@ that touches `invoke`, `AppBridge`, or `TabManager`.
 | `tabs.openTab`/`openTabInBackground`/`isActive` | `navigation` | TabManager |
 | `dialog.prompt`/`confirm` | `dialog` | AppBridge |
 | `app.refresh` (`host.refresh()`) | `fs:read` | AppBridge |
-| `sys.homeDir` | `fs:read` | Rust `get_home_dir` |
+| `home.get` / `home.set` | `fs:read` / `view` | HomeStore (app home dir; overridable) |
+| `settings.toggle` | `view` | SettingsStore (settings overlay) |
+| `sys.homeDir` | `fs:read` | Rust `get_home_dir` (OS home) |
+| `sys.lastDir` | `fs:read` | localStorage (last visited dir) |
+| `sys.writeTempFile` | `fs:temp` | Rust `write_temp_file` (weaker than `fs:write`) |
 
-`ModulePermission`: `fs:read`, `fs:write`, `clipboard:read`, `clipboard:write`,
-`navigation`, `dialog`, `network`, `shell` (`network`/`shell` reserved — unused today).
+`ModulePermission`: `fs:read`, `fs:write`, `fs:temp`, `clipboard:read`, `clipboard:write`,
+`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `shell` (`shell` reserved —
+unused today). `fs:temp` writes only to the OS temp dir, so it is weaker than `fs:write`.
 
 ---
 

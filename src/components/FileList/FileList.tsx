@@ -60,8 +60,10 @@ const COLUMNS: { key: SortKey; label: string; className: string }[] = [
   { key: "size", label: "Size", className: "col-size" },
 ];
 
-/** Default widths of the resizable built-in columns (name is flexible: 1fr). */
-const BUILTIN_DEFAULT_WIDTH: Record<string, number> = { date: 180, type: 100, size: 90 };
+/** Default widths of the resizable built-in columns. A trailing 1fr spacer (not
+    a real column) eats the leftover space, so every column is fixed + resizable
+    and resizing one only pushes the columns to its right — never the reverse. */
+const BUILTIN_DEFAULT_WIDTH: Record<string, number> = { name: 280, date: 180, type: 100, size: 90 };
 
 function renderCell(state: ColumnCellState | undefined): React.ReactNode {
   if (!state || state === "loading") return null;
@@ -84,15 +86,16 @@ export function FileList({
     (id: string, def: number) => columnWidths?.[id] ?? def,
     [columnWidths]
   );
-  // The grid is always computed from widths so every track is resizable; name
-  // stays flexible (1fr) and absorbs the slack.
+  // Every column is a fixed px track; a trailing 1fr spacer absorbs leftover
+  // width so rows stay full-width and resizing only pushes columns rightward.
   const gridStyle = useMemo<React.CSSProperties>(() => ({
     gridTemplateColumns: [
-      "1fr",
+      `${ew("name", BUILTIN_DEFAULT_WIDTH.name)}px`,
       `${ew("date", BUILTIN_DEFAULT_WIDTH.date)}px`,
       `${ew("type", BUILTIN_DEFAULT_WIDTH.type)}px`,
       `${ew("size", BUILTIN_DEFAULT_WIDTH.size)}px`,
       ...columns.map((c) => `${ew(c.id, c.width ?? 100)}px`),
+      "1fr",
     ].join(" "),
   }), [columns, ew]);
 
@@ -235,13 +238,11 @@ export function FileList({
               >
                 {col.label}
                 {sort.key === col.key && <span className="sort-arrow">{sort.dir === "asc" ? "▲" : "▼"}</span>}
-                {col.key !== "name" && (
-                  <span
-                    className="col-resize-handle"
-                    onMouseDown={(e) => startResize(e, col.key, ew(col.key, BUILTIN_DEFAULT_WIDTH[col.key]))}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                )}
+                <span
+                  className="col-resize-handle"
+                  onMouseDown={(e) => startResize(e, col.key, ew(col.key, BUILTIN_DEFAULT_WIDTH[col.key]))}
+                  onClick={(e) => e.stopPropagation()}
+                />
               </button>
             ))}
             {columns.map((col) => (

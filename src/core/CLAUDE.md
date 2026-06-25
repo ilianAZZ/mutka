@@ -116,8 +116,11 @@ The module execution + permission layer. Files:
 | `whenClause.ts`     | Evaluates a declarative `when` clause against `BaseContext` (host-side).                                                                                                                   |
 | `eventWhitelist.ts` | The set of events a module may subscribe to via `host.events.on`.                                                                                                                          |
 
-Permissions: `fs:read`, `fs:write`, `clipboard:read`, `clipboard:write`, `navigation`,
-`dialog`, `network`, `shell`. A module must declare every one it uses.
+Permissions: `fs:read`, `fs:write`, `fs:temp`, `clipboard:read`, `clipboard:write`,
+`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `shell`. A module must
+declare every one it uses. `fs:temp` (writing a short-lived file to the OS temp dir) is a
+deliberately weaker sibling of `fs:write` — e.g. `core.drop-import` needs it to stage
+Finder drops before copying them in.
 
 Why `when` is data, not a function: a worker module can't hand a predicate across
 postMessage, so visibility is described declaratively (`selection`, `clipboard`) and
@@ -155,7 +158,11 @@ events via declaration merging on `EventMap` (see the comment in `events.ts`).
 
 | Event                                       | Payload                    | Notes                                            |
 | ------------------------------------------- | -------------------------- | ------------------------------------------------ |
+| `app:ready`                                 | `undefined`                | launch hook; bridge ready (subscribable)         |
 | `theme:changed`                             | `{ preference; resolved }` | from `ThemeManager`                              |
+| `home:changed`                              | `{ homeDir }`              | from `HomeStore` (home dir resolved/overridden)  |
+| `settings:changed`                          | `{ open }`                 | from `SettingsStore` (overlay opened/closed)     |
+| `file:external-drop`                        | `{ files; dest }`          | Finder drop → `core.drop-import` (subscribable)  |
 | `clipboard:changed`                         | `ClipboardState`           | from `ClipboardStore` / clipboard module         |
 | `navigation:back` / `navigation:forward`    | `undefined`                | toolbar flash animation                          |
 | `file:modifier-open`                        | `{ item; modifiers }`      | ctrl/⌘-open of an item (subscribable by modules) |
@@ -168,7 +175,9 @@ events via declaration merging on `EventMap` (see the comment in `events.ts`).
 | `selection:changed`                         | `{ items }`                | from `SelectionStore`                            |
 
 Of these, modules may subscribe ONLY to the whitelisted set in
-`sandbox/eventWhitelist.ts` (currently `input:mouse-navigate`, `file:modifier-open`).
+`sandbox/eventWhitelist.ts` (currently `app:ready`, `input:mouse-navigate`,
+`selection:changed`, `file:modifier-open`, `file:middle-open`, `file:open-no-app`,
+`file:external-drop`, `sidebar:item-remove`, `webdav:accounts-changed`).
 
 ---
 
@@ -216,9 +225,21 @@ navigate/back/forward also resolve against the active tab. Emits `"tabs:changed"
 
 ### `stores/` — Plain State Singletons
 
-`SelectionStore.ts` (current selection, emits `"selection:changed"`) and
-`ClipboardStore.ts` (current clipboard, emits `"clipboard:changed"`). They are the
-authoritative read source the registry uses to build a `BaseContext` for visibility checks.
+Authoritative, framework-agnostic state owners. Each holds one slice of app state and
+emits a typed event when it changes; React mirrors them into local state for rendering,
+and modules drive them through capabilities (never by importing the store):
+
+- `SelectionStore.ts` — current selection, emits `"selection:changed"`.
+- `ClipboardStore.ts` — current clipboard, emits `"clipboard:changed"`.
+- `ListingStore.ts` — visible items + active sort, emits `"listing:changed"`.
+- `ViewStore.ts` — view preferences (e.g. show-hidden), emits `"view:changed"`.
+- `HomeStore.ts` — the app home directory, emits `"home:changed"`. Set at launch by
+  `core.home` via the `home` capability; any module may override it.
+- `SettingsStore.ts` — whether the settings overlay is open, emits `"settings:changed"`.
+  Flipped by `core.settings` (⌘,) via the `settings` capability.
+
+`SelectionStore` + `ClipboardStore` are also the read source the registry uses to build a
+`BaseContext` for visibility checks.
 
 ---
 

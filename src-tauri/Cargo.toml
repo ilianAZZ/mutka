@@ -19,7 +19,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["macos-private-api"] }
 window-vibrancy = "0.5"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -40,6 +40,9 @@ tauri-plugin-drag = "2"
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2"
 block = "0.1"
+# Cocoa AppKit bindings (NSWindow/NSView/NSWindowButton) used to inset the native
+# traffic-light buttons from the window corner — see src/traffic_lights.rs.
+cocoa = "0.26"
 
 [profile.release]
 panic = "abort"

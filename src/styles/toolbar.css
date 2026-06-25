@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px;   /* traffic lights live in the native titlebar, above the aside */
+  padding: 8px 14px;   /* native titlebar is hidden; custom traffic lights live atop the aside */
   min-height: 50px;
   flex-shrink: 0;
   background: var(--glass-heavy);

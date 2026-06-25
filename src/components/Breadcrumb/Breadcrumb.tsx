@@ -64,6 +64,7 @@ export function Breadcrumb({ path, onNavigate }: Props) {
     <div
       id="breadcrumb"
       data-menu-zone="breadcrumb"
+      data-tauri-drag-region
       onClick={handleBackgroundClick}
       title="Click to edit path"
     >

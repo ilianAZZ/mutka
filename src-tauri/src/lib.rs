@@ -16,6 +16,8 @@ mod modules;
 mod mouse_nav;
 mod preview;
 mod secrets;
+#[cfg(target_os = "macos")]
+mod traffic_lights;
 
 use clipboard::{clipboard_read_files, clipboard_write_files};
 use fs_ops::{
@@ -44,6 +46,21 @@ pub fn run() {
             {
                 mouse_nav::set_app_handle(app.handle().clone());
                 unsafe { mouse_nav::setup_mouse_navigation() };
+
+                // Inset the native traffic lights, and re-apply on resize because
+                // AppKit re-lays-out the standard buttons whenever the window resizes.
+                use cocoa::base::id;
+                if let Ok(ns_window) = window.ns_window() {
+                    unsafe { traffic_lights::position_traffic_lights(ns_window as id) };
+                }
+                let win = window.clone();
+                window.on_window_event(move |event| {
+                    if let tauri::WindowEvent::Resized(_) = event {
+                        if let Ok(ns_window) = win.ns_window() {
+                            unsafe { traffic_lights::position_traffic_lights(ns_window as id) };
+                        }
+                    }
+                });
             }
             Ok(())
         })

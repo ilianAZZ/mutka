@@ -21,6 +21,7 @@ import type { MenuZone } from "../menu/menuZone";
 export type ModulePermission =
   | "fs:read"        // reads directory contents or file metadata
   | "fs:write"       // creates, modifies, moves, or deletes files/directories
+  | "fs:temp"        // writes a short-lived file to the OS temp dir (lower-risk than fs:write)
   | "clipboard:read" // reads clipboard contents
   | "clipboard:write"// writes to the native clipboard
   | "navigation"     // changes the active directory / drives tabs

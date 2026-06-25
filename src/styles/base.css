@@ -23,6 +23,9 @@ body {
   width: 100vw;
   gap: 8px;
   padding: 8px;
+  /* Match the native vibrancy corner radius (apply_vibrancy(..., Some(12.0)) in lib.rs).
+     Without this, the #app background repaints square corners over the rounded glass. */
+  border-radius: 12px;
   /* Fallback when vibrancy is not available (Linux/Windows) */
   background: rgba(236, 236, 240, 0.96);
 }
@@ -75,7 +78,7 @@ body {
 }
 
 /* ─── Scrollbar ──────────────────────────────────────────────────────────────── */
-::-webkit-scrollbar { width: 7px; }
+::-webkit-scrollbar { width: 7px; height: 7px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
   background: rgba(0, 0, 0, 0.18);
