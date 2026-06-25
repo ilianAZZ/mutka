@@ -40,6 +40,10 @@ export interface EventMap {
   "listing:changed": ListingSnapshot;
   /** Emitted by ViewStore when a view preference (e.g. show-hidden) changes. */
   "view:changed": { showHidden: boolean };
+  /** Coalesced signal that one or more custom-column cell values resolved. */
+  "columns:cell-resolved": undefined;
+  /** A column was resized — the list re-reads persisted widths. */
+  "columns:widths-changed": undefined;
 }
 
 /** Typed event name constants. Use `Events.Namespace.name` instead of bare strings. */
@@ -80,6 +84,10 @@ export const Events = {
   },
   View: {
     changed: "view:changed",
+  },
+  Columns: {
+    cellResolved: "columns:cell-resolved",
+    widthsChanged: "columns:widths-changed",
   },
   Tabs: {
     changed: "tabs:changed",

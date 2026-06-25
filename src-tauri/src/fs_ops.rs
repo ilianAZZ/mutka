@@ -217,6 +217,53 @@ pub fn get_home_dir() -> String {
     std::env::var("HOME").unwrap_or_else(|_| "/".to_string())
 }
 
+/// Largest file `read_file_base64` will return, guarding against a module asking
+/// for a multi-GB file and exhausting memory. Header-parsing columns (image
+/// dimensions, etc.) only need the first few KB anyway.
+const MAX_READ_BYTES: u64 = 32 * 1024 * 1024;
+
+/// Read a file's raw bytes, base64-encoded for the IPC bridge. Backs the
+/// `fs.readBytes` capability (the frontend gateway decodes it to a Uint8Array).
+/// Enables content-reading modules: image metadata, hex preview, .DS_Store, …
+#[tauri::command]
+pub fn read_file_base64(path: String) -> Result<String, String> {
+    use base64::Engine;
+    let meta = fs::metadata(&path).map_err(|e| e.to_string())?;
+    if meta.is_dir() {
+        return Err("Cannot read bytes of a directory".to_string());
+    }
+    if meta.len() > MAX_READ_BYTES {
+        return Err(format!("File too large to read ({} bytes)", meta.len()));
+    }
+    let bytes = fs::read(&path).map_err(|e| e.to_string())?;
+    Ok(base64::engine::general_purpose::STANDARD.encode(bytes))
+}
+
+/// Report whether a file is materialized on disk or still cloud-only. Backs the
+/// `fs.cloudStatus` capability. Uses the macOS `SF_DATALESS` stat flag, which the
+/// File Provider sets on online-only files (iCloud Drive, OneDrive, Dropbox,
+/// Google Drive, …); legacy iCloud placeholders (".icloud") are also treated as
+/// cloud. Returns "downloaded" | "cloud".
+#[tauri::command]
+pub fn cloud_status(path: String) -> Result<String, String> {
+    #[cfg(target_os = "macos")]
+    {
+        use std::os::macos::fs::MetadataExt;
+        // chflags SF_DATALESS — set on a placeholder whose data isn't local yet.
+        const SF_DATALESS: u32 = 0x4000_0000;
+        let meta = fs::metadata(&path).map_err(|e| e.to_string())?;
+        if meta.st_flags() & SF_DATALESS != 0 || path.ends_with(".icloud") {
+            return Ok("cloud".to_string());
+        }
+        Ok("downloaded".to_string())
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = path;
+        Ok("downloaded".to_string())
+    }
+}
+
 /// Write base64-encoded bytes (a file dropped from Finder) to a temp file and
 /// return its path. The caller then copy/move-routes that local path like any
 /// other (local copy, or upload to a provider).

@@ -1,5 +1,5 @@
 import type { BaseContext } from "../types";
-import type { WhenClause } from "./protocol";
+import type { WhenClause, ColumnDirMatch } from "./protocol";
 
 /**
  * Evaluate a serializable when-clause against current app state, host-side.
@@ -10,6 +10,25 @@ export function evaluateWhen(when: WhenClause, ctx: BaseContext): boolean {
   if (when.selection && !matchSelection(when.selection, ctx)) return false;
   if (when.clipboard === "hasItems" && ctx.clipboard.items.length === 0) return false;
   return true;
+}
+
+/** Expand a leading "~" in a path to the user's home directory. */
+export function expandHome(path: string, homeDir: string): string {
+  if (path === "~") return homeDir;
+  if (path.startsWith("~/")) return `${homeDir}${path.slice(1)}`;
+  return path;
+}
+
+/**
+ * Evaluate a column's directory-level gate against the current directory,
+ * host-side. Omitting both fields means "show in every directory"; otherwise
+ * the directory must satisfy at least one declared constraint.
+ */
+export function dirMatches(m: ColumnDirMatch | undefined, dir: string, homeDir: string): boolean {
+  if (!m || (!m.pathPrefixes && !m.pathContains)) return true;
+  if (m.pathPrefixes?.some((p) => dir.startsWith(expandHome(p, homeDir)))) return true;
+  if (m.pathContains?.some((s) => dir.includes(s))) return true;
+  return false;
 }
 
 function matchSelection(sel: NonNullable<WhenClause["selection"]>, ctx: BaseContext): boolean {

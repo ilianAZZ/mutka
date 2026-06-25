@@ -4,7 +4,8 @@ import { dispatchCapability } from "./gateway";
 import { registerProxyModule } from "./proxyModule";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
 import { isSubscribable } from "./eventWhitelist";
-import type { WorkerToHost, HostToWorker, SandboxManifest } from "./protocol";
+import type { WorkerToHost, HostToWorker, SandboxManifest, ColumnCell } from "./protocol";
+import type { FileItem } from "../types";
 
 /**
  * WORKER RUNTIME — hosts ONE untrusted community module in an isolated Web
@@ -20,6 +21,10 @@ export class SandboxHost {
   private manifest: SandboxManifest | null = null;
   private readonly ready: Promise<SandboxManifest>;
   private readonly eventUnsubs: Array<() => void> = [];
+  // Correlated host→worker→host calls for column values (the mirror of the
+  // worker's own host-call pending map).
+  private columnSeq = 0;
+  private readonly columnPending = new Map<number, { resolve: (v: ColumnCell | null) => void; reject: (e: Error) => void }>();
 
   constructor(source: string) {
     this.worker = new Worker(new URL("./sandbox.worker.ts", import.meta.url), { type: "module" });
@@ -36,12 +41,23 @@ export class SandboxHost {
     registerProxyModule(manifest, {
       run: (commandId, snapshot) => this.send({ t: "run", commandId, snapshot }),
       runOpen: (handlerId, item) => this.send({ t: "open", handlerId, item }),
+      runColumn: (columnId, item) => this.runColumn(columnId, item),
       dispose: () => this.dispose(),
+    });
+  }
+
+  private runColumn(columnId: string, item: FileItem): Promise<ColumnCell | null> {
+    const id = ++this.columnSeq;
+    return new Promise<ColumnCell | null>((resolve, reject) => {
+      this.columnPending.set(id, { resolve, reject });
+      this.send({ t: "column", id, columnId, item });
     });
   }
 
   private dispose(): void {
     for (const unsub of this.eventUnsubs) unsub();
+    for (const { reject } of this.columnPending.values()) reject(new Error("module disposed"));
+    this.columnPending.clear();
     this.worker.terminate();
   }
 
@@ -74,6 +90,14 @@ export class SandboxHost {
       case "host-call":
         void this.handleCall(msg.id, msg.cap, msg.method, msg.args);
         break;
+      case "column-result": {
+        const pending = this.columnPending.get(msg.id);
+        if (!pending) break;
+        this.columnPending.delete(msg.id);
+        if (msg.ok) pending.resolve(msg.value);
+        else pending.reject(new Error(msg.error));
+        break;
+      }
     }
   }
 

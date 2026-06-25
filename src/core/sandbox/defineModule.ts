@@ -1,4 +1,4 @@
-import type { SandboxCommand, SandboxOpenHandler, FileIconContribution } from "./protocol";
+import type { SandboxCommand, SandboxOpenHandler, FileIconContribution, ColumnContribution } from "./protocol";
 import type { ModulePermission, SidebarItem } from "../module-registry/module-registry.types";
 import type { SandboxHostApi } from "./hostProxy";
 
@@ -28,6 +28,12 @@ export interface SandboxModuleDef {
    * <img src> only, so it's injection-safe.
    */
   fileIcons?: FileIconContribution[];
+  /**
+   * Custom list-view columns. Each column declares declarative applicability
+   * (which directories it shows in, which items get a value) and its value is
+   * produced by a provider registered in setup via host.onColumn(id, handler).
+   */
+  columns?: ColumnContribution[];
   /**
    * URI schemes this module provides a virtual file system for (e.g. "nextcloud").
    * Register the handlers in setup with host.onList(scheme, …) / host.onOpenFile(…).

@@ -30,15 +30,25 @@ export interface CapabilityDef {
 
 export type CapabilityTable = Record<string, Record<string, CapabilityDef>>;
 
-const cfgKey = (moduleId: string, key: unknown): string => `macows.modcfg.${moduleId}.${String(key)}`;
+const cfgKey = (moduleId: string, key: unknown): string => `mutka.modcfg.${moduleId}.${String(key)}`;
+
+/** Decode a base64 string (from `read_file_base64`) into raw bytes. */
+function base64ToBytes(b64: string): Uint8Array {
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out;
+}
 /** Keychain service name for a module's secrets. Must match SettingsPanel's. */
-export const secretService = (moduleId: string): string => `macows.${moduleId}`;
+export const secretService = (moduleId: string): string => `mutka.${moduleId}`;
 
 export function createCapabilityTable(): CapabilityTable {
   return {
     fs: {
       readDir:      { permission: "fs:read",  run: ([p]) => FileSystemRegistry.readDir(p as string) },
       openItem:     { permission: "fs:read",  run: ([p]) => FileSystemRegistry.openItem(p as string) },
+      readBytes:    { permission: "fs:read",  run: async ([p]) => base64ToBytes(await invoke<string>("read_file_base64", { path: p })) },
+      cloudStatus:  { permission: "fs:read",  run: ([p]) => invoke("cloud_status", { path: p }) },
       deleteItem:   { permission: "fs:write", run: ([p]) => FileSystemRegistry.deleteItem(p as string) },
       renameItem:   { permission: "fs:write", run: ([from, to]) => FileSystemRegistry.renameItem(from as string, to as string) },
       createFile:   { permission: "fs:write", run: ([p]) => FileSystemRegistry.createFile(p as string) },

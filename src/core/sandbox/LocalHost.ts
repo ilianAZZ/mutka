@@ -1,12 +1,12 @@
 import { EventBus } from "../event-bus/EventBus";
 import type { EventMap } from "../event-bus/events";
-import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandler, type ProviderHandler, type ProviderMethod } from "./hostProxy";
+import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandler, type ColumnProvider, type ProviderHandler, type ProviderMethod } from "./hostProxy";
 import { dispatchCapability } from "./gateway";
 import { registerProxyModule } from "./proxyModule";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
 import { isSubscribable } from "./eventWhitelist";
 import { FileSystemRegistry } from "../file-system/FileSystemRegistry";
-import type { SandboxManifest, HostSnapshot } from "./protocol";
+import type { SandboxManifest, HostSnapshot, ColumnCell } from "./protocol";
 import type { SandboxModuleDef } from "./defineModule";
 import type { FileItem } from "../types";
 
@@ -24,6 +24,7 @@ export class LocalHost {
   private readonly manifest: SandboxManifest;
   private readonly commands = new Map<string, CommandHandler>();
   private readonly opens = new Map<string, OpenHandler>();
+  private readonly columns = new Map<string, ColumnProvider>();
   private readonly providers = new Map<string, ProviderHandler>();
   private readonly eventUnsubs: Array<() => void> = [];
   private readonly registeredSchemes: string[] = [];
@@ -40,6 +41,7 @@ export class LocalHost {
       sidebarItems: def.sidebarItems ?? [],
       fileSystemProviders: def.fileSystemProviders ?? [],
       fileIcons: def.fileIcons ?? [],
+      columns: def.columns ?? [],
     };
   }
 
@@ -48,6 +50,7 @@ export class LocalHost {
       callHost: (cap, method, args) => dispatchCapability(this.manifest, cap, method, args),
       registerCommand: (id, fn) => this.commands.set(id, fn),
       registerOpen: (id, fn) => this.opens.set(id, fn),
+      registerColumn: (id, fn) => this.columns.set(id, fn),
       registerProvider: (scheme, method, fn) => this.providers.set(`${scheme}:${method}`, fn),
       setSidebarItems: (items) => ModuleRegistry.setDynamicSidebarItems(this.manifest.id, items),
       subscribe: (event, fn) => this.subscribe(event, fn),
@@ -72,8 +75,15 @@ export class LocalHost {
     registerProxyModule(this.manifest, {
       run: (id, snap) => this.run(this.commands.get(id), snap, `command "${id}"`),
       runOpen: (id, item) => this.run(this.opens.get(id), item, `open handler "${id}"`),
+      runColumn: (id, item) => this.runColumn(id, item),
       dispose: () => this.dispose(),
     });
+  }
+
+  private async runColumn(columnId: string, item: FileItem): Promise<ColumnCell | null> {
+    const provider = this.columns.get(columnId);
+    if (!provider) return null;
+    return (await provider(item)) ?? null;
   }
 
   private callProvider(scheme: string, method: ProviderMethod, ...args: unknown[]): Promise<unknown> {
@@ -102,6 +112,7 @@ export class LocalHost {
     for (const scheme of this.registeredSchemes) FileSystemRegistry.unregisterProvider(scheme);
     this.commands.clear();
     this.opens.clear();
+    this.columns.clear();
     this.providers.clear();
   }
 }

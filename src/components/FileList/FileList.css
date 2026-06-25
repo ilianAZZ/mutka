@@ -181,6 +181,45 @@
   opacity: 0.5;
 }
 
+/* ─── Module-contributed custom columns ────────────────────────────────────── */
+#file-list .col-extra {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-mid);
+  font-size: 11.5px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+#file-list .col-extra--end {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+#file-list .file-row.selected .col-extra {
+  color: var(--row-selected-text);
+  opacity: 0.78;
+}
+
+#file-list .col-extra-icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+  flex-shrink: 0;
+  -webkit-user-drag: none;
+}
+
+#file-list .col-extra-badge {
+  font-size: 9.5px;
+  font-weight: 600;
+  padding: 1px 5px;
+  border-radius: 7px;
+  background: var(--row-stripe);
+  color: var(--text-mid);
+}
+
 /* ─── Sortable header columns ──────────────────────────────────────────────── */
 #file-list .col-sort {
   display: flex;
@@ -197,8 +236,37 @@
   user-select: none;
 }
 
+#file-list .col-sort,
+#file-list .col-extra--header {
+  position: relative;
+}
+
 #file-list .col-sort:hover {
   color: var(--text);
+}
+
+/* ─── Column resize handle ─────────────────────────────────────────────────── */
+/* A thin grab strip on each header column's right edge; sits slightly past the
+   edge so the gutter between columns is the hit target, like Finder. */
+#file-list .col-resize-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: -8px;
+  width: 10px;
+  cursor: col-resize;
+  z-index: 2;
+}
+
+#file-list .col-resize-handle:hover::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  bottom: 2px;
+  left: 4px;
+  width: 2px;
+  background: var(--rim-dark);
+  border-radius: 1px;
 }
 
 #file-list .col-sort--active {

@@ -9,7 +9,7 @@
 // asking the host (which checks permissions).
 // =============================================================================
 
-import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandler } from "./hostProxy";
+import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandler, type ColumnProvider } from "./hostProxy";
 import type { HostToWorker, WorkerToHost, SandboxManifest } from "./protocol";
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
@@ -17,6 +17,7 @@ const post = (m: WorkerToHost): void => ctx.postMessage(m);
 
 const commands = new Map<string, CommandHandler>();
 const opens = new Map<string, OpenHandler>();
+const columns = new Map<string, ColumnProvider>();
 const events = new Map<string, EventHandler>();
 const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: unknown) => void }>();
 let callSeq = 0;
@@ -49,6 +50,16 @@ ctx.onmessage = async (e: MessageEvent<HostToWorker>): Promise<void> => {
     case "open":
       await safeRun(opens.get(msg.handlerId), msg.item, `open handler "${msg.handlerId}"`);
       break;
+    case "column": {
+      const provider = columns.get(msg.columnId);
+      try {
+        const value = provider ? (await provider(msg.item)) ?? null : null;
+        post({ t: "column-result", id: msg.id, ok: true, value });
+      } catch (err) {
+        post({ t: "column-result", id: msg.id, ok: false, error: String(err) });
+      }
+      break;
+    }
     case "event": {
       const handler = events.get(msg.event);
       if (handler) handler(msg.payload);
@@ -77,6 +88,7 @@ interface RawModule {
   sidebarItems?: SandboxManifest["sidebarItems"];
   fileSystemProviders?: SandboxManifest["fileSystemProviders"];
   fileIcons?: SandboxManifest["fileIcons"];
+  columns?: SandboxManifest["columns"];
   setup?: (host: ReturnType<typeof createHostProxy>) => void | Promise<void>;
 }
 
@@ -102,6 +114,7 @@ async function loadModule(source: string): Promise<void> {
       sidebarItems: def.sidebarItems ?? [],
       fileSystemProviders: def.fileSystemProviders ?? [],
       fileIcons: def.fileIcons ?? [],
+      columns: def.columns ?? [],
     };
     // Report BEFORE setup runs, so the host knows this module's permissions
     // before any host-call can be served.
@@ -111,6 +124,7 @@ async function loadModule(source: string): Promise<void> {
       callHost,
       registerCommand: (id, fn) => commands.set(id, fn),
       registerOpen: (id, fn) => opens.set(id, fn),
+      registerColumn: (id, fn) => columns.set(id, fn),
       registerProvider: (scheme) => post({ t: "log", level: "warn", args: [`file system providers are not supported in sandboxed modules: "${scheme}"`] }),
       setSidebarItems: (items) => post({ t: "sidebar", items }),
       subscribe: (event, fn) => { events.set(event, fn); post({ t: "subscribe", event }); },

@@ -19,8 +19,8 @@ mod secrets;
 
 use clipboard::{clipboard_read_files, clipboard_write_files};
 use fs_ops::{
-    copy_files, create_dir_cmd, create_file, delete_item, get_home_dir, move_files, open_item,
-    read_dir, rename_item, write_temp_file,
+    cloud_status, copy_files, create_dir_cmd, create_file, delete_item, get_home_dir, move_files,
+    open_item, read_dir, read_file_base64, rename_item, write_temp_file,
 };
 use http::{http_download, http_request, http_upload};
 use icons::icon_for_type;
@@ -60,6 +60,8 @@ pub fn run() {
             apps_for_file,
             open_with,
             get_home_dir,
+            read_file_base64,
+            cloud_status,
             write_temp_file,
             quick_look,
             preview_update,
@@ -75,5 +77,5 @@ pub fn run() {
             read_module_file,
         ])
         .run(tauri::generate_context!())
-        .expect("error while running mutka explorer");
+        .expect("error while running Mutka");
 }

@@ -16,6 +16,8 @@ import { ListingStore } from "./core/stores/ListingStore";
 import type { SortKey, ListingSnapshot } from "./core/stores/listing.types";
 import { loadCommunityModules, loadBuiltinSandboxModules, loadDevModules } from "./moduleLoader";
 import { InputManager } from "./core/input-manager/InputManager";
+import { useColumns } from "./hooks/useColumns";
+import { useColumnWidths } from "./hooks/useColumnWidths";
 import { resolveMenuZone, isEditableElement, type MenuZone } from "./core/menu/menuZone";
 import { FileList } from "./components/FileList/FileList";
 import { Sidebar } from "./components/Sidebar/Sidebar";
@@ -356,6 +358,10 @@ export function App() {
     navigation: { navigate: navigateTo, goBack, goForward, goUp, canGoBack, canGoForward },
   };
 
+  // Module-contributed list columns that apply to the current directory.
+  const { columns: extraColumns, cellData: columnCells } = useColumns(listing.items, currentDir, homeDir);
+  const { widths: columnWidths, setWidth: handleColumnResize } = useColumnWidths();
+
   // Actions for the zone the user right-clicked. Empty → no menu is shown.
   const menuGroups = contextMenu
     ? ModuleRegistry.getContextMenuActions(viewCtx, contextMenu.zone)
@@ -413,6 +419,10 @@ export function App() {
           sort={listing.sort}
           error={loadError}
           currentDir={currentDir}
+          extraColumns={extraColumns}
+          cellData={columnCells}
+          columnWidths={columnWidths}
+          onColumnResize={handleColumnResize}
           onSelect={(items) => SelectionStore.set(items)}
           onOpen={(item) => ModuleRegistry.resolveOpen(item)}
           onSortChange={handleSortChange}

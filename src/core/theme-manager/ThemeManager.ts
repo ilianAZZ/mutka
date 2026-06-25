@@ -2,7 +2,7 @@ import type { ThemePreference } from "./theme-manager.types";
 import { EventBus } from "../event-bus/EventBus";
 import { Events } from "../event-bus/events";
 
-const STORAGE_KEY = "macows.theme";
+const STORAGE_KEY = "mutka.theme";
 
 function getSystemTheme(): "dark" | "light" {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";

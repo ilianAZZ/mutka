@@ -6,7 +6,9 @@ import { ListingStore } from "../stores/ListingStore";
 import { AppBridge } from "../app-bridge/AppBridge";
 import { FileIconRegistry } from "../file-icons/FileIconRegistry";
 import { evaluateWhen } from "./whenClause";
-import type { SandboxManifest, HostSnapshot, SandboxOpenMatch } from "./protocol";
+import { matchesItem } from "./itemMatch";
+import { ColumnsRegistry } from "../columns/ColumnsRegistry";
+import type { SandboxManifest, HostSnapshot, ColumnCell } from "./protocol";
 import type { FileItem } from "../types";
 
 /** Current serializable app state, handed to a command when it runs. */
@@ -19,18 +21,13 @@ export function appSnapshot(): HostSnapshot {
   };
 }
 
-function matchesItem(match: SandboxOpenMatch, item: FileItem): boolean {
-  if (match.isDir !== undefined && item.isDir !== match.isDir) return false;
-  if (match.isPackage !== undefined && item.isPackage !== match.isPackage) return false;
-  if (match.extensions && !match.extensions.includes((item.extension ?? "").toLowerCase())) return false;
-  return true;
-}
-
 export interface ProxyRuntime {
   /** Run a command in the backing runtime (worker or in-process). */
   run: (commandId: string, snapshot: HostSnapshot) => void;
   /** Run an open handler in the backing runtime. */
   runOpen: (handlerId: string, item: FileItem) => void;
+  /** Produce a column's cell value for an item in the backing runtime. */
+  runColumn: (columnId: string, item: FileItem) => Promise<ColumnCell | null>;
   /** Tear down the backing runtime on unregister. */
   dispose: () => void;
 }
@@ -67,6 +64,10 @@ export function registerProxyModule(manifest: SandboxManifest, runtime: ProxyRun
     FileIconRegistry.register(manifest.id, contribution.extensions, contribution.image);
   }
 
+  // Register custom columns. The registry owns directory/cell gating + caching;
+  // it calls back into this runtime only to produce a value for a matching cell.
+  ColumnsRegistry.register(manifest.id, manifest.columns, runtime.runColumn);
+
   ModuleRegistry.register({
     id: manifest.id,
     name: manifest.name,
@@ -78,6 +79,7 @@ export function registerProxyModule(manifest: SandboxManifest, runtime: ProxyRun
     sidebarItems: manifest.sidebarItems,
     onUnmount: () => {
       FileIconRegistry.unregister(manifest.id);
+      ColumnsRegistry.unregister(manifest.id);
       runtime.dispose();
     },
   });

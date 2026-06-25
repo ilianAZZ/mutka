@@ -1,4 +1,4 @@
-import type { WorkerToHost, HostSnapshot } from "./protocol";
+import type { WorkerToHost, HostSnapshot, ColumnCell } from "./protocol";
 import type { FileItem } from "../types";
 import type { SidebarItem } from "../module-registry/module-registry.types";
 
@@ -10,6 +10,7 @@ import type { SidebarItem } from "../module-registry/module-registry.types";
 
 export type CommandHandler = (snapshot: HostSnapshot) => void | Promise<void>;
 export type OpenHandler = (item: FileItem) => void | Promise<void>;
+export type ColumnProvider = (item: FileItem) => ColumnCell | null | Promise<ColumnCell | null>;
 export type EventHandler = (payload: unknown) => void;
 export type ListHandler = (path: string) => FileItem[] | Promise<FileItem[]>;
 export type OpenFileHandler = (path: string) => void | Promise<void>;
@@ -46,6 +47,10 @@ export interface SandboxHostApi {
   fs: {
     readDir(path: string): Promise<unknown>;
     openItem(path: string): Promise<unknown>;
+    /** Read a file's raw bytes (resolves to a Uint8Array). */
+    readBytes(path: string): Promise<unknown>;
+    /** Whether a file is materialized locally or cloud-only ("downloaded" | "cloud"). */
+    cloudStatus(path: string): Promise<unknown>;
     copyFiles(paths: string[], dest: string): Promise<unknown>;
     moveFiles(paths: string[], dest: string): Promise<unknown>;
     deleteItem(path: string): Promise<unknown>;
@@ -123,6 +128,8 @@ export interface SandboxHostApi {
   onCommand(commandId: string, handler: CommandHandler): void;
   /** Register the function that runs when an item matches one of this module's open handlers. */
   onOpen(handlerId: string, handler: OpenHandler): void;
+  /** Register the value provider for one of this module's custom columns. */
+  onColumn(columnId: string, provider: ColumnProvider): void;
   /** Register the directory-listing handler for a file system provider scheme. */
   onList(scheme: string, handler: ListHandler): void;
   /** Register the file-open handler for a file system provider scheme. */
@@ -151,6 +158,7 @@ interface Transport {
   callHost: (cap: string, method: string, args: unknown[]) => Promise<unknown>;
   registerCommand: (commandId: string, handler: CommandHandler) => void;
   registerOpen: (handlerId: string, handler: OpenHandler) => void;
+  registerColumn: (columnId: string, provider: ColumnProvider) => void;
   registerProvider: (scheme: string, method: ProviderMethod, handler: ProviderHandler) => void;
   setSidebarItems: (items: SidebarItem[]) => void;
   subscribe: (event: string, handler: EventHandler) => void;
@@ -163,6 +171,8 @@ export function createHostProxy(t: Transport): SandboxHostApi {
     fs: {
       readDir:      (path) => callHost("fs", "readDir", [path]),
       openItem:     (path) => callHost("fs", "openItem", [path]),
+      readBytes:    (path) => callHost("fs", "readBytes", [path]),
+      cloudStatus:  (path) => callHost("fs", "cloudStatus", [path]),
       copyFiles:    (paths, dest) => callHost("fs", "copyFiles", [paths, dest]),
       moveFiles:    (paths, dest) => callHost("fs", "moveFiles", [paths, dest]),
       deleteItem:   (path) => callHost("fs", "deleteItem", [path]),
@@ -225,6 +235,7 @@ export function createHostProxy(t: Transport): SandboxHostApi {
     activate: (item) => callHost("app", "activate", [item]),
     onCommand: (commandId, handler) => t.registerCommand(commandId, handler),
     onOpen: (handlerId, handler) => t.registerOpen(handlerId, handler),
+    onColumn: (columnId, provider) => t.registerColumn(columnId, provider),
     onList: (scheme, handler) => t.registerProvider(scheme, "list", handler),
     onOpenFile: (scheme, handler) => t.registerProvider(scheme, "openFile", handler),
     onCreateFolder: (scheme, handler) => t.registerProvider(scheme, "createFolder", handler),

@@ -1,7 +1,7 @@
 import { EventBus } from "../event-bus/EventBus";
 import { Events } from "../event-bus/events";
 
-const SHOW_HIDDEN_KEY = "macows.showHidden";
+const SHOW_HIDDEN_KEY = "mutka.showHidden";
 
 function loadShowHidden(): boolean {
   try {

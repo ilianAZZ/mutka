@@ -68,6 +68,51 @@ export interface SandboxOpenHandler {
   handler: string;
 }
 
+// ─── A custom list-view column contributed by a module ───────────────────────
+// Two-level, fully declarative applicability (no predicate crosses the wire):
+//   • dirMatch  — whether the WHOLE column appears in a given directory.
+//   • cellMatch — which items get a computed value (reuses the open-handler
+//                 match shape). When it fails, the cell is empty and the
+//                 module's value provider is NEVER invoked for that item — so a
+//                 module never tries to decode a file that makes no sense to it.
+// The value itself is produced by host.onColumn(id, item → ColumnCell), run in
+// the module's runtime and returned over the `column` round-trip below.
+
+/** Gate a column on the current directory. Omit a field to not constrain it. */
+export interface ColumnDirMatch {
+  /** Show only under these path prefixes (a leading "~" is expanded host-side). */
+  pathPrefixes?: string[];
+  /** …or when the directory path contains one of these substrings. */
+  pathContains?: string[];
+}
+
+/** What a single cell renders — plain data, shown via text / <img src> only. */
+export interface ColumnCell {
+  /** Primary text of the cell. */
+  text?: string;
+  /** A data:image/...;base64 icon (injection-safe, rendered via <img src>). */
+  icon?: string;
+  /** Text colour — MUST be a `var(--...)` token; anything else is dropped. */
+  tint?: string;
+  /** A short pill (e.g. "⤓", "3"). */
+  badge?: string;
+}
+
+export interface ColumnContribution {
+  /** Unique column id, e.g. "com.exif.dimensions". */
+  id: string;
+  /** Header label. */
+  label: string;
+  /** Default width in px (defaults to 100). */
+  width?: number;
+  /** Cell alignment. */
+  align?: "start" | "end";
+  /** Directory-level gate. Omit to show in every directory. */
+  dirMatch?: ColumnDirMatch;
+  /** Item-level gate. Omit to compute a value for every item. */
+  cellMatch?: SandboxOpenMatch;
+}
+
 // ─── A file-type icon contributed by a module ────────────────────────────────
 // Lets a module ship its own logo for a set of extensions, overriding the native
 // macOS icon. `image` is a base64 data-URI (data:image/...;base64,...) so it
@@ -97,6 +142,8 @@ export interface SandboxManifest {
   fileSystemProviders: string[];
   /** File-type icon overrides (by extension) this module contributes. */
   fileIcons: FileIconContribution[];
+  /** Custom list-view columns this module contributes. */
+  columns: ColumnContribution[];
 }
 
 /** Serializable snapshot of app state handed to a command when it runs. */
@@ -113,6 +160,8 @@ export interface HostSnapshot {
 export type WorkerToHost =
   | { t: "ready"; manifest: SandboxManifest }
   | { t: "host-call"; id: number; cap: string; method: string; args: unknown[] }
+  | { t: "column-result"; id: number; ok: true; value: ColumnCell | null }
+  | { t: "column-result"; id: number; ok: false; error: string }
   | { t: "subscribe"; event: string }
   | { t: "sidebar"; items: SidebarItem[] }
   | { t: "log"; level: "log" | "warn" | "error"; args: unknown[] }
@@ -124,4 +173,5 @@ export type HostToWorker =
   | { t: "host-result"; id: number; ok: false; error: string }
   | { t: "run"; commandId: string; snapshot: HostSnapshot }
   | { t: "open"; handlerId: string; item: FileItem }
+  | { t: "column"; id: number; columnId: string; item: FileItem }
   | { t: "event"; event: string; payload: unknown };

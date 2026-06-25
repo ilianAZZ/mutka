@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FileItem } from "../../core/types";
 import type { SortKey, SortState } from "../../core/stores/listing.types";
+import type { ColumnDescriptor, ColumnCellState } from "../../core/columns/column.types";
 import { FileIcon } from "./FileIcon";
 import "./FileList.css";
 
@@ -11,6 +12,14 @@ interface Props {
   sort: SortState;
   /** The directory currently shown — destination for drops on the empty area. */
   currentDir: string;
+  /** Module-contributed columns that apply to the current directory. */
+  extraColumns?: ColumnDescriptor[];
+  /** Per-path cell state for each extra column. */
+  cellData?: Record<string, Record<string, ColumnCellState>>;
+  /** Persisted width overrides, keyed by built-in sort key or custom column id. */
+  columnWidths?: Record<string, number>;
+  /** Commit a new width for a column (live during a header drag). */
+  onColumnResize?: (id: string, width: number) => void;
   /** Error message to show in place of the listing (e.g. a failed remote load). */
   error?: string | null;
   onSelect: (items: FileItem[]) => void;
@@ -51,10 +60,60 @@ const COLUMNS: { key: SortKey; label: string; className: string }[] = [
   { key: "size", label: "Size", className: "col-size" },
 ];
 
+/** Default widths of the resizable built-in columns (name is flexible: 1fr). */
+const BUILTIN_DEFAULT_WIDTH: Record<string, number> = { date: 180, type: 100, size: 90 };
+
+function renderCell(state: ColumnCellState | undefined): React.ReactNode {
+  if (!state || state === "loading") return null;
+  return (
+    <>
+      {state.icon && <img className="col-extra-icon" src={state.icon} alt="" />}
+      {state.text && <span style={state.tint ? { color: state.tint } : undefined}>{state.text}</span>}
+      {state.badge && <span className="col-extra-badge">{state.badge}</span>}
+    </>
+  );
+}
+
 export function FileList({
-  files, selected, cutItems, sort, error, currentDir,
+  files, selected, cutItems, sort, error, currentDir, extraColumns, cellData, columnWidths, onColumnResize,
   onSelect, onOpen, onSortChange, onModifierOpen, onMiddleClick, onMoveItems, onDropExternal, onNativeDrag,
 }: Props) {
+  const columns = extraColumns ?? [];
+  // Effective width of a column: a stored override, else its default.
+  const ew = useCallback(
+    (id: string, def: number) => columnWidths?.[id] ?? def,
+    [columnWidths]
+  );
+  // The grid is always computed from widths so every track is resizable; name
+  // stays flexible (1fr) and absorbs the slack.
+  const gridStyle = useMemo<React.CSSProperties>(() => ({
+    gridTemplateColumns: [
+      "1fr",
+      `${ew("date", BUILTIN_DEFAULT_WIDTH.date)}px`,
+      `${ew("type", BUILTIN_DEFAULT_WIDTH.type)}px`,
+      `${ew("size", BUILTIN_DEFAULT_WIDTH.size)}px`,
+      ...columns.map((c) => `${ew(c.id, c.width ?? 100)}px`),
+    ].join(" "),
+  }), [columns, ew]);
+
+  // Drag a header's right edge to resize that column. Listeners live only for the
+  // duration of the drag; widths are committed live so the grid tracks the cursor.
+  const startResize = useCallback((e: React.MouseEvent, id: string, startWidth: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!onColumnResize) return;
+    const startX = e.clientX;
+    const onMove = (ev: MouseEvent) => onColumnResize(id, startWidth + (ev.clientX - startX));
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+    };
+    document.body.style.cursor = "col-resize";
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  }, [onColumnResize]);
+
   const selectedPaths = new Set(selected.map((f) => f.path));
   const cutPaths = new Set(cutItems.map((f) => f.path));
   const dragPathsRef = useRef<string[]>([]);
@@ -167,7 +226,7 @@ export function FileList({
         <div className="file-list-empty">This folder is empty</div>
       ) : (
         <>
-          <div className="file-list-header">
+          <div className="file-list-header" style={gridStyle}>
             {COLUMNS.map((col) => (
               <button
                 key={col.key}
@@ -176,7 +235,26 @@ export function FileList({
               >
                 {col.label}
                 {sort.key === col.key && <span className="sort-arrow">{sort.dir === "asc" ? "▲" : "▼"}</span>}
+                {col.key !== "name" && (
+                  <span
+                    className="col-resize-handle"
+                    onMouseDown={(e) => startResize(e, col.key, ew(col.key, BUILTIN_DEFAULT_WIDTH[col.key]))}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                )}
               </button>
+            ))}
+            {columns.map((col) => (
+              <span
+                key={col.id}
+                className={`col-extra col-extra--header${col.align === "end" ? " col-extra--end" : ""}`}
+              >
+                {col.label}
+                <span
+                  className="col-resize-handle"
+                  onMouseDown={(e) => startResize(e, col.id, ew(col.id, col.width ?? 100))}
+                />
+              </span>
             ))}
           </div>
           <div className="file-list-body">
@@ -184,6 +262,7 @@ export function FileList({
               <div
                 key={item.path}
                 draggable
+                style={gridStyle}
                 data-menu-zone="file"
                 className={[
                   "file-row",
@@ -222,6 +301,14 @@ export function FileList({
                     : item.extension?.toUpperCase() ?? "File"}
                 </span>
                 <span className="col-size">{item.isDir ? "—" : formatSize(item.size)}</span>
+                {columns.map((col) => (
+                  <span
+                    key={col.id}
+                    className={`col-extra${col.align === "end" ? " col-extra--end" : ""}`}
+                  >
+                    {renderCell(cellData?.[item.path]?.[col.id])}
+                  </span>
+                ))}
               </div>
             ))}
           </div>
