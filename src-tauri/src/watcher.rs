@@ -1,16 +1,25 @@
 // Watches the single directory currently in view. read_dir re-arms it on every
-// navigation, so exactly one non-recursive watcher is ever live. On any change
-// it emits `directory-changed` (payload: the watched path); the frontend
-// (core/file-watch/DirectoryWatcher.ts) debounces and re-broadcasts on the bus.
+// navigation. On a real change it emits `directory-changed` (payload: the changed
+// path); the frontend (core/file-watch/DirectoryWatcher.ts) debounces and
+// re-broadcasts on the bus.
 //
-// State lives here (a process-global), mirroring the mouse_nav pattern. This is
-// infrastructure plumbing, not business logic — what to DO on a change is decided
-// in TypeScript.
+// HARD RULE: watching must NEVER slow down or block directory listing — rendering
+// folder content is what matters; watching is a best-effort extra. Two safeguards:
+//   1. arm() runs on a detached thread, so read_dir returns the files immediately
+//      and never waits on FSEvents setup.
+//   2. ONE persistent watcher is reused (unwatch old path + watch new path) rather
+//      than dropped and recreated each navigation — dropping a macOS FSEvents
+//      watcher joins its run-loop thread, which is exactly what caused listings to
+//      stall.
+// We also ignore `Access` events so merely reading a directory can't trigger a
+// refresh that reads it again (a feedback loop).
+//
+// State lives here (a process-global), mirroring the mouse_nav pattern.
 
 use std::path::Path;
 use std::sync::{Mutex, OnceLock};
 
-use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use tauri::{AppHandle, Emitter};
 
 struct WatchState {
@@ -24,35 +33,61 @@ fn state() -> &'static Mutex<WatchState> {
     STATE.get_or_init(|| Mutex::new(WatchState { watcher: None, path: None }))
 }
 
-/// Arm a non-recursive watcher on `path`, replacing any previous one. A no-op if
-/// we are already watching that directory. Failures are swallowed: watching is a
-/// best-effort enhancement, never a reason to fail the directory listing.
+/// Best-effort: watch `path`, replacing the previous watch. Returns immediately —
+/// the actual work happens on a detached thread so the directory listing is never
+/// blocked. A no-op (on that thread) if we are already watching `path`.
 pub fn arm(app: &AppHandle, path: &str) {
+    let app = app.clone();
+    let path = path.to_string();
+    std::thread::spawn(move || rearm(app, path));
+}
+
+fn rearm(app: AppHandle, path: String) {
     let mut st = match state().lock() {
         Ok(s) => s,
         Err(_) => return,
     };
-    if st.path.as_deref() == Some(path) {
-        return;
+    if st.path.as_deref() == Some(path.as_str()) {
+        return; // already watching this directory
     }
-    st.watcher = None; // drop the previous watcher (stops its thread)
 
-    let app = app.clone();
-    let emit_path = path.to_string();
-    let mut watcher = match RecommendedWatcher::new(
-        move |res: notify::Result<notify::Event>| {
-            if res.is_ok() {
-                let _ = app.emit("directory-changed", emit_path.clone());
-            }
-        },
-        Config::default(),
-    ) {
-        Ok(w) => w,
-        Err(_) => return,
-    };
+    // Create the single watcher lazily on first use; reuse it forever after.
+    if st.watcher.is_none() {
+        let cb_app = app.clone();
+        let watcher = RecommendedWatcher::new(
+            move |res: notify::Result<notify::Event>| {
+                if let Ok(event) = res {
+                    // Ignore pure access events — reading a dir must not loop back
+                    // into a refresh that reads it again.
+                    if matches!(event.kind, EventKind::Access(_)) {
+                        return;
+                    }
+                    let changed = event
+                        .paths
+                        .first()
+                        .and_then(|p| p.to_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let _ = cb_app.emit("directory-changed", changed);
+                }
+            },
+            Config::default(),
+        );
+        match watcher {
+            Ok(w) => st.watcher = Some(w),
+            Err(_) => return,
+        }
+    }
 
-    if watcher.watch(Path::new(path), RecursiveMode::NonRecursive).is_ok() {
-        st.watcher = Some(watcher);
-        st.path = Some(path.to_string());
+    // Swap the watched path on the existing watcher (no drop, no thread join).
+    if let Some(old) = st.path.take() {
+        if let Some(w) = st.watcher.as_mut() {
+            let _ = w.unwatch(Path::new(&old));
+        }
+    }
+    if let Some(w) = st.watcher.as_mut() {
+        if w.watch(Path::new(&path), RecursiveMode::NonRecursive).is_ok() {
+            st.path = Some(path);
+        }
     }
 }

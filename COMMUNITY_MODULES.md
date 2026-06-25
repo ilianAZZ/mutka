@@ -32,8 +32,12 @@ to, and it won't resolve.
 
 > **Dev tip:** during `tauri dev`, modules in this repo's `dev-modules/<id>/index.js` are
 > loaded through the same isolated worker path, so you can iterate without installing.
-> Working examples: `dev-modules/com.dir-stats/index.js` (a command) and
-> `dev-modules/com.folder-inspector/index.js` (a declarative panel + form + status item).
+> Working examples: `dev-modules/com.dir-stats/index.js` (a command),
+> `dev-modules/com.folder-inspector/index.js` (a declarative panel + form + status item),
+> `dev-modules/com.webdav/index.js` (a virtual filesystem + settings UI), and
+> `dev-modules/com.sqlite-browser/index.js` (claims `.sqlite` files, browses tables/rows in
+> the right pane by reading the bytes with `fs:read` and decoding the SQLite file format
+> in-worker — the reference for parsing a file format without a host capability).
 
 ---
 
@@ -193,7 +197,7 @@ column. Calling one without declaring its permission **throws**.
 
 | Capability       | Methods                                                                                                   | Permission                                            |
 | ---------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
-| `host.fs`        | `readDir`, `openItem`, `copyFiles`, `moveFiles`, `deleteItem`, `renameItem`, `createFile`, `createFolder` | `fs:read` (reads/`openItem`) · `fs:write` (mutations) |
+| `host.fs`        | `readDir`, `openItem`, `readBytes`, `cloudStatus`, `copyFiles`, `moveFiles`, `deleteItem`, `renameItem`, `createFile`, `createFolder` | `fs:read` (reads/`openItem`/`readBytes`) · `fs:write` (mutations) |
 | `host.board`     | `readFiles`, `writeFiles(paths, "copy"\|"cut")`                                                           | `clipboard:read` / `clipboard:write`                  |
 | `host.nav`       | `navigate`, `goBack`, `goForward`, `goUp`                                                                 | `navigation`                                          |
 | `host.tabs`      | `openTab`, `openTabInBackground`, `isActive`                                                              | `navigation`                                          |

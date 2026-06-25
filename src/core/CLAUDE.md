@@ -105,7 +105,7 @@ The module execution + permission layer. Files:
 | File                | Responsibility                                                                                                                                                                             |
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `defineModule.ts`   | Author-facing helper. Types only — returns its argument unchanged.                                                                                                                         |
-| `hostProxy.ts`      | Builds the `host` object (`fs`, `board`, `nav`, `tabs`, `dialog`, `ui`, `statusbar`, `sys`, `refresh`, `onCommand`, `onOpen`, `onColumn`, `onUIEvent`, `events.on`, `log`). All methods async. |
+| `hostProxy.ts`      | Builds the `host` object (`fs`, `board`, `nav`, `tabs`, `dialog`, `ui`, `statusbar`, `net`, `sys`, `refresh`, `onCommand`, `onOpen`, `onColumn`, `onUIEvent`, `events.on`, `log`). All methods async. |
 | `capabilities.ts`   | THE gateway vocabulary. Maps each capability to its required permission and the operation that fulfils it. The ONLY file that calls `invoke` / `AppBridge` / `TabManager`.                 |
 | `gateway.ts`        | The permission barrier. Checks the manifest declared the required permission, then runs the capability. No declaration → throws.                                                           |
 | `LocalHost.ts`      | In-process runtime for built-ins.                                                                                                                                                          |
@@ -117,9 +117,11 @@ The module execution + permission layer. Files:
 | `eventWhitelist.ts` | The set of events a module may subscribe to via `host.events.on`.                                                                                                                          |
 
 Permissions: `fs:read`, `fs:write`, `fs:temp`, `clipboard:read`, `clipboard:write`,
-`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `ui`, `shell`. A module must
-declare every one it uses. `ui` gates declarative UI surfaces (`ui.*`) and status-bar items
-(`statusbar.*`). `fs:temp` (writing a short-lived file to the OS temp dir) is a
+`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `ui`, `shell`. A
+module must declare every one it uses. `ui` gates declarative UI surfaces (`ui.*`) and
+status-bar items (`statusbar.*`). There is no SQLite/`db` capability — a module reads a
+`.sqlite` file's bytes via `fs:read` and decodes the format itself in its worker.
+`fs:temp` (writing a short-lived file to the OS temp dir) is a
 deliberately weaker sibling of `fs:write` — e.g. `core.drop-import` needs it to stage
 Finder drops before copying them in.
 

@@ -86,7 +86,9 @@ mutka/
 │
 ├── dev-modules/                 ← repo-local community modules (DEV only)
 │   ├── com.dir-stats/index.js   ← example untrusted module, worker-loaded
-│   └── com.folder-inspector/index.js ← example: declarative panel + form + status item
+│   ├── com.folder-inspector/index.js ← example: declarative panel + form + status item
+│   ├── com.webdav/index.js      ← virtual filesystem (WebDAV) + declarative settings UI
+│   └── com.sqlite-browser/index.js ← claims .sqlite files → tables/rows (decodes the file format in-worker, fs:read only)
 │
 ├── src/                         ← React + TypeScript frontend
 │   ├── CLAUDE.md                ← frontend architecture rules
@@ -157,6 +159,7 @@ mutka/
     ├── tauri.conf.json
     └── src/
         ├── main.rs              ← entry point (calls lib::run)
+        ├── watcher.rs           ← single FSEvents watcher for the current dir
         └── lib.rs              ← all Tauri commands (read_dir, copy_files, …,
                                    list_user_modules, read_module_file)
 ```
@@ -233,9 +236,12 @@ The same format runs in two interchangeable runtimes, differing only in transpor
 | `sys.writeTempFile`                                                              | `fs:temp`           | Rust `write_temp_file` (lower-risk than `fs:write`) |
 
 `ModulePermission`: `fs:read`, `fs:write`, `fs:temp`, `clipboard:read`, `clipboard:write`,
-`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `ui`, `shell` (`shell` is
-reserved — no capability uses it yet). `fs:temp` writes only to the OS temp dir, so it is
-deliberately weaker than `fs:write`. `ui` gates declarative UI + status-bar contributions.
+`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `ui`, `shell`
+(`shell` is reserved — no capability uses it yet). `fs:temp` writes only to the OS temp dir,
+so it is deliberately weaker than `fs:write`. `ui` gates declarative UI + status-bar
+contributions. There is deliberately no SQLite/`db` capability: a `.sqlite` file IS the
+database, so a module reads its bytes with `fs:read` and decodes the format in its own
+worker (see `com.sqlite-browser`) — the core stays format-agnostic.
 
 ### Declarative UI — how a sandboxed module renders (no React, no JSX)
 
@@ -261,12 +267,17 @@ with `host.statusbar.set(item)` and removed with `host.statusbar.remove(id)`.
 
 ### File watching (current directory only)
 
-The host watches **only the directory in view** — Rust arms a single non-recursive `notify`
-watcher inside `read_dir` (re-armed on every navigation) and emits `directory-changed`.
-`core/file-watch/DirectoryWatcher.ts` debounces it and re-broadcasts as the whitelisted
-`directory:changed` event. Modules subscribe via `host.events.on("directory:changed", …)`;
-the built-in `core.auto-refresh` uses it to re-read the list. No module-requested watchers,
-so the cost is bounded.
+The host watches **only the directory in view** — `read_dir` re-arms a single `notify`
+watcher on every navigation and emits `directory-changed`. `core/file-watch/DirectoryWatcher.ts`
+debounces it and re-broadcasts as the whitelisted `directory:changed` event. Modules subscribe
+via `host.events.on("directory:changed", …)`; the built-in `core.auto-refresh` re-reads the
+list. No module-requested watchers, so the cost is bounded.
+
+**Listing is never blocked by watching** (rendering folder content is the priority):
+`watcher::arm` runs on a detached thread and reuses one persistent watcher (unwatch old +
+watch new) instead of dropping/recreating it — dropping a macOS FSEvents watcher joins its
+run-loop thread, which previously stalled every `read_dir`. `Access` events are ignored so
+merely reading a directory can't loop back into a refresh.
 
 ---
 

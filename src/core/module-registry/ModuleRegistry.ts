@@ -227,6 +227,11 @@ class ModuleRegistryClass {
   getActions(): { id: string; label: string }[] {
     return Array.from(this.actions.values()).map((a) => ({ id: a.id, label: a.label }));
   }
+
+  /** id + display name of every registered module (for the settings nav). */
+  getModuleInfo(): { id: string; name: string }[] {
+    return Array.from(this.modules.values()).map((m) => ({ id: m.id, name: m.name }));
+  }
 }
 
 export const ModuleRegistry = new ModuleRegistryClass();

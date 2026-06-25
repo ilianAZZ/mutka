@@ -35,15 +35,13 @@ export function Sidebar({ side, panels, panelProps }: SidebarProps) {
   );
 
   const handleTabClick = useCallback((panel: MutkaSidebarPanel) => {
-    setActiveId((current) => {
-      if (current === panel.id) {
-        setCollapsed((c) => !c);
-        return current;
-      }
+    if (panel.id === activeId) {
+      setCollapsed((c) => !c);
+    } else {
+      setActiveId(panel.id);
       setCollapsed(false);
-      return panel.id;
-    });
-  }, []);
+    }
+  }, [activeId]);
 
   if (panels.length === 0 || !active) return null;
 
