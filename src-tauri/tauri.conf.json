@@ -19,7 +19,8 @@
         "minHeight": 420,
         "decorations": true,
         "transparent": true,
-        "devtools": true
+        "devtools": true,
+        "dragDropEnabled": false
       }
     ],
     "security": {

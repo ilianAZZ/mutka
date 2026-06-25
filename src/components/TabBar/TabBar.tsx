@@ -2,15 +2,17 @@ import { useState, useEffect } from "react";
 import { EventBus } from "../../core/event-bus/EventBus";
 import { Events } from "../../core/event-bus/events";
 import { TabManager, type TabsSnapshot } from "../../core/tab-manager/TabManager";
-import type { TopBarPanelProps } from "../../core/module-registry/module-registry.types";
 import "./TabBar.css";
 
-export function TabBar(_props: TopBarPanelProps) {
+// Core tab strip. Driven entirely by TabManager (single source of truth for
+// tabs). The `core.tabs` module contributes the commands/shortcuts that open
+// tabs; this component just renders the current tab state and wires clicks.
+export function TabBar() {
   const [snap, setSnap] = useState<TabsSnapshot>(() => TabManager.getSnapshot());
 
   useEffect(() => EventBus.on(Events.Tabs.changed, (d) => setSnap(d)), []);
 
-  if (snap.tabs.length < 2) return null;
+  if (!snap.tabs.length) return null;
 
   return (
     <div className="tab-bar" role="tablist">
@@ -25,6 +27,7 @@ export function TabBar(_props: TopBarPanelProps) {
               aria-selected={isActive}
               className={`tab${isActive ? " tab--active" : ""}`}
               onClick={() => TabManager.switchTab(tab.id)}
+              onAuxClick={(e) => { if (e.button === 1) { e.preventDefault(); TabManager.closeTab(tab.id); } }}
               title={tab.path}
             >
               <span className="tab-icon">📁</span>

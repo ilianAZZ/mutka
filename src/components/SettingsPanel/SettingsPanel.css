@@ -145,3 +145,191 @@
   background: var(--glass-light);
   color: var(--text);
 }
+
+/* ─── Keyboard shortcuts ───────────────────────────────────────────────────── */
+.settings-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.keybind-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.keybind-btn {
+  background: var(--glass-subtle);
+  border: 1px solid var(--rim-mid);
+  color: var(--text-mid);
+  cursor: default;
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: var(--r-sm);
+  transition: background 0.12s, color 0.12s;
+}
+
+.keybind-btn:hover {
+  background: var(--glass-light);
+  color: var(--text);
+}
+
+.keybind-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.keybind-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  background: var(--glass-mid);
+  border: 1px solid var(--rim-mid);
+  border-radius: var(--r-md);
+}
+
+.keybind-label {
+  flex: 1;
+  font-size: 12.5px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.keybind-chip {
+  background: var(--glass-subtle);
+  border: 1px solid var(--rim-dark);
+  color: var(--text-mid);
+  cursor: default;
+  font-size: 12px;
+  min-width: 44px;
+  padding: 2px 8px;
+  border-radius: var(--r-sm);
+  transition: background 0.12s, color 0.12s;
+}
+
+.keybind-chip:hover {
+  background: var(--glass-light);
+  color: var(--text);
+}
+
+.keybind-chip--custom {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.keybind-chip--capturing {
+  color: var(--accent);
+  border-color: var(--accent);
+  font-size: 10.5px;
+}
+
+.keybind-reset {
+  background: none;
+  border: none;
+  color: var(--text-subtle);
+  cursor: default;
+  font-size: 12px;
+  padding: 0 2px;
+}
+
+.keybind-reset:hover {
+  color: var(--text);
+}
+
+/* ─── Nextcloud config fields ──────────────────────────────────────────────── */
+.settings-hint {
+  font-size: 11px;
+  color: var(--text-subtle);
+  margin: -2px 4px 8px;
+}
+
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 8px;
+  padding: 0 4px;
+}
+
+.settings-field-label {
+  font-size: 11px;
+  color: var(--text-mid);
+}
+
+.settings-input {
+  background: var(--glass-subtle);
+  border: 1px solid var(--rim-mid);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  font: inherit;
+  font-size: 12.5px;
+  padding: 5px 8px;
+  outline: none;
+  transition: border-color 0.12s;
+}
+
+.settings-input:focus {
+  border-color: var(--accent);
+}
+
+/* ─── WebDAV accounts ──────────────────────────────────────────────────────── */
+.account-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: var(--glass-mid);
+  border: 1px solid var(--rim-mid);
+  border-radius: var(--r-md);
+  margin-bottom: 4px;
+}
+
+.account-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.account-name {
+  font-size: 12.5px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.account-sub {
+  font-size: 10.5px;
+  color: var(--text-subtle);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.account-form {
+  padding: 4px 0;
+}
+
+.account-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  padding: 4px 4px 0;
+}
+
+.keybind-btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.keybind-btn--primary:hover {
+  background: var(--accent);
+  color: #fff;
+  opacity: 0.9;
+}

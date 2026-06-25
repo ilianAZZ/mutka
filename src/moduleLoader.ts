@@ -1,88 +1,25 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { MacowsModule } from "./core/module-registry/module-registry.types";
-import { ModuleRegistry } from "./core/module-registry/ModuleRegistry";
+import { SandboxHost } from "./core/sandbox/SandboxHost";
+import { LocalHost } from "./core/sandbox/LocalHost";
+import type { SandboxModuleDef } from "./core/sandbox/defineModule";
 
 interface UserModuleEntry {
   id: string;
   entryPath: string;
 }
 
-// Vite resolves this glob at build time — it includes every modules/*/index.ts file.
-// When you add a new module folder, it is automatically discovered here on next restart.
-const moduleFiles = import.meta.glob<Record<string, unknown>>(
-  "./modules/*/index.ts",
-  { eager: true }
-);
-
-// Core modules must be registered in this exact order.
-// core.navigation must be first so its priority-0 open handlers are in place
-// before any other module registers higher-priority overrides.
-const CORE_ORDER = [
-  "core.navigation",
-  "core.clipboard",
-  "core.file-ops",
-  "core.mouse-navigation",
-  "core.tabs",
-];
-
-function isMacowsModule(value: unknown): value is MacowsModule {
-  if (typeof value !== "object" || value === null) return false;
-  const v = value as Record<string, unknown>;
-  return (
-    typeof v.id === "string" &&
-    typeof v.name === "string" &&
-    typeof v.version === "string" &&
-    Array.isArray(v.actions)
-  );
-}
-
-/**
- * Discover all modules via Vite glob, then register them with ModuleRegistry
- * in the correct order (core modules first, community modules after).
- *
- * Call this once at app startup before rendering the root component.
- */
-export function loadModules(): void {
-  const discovered = new Map<string, MacowsModule>();
-
-  for (const exports of Object.values(moduleFiles)) {
-    for (const value of Object.values(exports)) {
-      if (isMacowsModule(value)) {
-        if (discovered.has(value.id)) {
-          console.warn(`[moduleLoader] Duplicate module id "${value.id}" — skipping second definition`);
-        } else {
-          discovered.set(value.id, value);
-        }
-      }
-    }
-  }
-
-  // Register core modules in the required order
-  for (const id of CORE_ORDER) {
-    const mod = discovered.get(id);
-    if (mod) {
-      ModuleRegistry.register(mod);
-      discovered.delete(id);
-    }
-  }
-
-  // Register any remaining modules (e.g. community modules placed in src/modules/)
-  for (const mod of discovered.values()) {
-    ModuleRegistry.register(mod);
-  }
-}
-
 /**
  * Load community modules installed in ~/.macows/modules/<id>/index.js.
  *
- * Each module is a pre-bundled ESM file. We read it via IPC, wrap it in a
- * Blob URL, and dynamic-import it — no asset protocol or CSP changes needed.
+ * SECURITY MODEL: community code is UNTRUSTED. Unlike built-in modules (which
+ * run in-process), each community module is loaded into an isolated Web Worker
+ * via SandboxHost — no DOM, no `invoke`, no reference to the core. It reaches
+ * the system only through permission-checked capability calls. A module that
+ * did not declare a permission physically cannot use it.
  *
- * Community modules use `window.__TAURI__.core.invoke` instead of
- * `@tauri-apps/api/core` because static imports are unavailable in a blob context.
- *
- * Call this once at app startup (after loadModules). It is async because it
- * reads files from disk; built-in modules are always registered first.
+ * Community modules are plain ESM files that `export default defineModule({...})`.
+ * Call once at startup after loadBuiltinSandboxModules so built-in open handlers
+ * (priority 0) are registered before community overrides.
  */
 export async function loadCommunityModules(): Promise<void> {
   let entries: UserModuleEntry[];
@@ -96,22 +33,50 @@ export async function loadCommunityModules(): Promise<void> {
   for (const entry of entries) {
     try {
       const source = await invoke<string>("read_module_file", { path: entry.entryPath });
-      const blob = new Blob([source], { type: "application/javascript" });
-      const url = URL.createObjectURL(blob);
-
-      try {
-        // @vite-ignore — intentional dynamic import from a runtime blob URL
-        const exports = await import(/* @vite-ignore */ url);
-        for (const value of Object.values(exports)) {
-          if (isMacowsModule(value)) {
-            ModuleRegistry.register(value as MacowsModule);
-          }
-        }
-      } finally {
-        URL.revokeObjectURL(url);
-      }
+      const host = new SandboxHost(source);
+      await host.register();
     } catch (err) {
-      console.error(`[moduleLoader] Failed to load community module "${entry.id}":`, err);
+      console.error(`[moduleLoader] Failed to load sandboxed module "${entry.id}":`, err);
+    }
+  }
+}
+
+// Built-in sandbox modules: trusted, written in the new defineModule format, run
+// in-process via LocalHost through the SAME permission gateway as community ones.
+const builtinSandboxFiles = import.meta.glob<{ default: SandboxModuleDef }>(
+  "./sandbox-builtins/*.ts",
+  { eager: true }
+);
+
+/** Register every built-in sandbox module. Call once at startup. */
+export async function loadBuiltinSandboxModules(): Promise<void> {
+  for (const mod of Object.values(builtinSandboxFiles)) {
+    const def = mod.default;
+    if (!def || typeof def.id !== "string") continue;
+    try {
+      await new LocalHost(def).register();
+    } catch (err) {
+      console.error(`[moduleLoader] Failed to load built-in sandbox module "${def.id}":`, err);
+    }
+  }
+}
+
+// Dev-only: load community modules from the repo's ./dev-modules folder instead
+// of ~/.macows/modules, so the isolated worker path is testable in `tauri dev`
+// without installing anything. `?raw` gives the file source as a string.
+const devModuleSources = import.meta.glob<string>(
+  "../dev-modules/*/index.js",
+  { query: "?raw", import: "default", eager: true }
+);
+
+/** Load repo-local dev community modules through the isolated worker runtime. */
+export async function loadDevModules(): Promise<void> {
+  if (!import.meta.env.DEV) return;
+  for (const [path, source] of Object.entries(devModuleSources)) {
+    try {
+      await new SandboxHost(source).register();
+    } catch (err) {
+      console.error(`[moduleLoader] Failed to load dev module "${path}":`, err);
     }
   }
 }

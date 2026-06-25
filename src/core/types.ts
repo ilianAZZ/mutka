@@ -24,6 +24,24 @@ export interface FileItem {
   modified: number;
   /** Lowercase extension without dot, e.g. "pdf". Undefined for dirs or extensionless files. */
   extension?: string;
+  /** True for dotfiles (name starts with "."). The UI dims these like Finder. */
+  isHidden: boolean;
+  /**
+   * True if this entry is a symbolic link. `isDir`/`size`/`modified` reflect the
+   * link's TARGET (Rust follows it), so a link to a folder navigates in-app.
+   */
+  isSymlink: boolean;
+  /**
+   * True if this directory is a macOS package/bundle (.app, .bundle, …). Though
+   * `isDir` is true, the UI launches it like a file and shows its real icon
+   * instead of navigating into it.
+   */
+  isPackage: boolean;
+  /**
+   * True if this folder carries a custom Finder icon (an "Icon\r" file). Still
+   * navigable, but the UI shows its real icon instead of the generic folder one.
+   */
+  hasCustomIcon: boolean;
 }
 
 // ─── Clipboard ────────────────────────────────────────────────────────────────
@@ -79,22 +97,17 @@ export interface DialogAPI {
   confirm(options: DialogConfirmOptions): Promise<boolean>;
 }
 
-// ─── Action context ────────────────────────────────────────────────────────────
+// ─── View context ────────────────────────────────────────────────────────────
 
-export interface ActionContext {
-  /** Files currently selected in the active view */
+/**
+ * Read-only view of app state — used by isEnabled / isVisible (when) checks and
+ * passed to the ContextMenu component for rendering. Modules never act through
+ * this; all privileged operations go through the `host` capabilities (see
+ * core/sandbox). This is purely for visibility/enablement predicates.
+ */
+export interface BaseContext {
   selectedItems: FileItem[];
-  /** Absolute path of the directory currently displayed */
   currentDirectory: string;
-  /**
-   * Current clipboard state — read-only snapshot.
-   * To update, emit EventBus.emit("clipboard:changed", state) from your module.
-   */
   clipboard: ClipboardState;
-  /** Navigation API — back, forward, up, and direct navigation */
   navigation: NavigationAPI;
-  /** Re-read the current directory and refresh the file list */
-  refresh: () => void;
-  /** Modal dialog API — use instead of native prompt() / confirm() */
-  dialog: DialogAPI;
 }

@@ -2,17 +2,17 @@
 #breadcrumb {
   display: flex;
   align-items: center;
-  background: var(--glass-mid);
-  backdrop-filter: var(--blur-light);
-  -webkit-backdrop-filter: var(--blur-light);
-  border: 1px solid var(--rim-mid);
-  border-radius: var(--r-md);
-  padding: 4px 10px;
+  background: var(--ctl-bg);
+  backdrop-filter: var(--ctl-blur);
+  -webkit-backdrop-filter: var(--ctl-blur);
+  border: none;
+  border-radius: var(--r-lg);
+  padding: 6px 12px;
   flex: 1;
   min-width: 0;
   overflow: hidden;
-  max-height: 30px;
-  box-shadow: var(--shadow-inner);
+  max-height: 32px;
+  box-shadow: var(--ctl-shadow);
 }
 
 #breadcrumb .breadcrumb-item {
@@ -30,15 +30,34 @@
 #breadcrumb .breadcrumb-segment {
   background: none;
   border: none;
-  color: var(--accent);
+  color: var(--text-mid);
   cursor: default;
   font-size: 12px;
   font-weight: 500;
-  padding: 0 3px;
+  padding: 1px 4px;
   border-radius: 4px;
-  transition: background 0.1s;
+  transition: background 0.1s, color 0.1s;
 }
 
 #breadcrumb .breadcrumb-segment:hover {
-  background: var(--accent-light);
+  background: var(--glass-light);
+  color: var(--text);
+}
+
+/* Editable address bar (Windows-style): the whole bar becomes a text field. */
+#breadcrumb.breadcrumb--editing {
+  padding: 0 12px;
+}
+
+#breadcrumb .breadcrumb-input {
+  flex: 1;
+  min-width: 0;
+  background: none;
+  border: none;
+  outline: none;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  padding: 0;
 }

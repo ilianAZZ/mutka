@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./Dialog.css";
-import type { DialogPromptOptions, DialogConfirmOptions } from "../core/types";
+import type { DialogPromptOptions, DialogConfirmOptions } from "../../core/types";
 
 interface PromptDialogState {
   type: "prompt";

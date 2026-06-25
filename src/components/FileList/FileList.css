@@ -1,14 +1,16 @@
 /* ─── File list ──────────────────────────────────────────────────────────────── */
+/* Content area is essentially opaque (only the sidebar/toolbar are glass) — this is
+   what keeps dark mode actually dark instead of letting the OS vibrancy bleed through. */
 #file-list {
   flex: 1;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  background: rgba(242, 242, 247, 0.82);
+  background: rgba(246, 246, 248, 0.97);
 }
 
 [data-theme="dark"] #file-list {
-  background: rgba(18, 18, 22, 0.72);
+  background: rgba(24, 24, 26, 0.98);
 }
 
 #file-list .file-list-empty {
@@ -18,6 +20,28 @@
   justify-content: center;
   color: var(--text-subtle);
   font-size: 14px;
+}
+
+#file-list .file-list-error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 24px 40px;
+  text-align: center;
+}
+
+#file-list .file-list-error-icon {
+  font-size: 28px;
+}
+
+#file-list .file-list-error-text {
+  color: var(--text-mid);
+  font-size: 13px;
+  line-height: 1.5;
+  max-width: 420px;
 }
 
 #file-list .file-list-header {
@@ -42,47 +66,45 @@
   flex: 1;
 }
 
+/* Drop-into-current-folder highlight (files dragged from Finder onto the empty area) */
+#file-list.file-list--drop {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* macOS Finder list view: full-width rows, zebra striping, solid-blue selection */
 #file-list .file-row {
   position: relative;
   display: grid;
   grid-template-columns: 1fr 180px 100px 90px;
-  padding: 5px 16px;
+  padding: 4px 16px;
   cursor: default;
   align-items: center;
-  border-radius: var(--r-sm);
-  margin: 1px 6px;
-  transition: background 0.08s;
 }
 
-#file-list .file-row:hover {
-  background: var(--glass-mid);
-  backdrop-filter: var(--blur-light);
-  -webkit-backdrop-filter: var(--blur-light);
+/* Zebra striping — every other row gets a faint tint (Finder's "% 2") */
+#file-list .file-row:nth-child(even) {
+  background: var(--row-stripe);
 }
 
+#file-list .file-row:hover:not(.selected) {
+  background: var(--row-hover);
+}
+
+/* Focused selection = solid blue bar spanning the full width, white text */
 #file-list .file-row.selected {
-  background: var(--accent-sel);
+  background: var(--row-selected);
+  color: var(--row-selected-text);
 }
 
 #file-list .file-row.selected .col-date,
 #file-list .file-row.selected .col-type,
 #file-list .file-row.selected .col-size {
-  color: var(--accent);
-  opacity: 0.8;
+  color: var(--row-selected-text);
+  opacity: 0.78;
 }
 
 #file-list .file-row.cut {
   opacity: 0.38;
-}
-
-/* macOS-style selection ring */
-#file-list .file-row.selected::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: var(--r-sm);
-  box-shadow: inset 0 0 0 1px rgba(0, 122, 255, 0.4);
-  pointer-events: none;
 }
 
 #file-list .col-name {
@@ -108,8 +130,95 @@
 }
 
 #file-list .file-icon {
-  font-size: 17px;
+  position: relative;
   flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   line-height: 1;
+}
+
+/* Native macOS / module-supplied icon image. Sized down from a larger source,
+   so it stays crisp. Rendered via <img src> only — never innerHTML. */
+#file-list .file-icon-img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.12));
+  -webkit-user-drag: none;
+}
+
+/* Neutral square shown while the native icon is still loading. */
+#file-list .file-icon-placeholder {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--text-faint, rgba(127, 127, 127, 0.18));
+}
+
+/* Alias arrow overlay, like Finder's symlink badge. */
+#file-list .file-icon-symlink {
+  position: absolute;
+  left: -2px;
+  bottom: -2px;
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 700;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  border-radius: 50%;
+  width: 11px;
+  height: 11px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Hidden / system files (dotfiles) are dimmed, like in the Finder with ⌘⇧. */
+#file-list .file-row--hidden {
+  opacity: 0.5;
+}
+
+/* ─── Sortable header columns ──────────────────────────────────────────────── */
+#file-list .col-sort {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: var(--text-mid);
+  cursor: pointer;
+  user-select: none;
+}
+
+#file-list .col-sort:hover {
+  color: var(--text);
+}
+
+#file-list .col-sort--active {
+  color: var(--text);   /* sorted column: just emphasized, not blue (Finder style) */
+}
+
+#file-list .sort-arrow {
+  font-size: 8px;
+  line-height: 1;
+}
+
+/* ─── Drag & drop target ───────────────────────────────────────────────────── */
+#file-list .file-row.drop-target {
+  background: var(--accent-sel);
+}
+
+#file-list .file-row.drop-target::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  box-shadow: inset 0 0 0 2px var(--accent);
+  pointer-events: none;
 }

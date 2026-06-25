@@ -1,200 +1,208 @@
 # Community Modules — Developer Guide
 
-Macows Explorer is built around a module system. Every feature — clipboard, navigation, file ops — is a module. Community members can build and distribute their own modules using the same API.
+Macows Explorer is built around a module system. Every feature — clipboard, navigation,
+file ops — is a module, and they all use the **same format** you'll use here. A community
+module is a single ESM file that `export default`s a `defineModule(...)` object. It imports
+nothing: everything it can do arrives through the `host` it's given, and every `host` call
+is checked against the permissions it declares.
+
+The key difference between built-in and community modules is **where they run**: built-ins
+run in-process; **your community module runs ISOLATED in a Web Worker** — no DOM, no
+`invoke`, no reference to the app. It can only reach the system through permission-checked
+capability calls. This is by design (see [Security model](#security-model)).
 
 ---
 
-## How modules are loaded (production)
+## How modules are loaded
 
-At startup, Macows Explorer scans `~/.macows/modules/` for community modules and loads them alongside the built-in ones. Built-in modules are bundled into the app; community modules live on disk and are loaded dynamically at runtime.
+At startup Macows scans `~/.macows/modules/` and loads each module into its own isolated
+worker, after the built-in modules (so built-in open handlers at priority 0 are registered
+before your overrides).
 
 ```text
 ~/.macows/modules/
-  my-extension/
-    index.js        ← pre-bundled ESM (required)
-    manifest.json   ← metadata for the future marketplace (optional for now)
-  another-module/
-    index.js
+  com.dir-stats/
+    index.js        ← your module, a single ESM file (required)
 ```
 
-**Loading mechanism:** Macows reads the JS file via IPC, wraps it in a Blob URL, and `import()`s it. This means your module must be **pre-bundled into a single file** — you can't use `import` statements at the top of your module. All dependencies must be inlined by your bundler.
+The app reads `index.js` over IPC and runs it inside a worker. Because the worker has no
+module resolver, **your file must be self-contained** — pre-bundle any dependencies into the
+one file. Do NOT `import` from `@tauri-apps/api`, the core, or anything else; you don't need
+to, and it won't resolve.
+
+> **Dev tip:** during `tauri dev`, modules in this repo's `dev-modules/<id>/index.js` are
+> loaded through the same isolated worker path, so you can iterate without installing. A
+> complete working example lives at `dev-modules/com.dir-stats/index.js`.
 
 ---
 
 ## Writing a module
 
-A module is a plain JavaScript object that satisfies the `MacowsModule` shape. Export it as a named or default export from `index.js`.
+A module is an object with `id`, `name`, `version`, `permissions`, optional `commands` /
+`openHandlers`, and a `setup(host)` function. Here is the full canonical example (this is
+the real `dev-modules/com.dir-stats/index.js`):
 
 ```javascript
-// ~/.macows/modules/my-extension/index.js
-
-// Use window.__TAURI__.core.invoke — NOT `import { invoke } from "@tauri-apps/api/core"`
-// Static imports are unavailable in a community module (blob context).
-const { invoke } = window.__TAURI__.core;
-
-export const myExtension = {
-  id: "acme.my-extension",       // unique forever — never change after publish
-  name: "My Extension",
+// ~/.macows/modules/com.dir-stats/index.js
+//
+// Untrusted, runs ISOLATED in a Web Worker. Imports NOTHING — everything it can
+// do arrives through `host`, and every host call is gated by the permissions
+// declared below.
+export default {
+  id: "com.dir-stats",
+  name: "Directory Stats",
   version: "1.0.0",
-  description: "One sentence describing what this module does.",
-
-  actions: [
+  permissions: ["fs:read"],          // declare every capability you use, or it's denied
+  commands: [
     {
-      id: "acme.my-extension.do-thing",
-      label: "Do Thing",
-      shortcut: "meta+shift+d",
-      showInContextMenu: true,
-
-      isEnabled: (ctx) => ctx.selectedItems.length > 0,
-
-      execute: async (ctx) => {
-        const paths = ctx.selectedItems.map((i) => i.path);
-        await invoke("open_item", { path: paths[0] });
-        ctx.refresh();
-      },
+      id: "com.dir-stats.count",
+      label: "Count items here (sandboxed)",
+      contextMenu: true,
+      contextMenuCategory: "View",
+      when: { selection: "any" },     // declarative visibility (see below)
     },
   ],
+  setup(host) {
+    host.onCommand("com.dir-stats.count", async (snap) => {
+      const items = await host.fs.readDir(snap.currentDirectory);
+      const dirs = items.filter((i) => i.isDir).length;
+      host.log(
+        `${snap.currentDirectory} → ${items.length} items (${dirs} folders, ${items.length - dirs} files)`
+      );
+    });
+  },
 };
 ```
 
-### `ActionContext` — what you get in `execute`
+> If you write in TypeScript you can `import { defineModule } from ".../defineModule"` for
+> types during development and `export default defineModule({...})` — but the **shipped**
+> `index.js` must be bundled to a self-contained file with no remaining imports. The plain
+> object above is exactly what that bundle looks like.
 
-| Property                    | Type                      | Description                          |
-| --------------------------- | ------------------------- | ------------------------------------ |
-| `selectedItems`             | `FileItem[]`              | Currently selected files/folders     |
-| `currentDirectory`          | `string`                  | Active directory path                |
-| `clipboard`                 | `ClipboardState`          | Read-only clipboard snapshot         |
-| `navigation.navigate(path)` | `(path: string) => void`  | Navigate to a directory              |
-| `navigation.goBack()`       | `() => void`              | Go back in history                   |
-| `navigation.goForward()`    | `() => void`              | Go forward in history                |
-| `navigation.canGoBack`      | `boolean`                 | Whether back is available            |
-| `navigation.canGoForward`   | `boolean`                 | Whether forward is available         |
-| `refresh()`                 | `() => void`              | Reload the current directory listing |
-| `dialog.prompt(opts)`       | `Promise<string \| null>` | Show a text-input dialog             |
-| `dialog.confirm(opts)`      | `Promise<boolean>`        | Show a confirm dialog                |
+### Contributions
 
-### `FileItem` — the shape of a file/folder
+**`commands`** — entries surfaced into menus / shortcuts. You register the handler in
+`setup` with `host.onCommand(id, handler)`.
 
-```typescript
-interface FileItem {
-  name: string;
-  path: string;
-  isDir: boolean;
-  size: number;        // bytes
-  modified: number;    // Unix timestamp (seconds)
-  extension?: string;  // "png", "ts", etc. — absent for directories
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | `string` | Globally unique, `"module-id.command-name"`. |
+| `label` | `string` | Shown in menus. |
+| `icon` | `string?` | Icon-registry key (unknown keys render nothing). |
+| `shortcut` | `string?` | Normalized, e.g. `"meta+shift+d"`, `"f2"`. Last registration wins on conflict. |
+| `contextMenu` | `boolean?` | Show in the right-click menu. |
+| `contextMenuCategory` | `string?` | Group header. Use `"File" / "Edit" / "Selection" / "View" / "Share"` or any string. |
+| `when` | `WhenClause?` | Declarative visibility (below). |
+
+The handler receives a serializable **snapshot**:
+`{ selectedItems: FileItem[], currentDirectory: string, clipboard: ClipboardState }`.
+
+**`openHandlers`** — override double-click behavior for matching items. Register with
+`host.onOpen(handlerId, handler)`.
+
+```javascript
+openHandlers: [
+  { id: "com.img.open", priority: 10, match: { extensions: ["png", "jpg"] }, handler: "open-image" },
+],
+setup(host) {
+  host.onOpen("open-image", (item) => { /* item: FileItem */ });
 }
 ```
 
----
+`match` is `{ isDir?: boolean; extensions?: string[] }`. `priority` 0 is the core default;
+use a higher number to win. The handler receives the matched `FileItem`.
 
-## Bundling your module
+### Visibility — the `when` clause
 
-Your source can be TypeScript. Use Vite in library mode to produce a single ESM file.
+A function predicate cannot cross the worker boundary, so visibility is **data**, evaluated
+host-side (same approach as VS Code when-clauses):
 
-**Minimal `vite.config.ts` for a community module:**
-
-```typescript
-import { defineConfig } from "vite";
-
-export default defineConfig({
-  build: {
-    lib: {
-      entry: "src/index.ts",
-      formats: ["es"],
-      fileName: "index",
-    },
-    rollupOptions: {
-      // Do NOT externalize anything — everything must be inlined.
-      // The module is loaded from a blob URL and cannot resolve bare specifiers.
-      external: [],
-    },
-    outDir: "dist",
-  },
-});
+```javascript
+when: { selection: "single" }     // show only when exactly one item is selected
+when: { clipboard: "hasItems" }   // e.g. a Paste command
 ```
 
-Run `vite build` → copy `dist/index.js` to `~/.macows/modules/<your-id>/index.js`.
+`selection` values: `any` · `none` · `some` · `single` · `multiple` · `singleDir` ·
+`singleFile` · `files` · `dirs`. `clipboard`: `"hasItems"`.
 
-**Exception:** `window.__TAURI__` is available as a global — don't bundle it.
+---
+
+## The `host` API
+
+Every method is **async** (returns a Promise) and gated by the permission in the right
+column. Calling one without declaring its permission **throws**.
+
+| Capability | Methods | Permission |
+| --- | --- | --- |
+| `host.fs` | `readDir`, `openItem`, `copyFiles`, `moveFiles`, `deleteItem`, `renameItem`, `createFile`, `createFolder` | `fs:read` (reads/`openItem`) · `fs:write` (mutations) |
+| `host.board` | `readFiles`, `writeFiles(paths, "copy"\|"cut")` | `clipboard:read` / `clipboard:write` |
+| `host.nav` | `navigate`, `goBack`, `goForward`, `goUp` | `navigation` |
+| `host.tabs` | `openTab`, `openTabInBackground`, `isActive` | `navigation` |
+| `host.dialog` | `prompt`, `confirm` | `dialog` |
+| `host.sys` | `homeDir` | `fs:read` |
+| `host.refresh()` | re-read the current directory | `fs:read` |
+
+Non-privileged helpers (no permission needed):
+- `host.onCommand(id, handler)` / `host.onOpen(handlerId, handler)` — register handlers.
+- `host.events.on(event, handler)` — subscribe to a **whitelisted** app event (currently
+  only `"input:mouse-navigate"` and `"file:modifier-open"`). Other events are ignored.
+- `host.log(...args)` — forwarded to the app console, prefixed with your module id.
+
+### Permissions
+
+Declare every capability you use in `permissions`:
+
+`fs:read` · `fs:write` · `clipboard:read` · `clipboard:write` · `navigation` · `dialog` ·
+`network` · `shell`.
 
 ---
 
 ## Installing a module
 
 ```bash
-# Create the modules directory if it doesn't exist
-mkdir -p ~/.macows/modules/my-extension
-
-# Copy your bundled output
-cp dist/index.js ~/.macows/modules/my-extension/index.js
-
-# Restart Macows Explorer
+mkdir -p ~/.macows/modules/com.dir-stats
+cp index.js ~/.macows/modules/com.dir-stats/index.js
+# restart Macows Explorer
 ```
 
-The module is registered on next app launch. No build step is needed on the user's machine.
+The module loads on next launch into its own isolated worker.
 
 ---
 
 ## Module ID convention
 
-| Origin              | Format                      | Example              |
-| ------------------- | --------------------------- | -------------------- |
-| Community           | `author.module-name`        | `acme.git-status`    |
-| Fork of existing    | `author.original-name-fork` | `bob.clipboard-fork` |
-| Built-in (reserved) | `core.*`                    | `core.navigation`    |
+| Origin | Format | Example |
+| --- | --- | --- |
+| Community | `author.module-name` | `acme.git-status` |
+| Fork of existing | `author.original-name-fork` | `bob.clipboard-fork` |
+| Built-in (reserved) | `core.*` | `core.navigation` |
 
-IDs are permanent. **Never rename a module ID after users install it** — it would break their install.
+IDs are permanent. **Never rename a module ID after users install it** — it breaks their install.
 
 ---
 
 ## Security model
 
-Community modules run in the same WebView as the app, with full access to the `ActionContext` and all Tauri commands the app exposes. There is currently no sandbox.
+Community modules are treated as **untrusted code** and enforced by two layers:
 
-**What a module can do:**
-- Call any Tauri command already registered in `lib.rs` via `invoke()`
-- Subscribe to and emit EventBus events
-- Register new actions, open handlers, and sidebar panels
+1. **Worker isolation** — your module runs in a Web Worker with no DOM, no `invoke`, and no
+   reference to the app or core. Its only window on the world is `postMessage`. It physically
+   cannot bypass the host: there is nothing privileged in its scope to reach for.
 
-**What a module cannot do (yet):**
-- Register new Tauri commands (Rust code must be in the app binary)
-- Access the network directly (no Tauri http plugin is exposed)
-- Modify the DOM outside its sidebar panel component
+2. **Permission gateway** — every `host.*` call is checked by `core/sandbox/gateway.ts`
+   against your declared `permissions`. The capability runs only if the required permission
+   is present (the actual operation lives in `core/sandbox/capabilities.ts`, the single place
+   that touches the file system, clipboard, navigation, or tabs). Undeclared → denied.
 
-Future versions will add a `permissions` field to the `MacowsModule` interface so users can see and approve what each module can access before installing.
+**See it yourself:** in the example above, remove `"fs:read"` from `permissions` and reload.
+The same code now throws on `host.fs.readDir(...)`:
 
----
-
-## Planned: in-app marketplace (Phase 2)
-
-The goal is a VS Code-style extension panel built into Macows Explorer. The planned flow:
-
-1. **Module registry** — a public JSON endpoint (or npm tag `macows-module`) lists available modules with metadata: `id`, `name`, `description`, `version`, `author`, `downloadUrl`.
-
-2. **Module Manager UI** — a built-in sidebar panel (`core.module-manager`) that browses the registry, shows installed modules, and lets users install/uninstall/update.
-
-3. **Install flow** — the Module Manager downloads the bundled `index.js` to `~/.macows/modules/<id>/` and optionally hot-reloads the module without a restart (using `ModuleRegistry.unregister()` + re-import).
-
-4. **Permission UI** — before install, the user sees a list of the module's declared permissions (e.g. `invoke:delete_item`, `invoke:open_item`).
-
-### What to implement now (Phase 1 → 2 bridge)
-
-Add `manifest.json` next to your `index.js` so the future marketplace can read it:
-
-```json
-{
-  "id": "acme.my-extension",
-  "name": "My Extension",
-  "version": "1.0.0",
-  "description": "One sentence.",
-  "author": "Your Name",
-  "homepage": "https://github.com/you/my-extension",
-  "permissions": ["invoke:open_item"]
-}
+```text
+Permission denied: "fs.readDir" requires "fs:read", which "com.dir-stats" did not declare.
 ```
 
-This file is ignored today but will be required by the marketplace.
+Add it back and the call works again. This is the contract: declare what you use, get exactly
+that, nothing more.
 
 ---
 
@@ -202,5 +210,7 @@ This file is ignored today but will be required by the marketplace.
 
 - **Registry URL**: npm tag `macows-module`? Custom JSON endpoint? GitHub topic?
 - **Module namespace**: `author.name` (current) vs `@author/name`?
-- **Permission enforcement**: declared vs. runtime-enforced?
-- **Code signing**: trust model for marketplace modules?
+- **Custom UI from a worker**: sidebar panels from a sandboxed module are not supported yet
+  (rendering React across the worker boundary is a separate problem). Core UI may register
+  panels directly today.
+- **Code signing**: trust model for distributed modules.

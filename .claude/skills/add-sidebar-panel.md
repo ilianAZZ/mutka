@@ -1,134 +1,84 @@
 ---
 name: add-sidebar-panel
-description: Add a sidebar panel component to a Macows Explorer module for persistent UI (preview, git status, favorites, etc.).
+description: Explains Macows Explorer sidebar panels (MacowsSidebarPanel + components/Sidebar) and why sandboxed modules cannot contribute them yet.
 ---
 
-# Skill: Add a sidebar panel
+# Skill: Sidebar panels
 
-Use this skill when a module wants to display persistent UI in the sidebar
-(e.g. file preview, git status, tag browser, favorites).
+> **Read this first.** Module-contributed sidebar panels are **NOT supported** in the
+> current unified (sandboxed) module model. A module runs in a Web Worker and cannot
+> ship a React component to the main thread, so the `defineModule` format has no
+> `sidebarPanels` field and `host` exposes no way to register UI. Only **core UI** can
+> register a panel today. The unsolved problem ("constrained host-rendered components
+> vs. iframe webview") is tracked in `TODO.md` → "Sandboxed custom UI".
 
-## How panels work
+Use this skill to understand the panel infrastructure that already exists and where the
+gap is — not as a recipe a community module can follow.
 
-Panels are React components registered via `MacowsSidebarPanel` in a module's `sidebarPanels` array.
-The sidebar host (planned: `src/components/Sidebar/Sidebar.tsx`) renders a tab strip
-with one icon per registered panel. Clicking a tab shows/hides the panel.
+## What exists today
 
-The panel component receives `SidebarPanelProps` — a snapshot of current app state.
-It must NOT import from `src/App.tsx` or any other module.
+The panel infrastructure is real and rendered by `App.tsx`:
 
-## Step-by-step
+- `MacowsSidebarPanel` — the panel descriptor type, in
+  `src/core/module-registry/module-registry.types.ts`.
+- `src/components/Sidebar/` — the host that renders a tab strip (one icon per panel) and
+  shows/hides the active panel.
+- The registry stores panels and `App.tsx` renders them.
 
-### 1. Create the panel component file
+Only **core** code can register a `MacowsSidebarPanel` directly. Sandboxed built-in and
+community modules (the `defineModule` format) cannot contribute one.
 
-```
-src/modules/<id>/panels/MyPanel.tsx
-```
+## The `MacowsSidebarPanel` shape
 
 ```typescript
-// src/modules/<id>/panels/MyPanel.tsx
-import type { SidebarPanelProps } from "../../../core/types";
-
-export function MyPanel({ selectedItems, currentDirectory, navigate, refresh }: SidebarPanelProps) {
-  if (selectedItems.length === 0) {
-    return <div className="panel-empty">No selection</div>;
-  }
-
-  const item = selectedItems[0];
-
-  return (
-    <div className="panel-my-module">
-      <h3 className="panel-title">{item.name}</h3>
-      <p className="panel-meta">{item.path}</p>
-    </div>
-  );
+interface MacowsSidebarPanel {
+  id: string;                         // unique, "owner.panel-name"
+  icon: string;                       // emoji or SF Symbol shown in the tab strip
+  title: string;                      // tooltip / accessible label
+  side?: "left" | "right";            // preferred side (core may override)
+  defaultWidth?: number;              // pixels, 180–480
+  component: ComponentType<SidebarPanelProps>;
 }
 ```
 
-### 2. Define the panel descriptor
+The component receives `SidebarPanelProps` — a snapshot of app state plus callbacks:
 
 ```typescript
-// src/modules/<id>/panels.ts
-import type { MacowsSidebarPanel } from "../../core/types";
-import { MyPanel } from "./panels/MyPanel";
-
-export const myPanel: MacowsSidebarPanel = {
-  id: "my-module.main-panel",  // unique, prefixed with module ID
-  icon: "🔍",                  // emoji shown in sidebar tab strip
-  title: "My Panel",           // tooltip / screen reader label
-  side: "right",               // "left" or "right"
-  defaultWidth: 260,           // pixels, 180–480
-  component: MyPanel,
-};
-```
-
-### 3. Include in the module
-
-```typescript
-// src/modules/<id>/index.ts
-import { myPanel } from "./panels";
-
-export const myModule: MacowsModule = {
-  // ...
-  sidebarPanels: [myPanel],
-};
-```
-
-## Panel component rules
-
-### Required: handle empty state
-```typescript
-// Panels MUST handle cases where selectedItems is empty
-if (selectedItems.length === 0) {
-  return <div className="panel-empty">Select a file to preview</div>;
+interface SidebarPanelProps {
+  selectedItems: FileItem[];
+  currentDirectory: string;
+  navigate: (path: string) => void;
+  refresh: () => void;
 }
 ```
 
-### Do NOT call `invoke()` directly
-```typescript
-// ❌
-const meta = await invoke("get_metadata", { path: item.path });
+## Why a sandboxed module can't provide one
 
-// ✅ — use the EventBus to request data from an action
-// or receive pre-fetched data via SidebarPanelProps extensions
-```
+A community module is plain ESM in a Worker: no DOM, no React reconciler shared with the
+main thread, and only structured-clone-serializable values may cross the wire. A React
+`ComponentType` is a function — it cannot be serialized or rendered on the host's behalf.
+The host ↔ worker protocol (`src/core/sandbox/protocol.ts`) carries commands, open
+handlers, and capability calls; it deliberately carries no UI.
 
-### Use only CSS variables for colors
-```css
-/* ✅ */
-.panel-my-module { background: var(--glass-mid); color: var(--text); }
+## What a module CAN do instead today
 
-/* ❌ */
-.panel-my-module { background: #f0f0f0; color: #333; }
-```
+Until host-rendered module UI exists, a module surfaces itself through the channels the
+sandbox already supports:
 
-### CSS class naming: prefix with module ID
-```css
-.panel-my-module { }
-.panel-my-module-title { }
-.panel-my-module-empty { }
-```
+- A **command** (`commands` + `host.onCommand`) that runs logic and reports via
+  `host.dialog.prompt` / `host.dialog.confirm` or `host.log`.
+- An **open handler** (`openHandlers` + `host.onOpen`) to change double-click behavior.
 
-## EventBus integration (for reactive panels)
+See the `new-module` and `add-open-handler` skills.
 
-Panels receive props on re-render, but for finer-grained updates
-(e.g. reacting to a file being created without a full list refresh):
+## If you are adding a CORE panel
 
-```typescript
-import { useEffect, useState } from "react";
-import { EventBus } from "../../../core/EventBus";
-import type { SidebarPanelProps } from "../../../core/types";
+Core panels are part of the app shell, not modules. Register the descriptor through the
+core path and render it under `src/components/Sidebar/`. Panel component rules still
+apply:
 
-export function MyPanel({ selectedItems }: SidebarPanelProps) {
-  const [log, setLog] = useState<string[]>([]);
-
-  useEffect(() => {
-    const unsub = EventBus.on("file:created", (data) => {
-      setLog((prev) => [...prev, String(data)]);
-    });
-    return unsub; // cleanup on unmount
-  }, []);
-
-  // ...
-}
-```
+- Handle the empty-selection state (`selectedItems.length === 0`).
+- Never call `invoke()` directly — data arrives via `SidebarPanelProps`.
+- Colors only via CSS variables (`var(--glass-mid)`, `var(--text)`, …); see
+  `src/STYLE_GUIDE.md`.
+- Prefix CSS classes with the panel id.

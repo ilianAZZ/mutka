@@ -19,14 +19,22 @@ components/
 │   └── Breadcrumb.tsx    ← clickable path segments
 ├── ContextMenu/
 │   └── ContextMenu.tsx   ← floating Liquid Glass menu
-├── Sidebar/              ← (planned) sidebar host
+├── Sidebar/              ← hosts module-contributed sidebar panels
 │   ├── Sidebar.tsx       ← manages panel tab strip + panel area
 │   └── SidebarTab.tsx    ← a single tab button
+├── TabBar/               ← core UI: the directory tab strip
+│   └── TabBar.tsx        ← reads TabManager snapshot, renders/switches/closes tabs
 └── Toolbar/
     └── Toolbar.tsx       ← nav buttons + breadcrumb + action buttons
 ```
 
 Never put two distinct components in one file.
+
+> **TabBar** is core UI, not a module contribution. It subscribes to the `"tabs:changed"`
+> EventBus event and reads `TabManager` (the single source of truth for tabs + current
+> directory). Modules drive tabs via their `host.tabs.*` capabilities, never by importing
+> the component. There are no module-contributed top-bar panels — the only module-contributed
+> UI surface is the **Sidebar**.
 
 ---
 
@@ -71,9 +79,12 @@ export function FileRow({ item, onOpen }: FileRowProps) {
 
 ### 4. No module imports in components
 
+Modules are isolated (built-ins run in-process, community modules in a Web Worker); a
+component can never reach into one. Receive any state you need as a prop.
+
 ```typescript
-// ❌
-import { clipboardModule } from "../../modules/clipboard";
+// ❌ — modules are not importable; there is no module object to import
+import { clipboardModule } from "../../sandbox-builtins/clipboard";
 
 // ✅ — if you need clipboard state, receive it as a prop
 interface FileListProps {

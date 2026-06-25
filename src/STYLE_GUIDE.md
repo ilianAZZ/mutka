@@ -42,7 +42,7 @@ In dark mode, the tint shifts to dark:
 
 ---
 
-## CSS design tokens (all in `styles.css`)
+## CSS design tokens (all in `styles/tokens.css`)
 
 All values must be accessed via CSS variables. Never hardcode.
 
@@ -164,6 +164,35 @@ Enable antialiasing on body: `-webkit-font-smoothing: antialiased`
 - Disabled: `opacity: 0.30`
 - Never show a focus ring on mouse click (only on keyboard Tab)
 
+### One glass capsule for ALL controls
+
+Every toolbar control — single buttons (`.toolbar-btn`), the back|forward segmented
+control (`.toolbar-segment`), and the breadcrumb (`#breadcrumb`) — wears the **same**
+Liquid Glass capsule so the toolbar reads as one coherent material. The capsule is the
+`--ctl-*` token set:
+
+```css
+background: var(--ctl-bg);             /* FLAT translucent fill — NO vertical gradient */
+backdrop-filter: var(--ctl-blur);      /* blur(24px) saturate(150%) */
+border: none;                          /* no rim — borders read as dated chrome */
+border-radius: var(--r-lg);            /* generously rounded, not square */
+box-shadow: var(--ctl-shadow);         /* one soft drop shadow for depth (no specular) */
+```
+
+No vertical gradient and no inset specular highlight — those read as a 2008-era gloss, not
+glass. Depth is one soft shadow. Hover → `--ctl-bg-hover` (brighten). Active →
+`--ctl-bg-active` (press-in). The segmented control is the same capsule with two
+`.seg-btn`s joined by a `var(--seg-divider)` rule.
+
+### Why the glass is actually visible (vibrancy reveal)
+
+On macOS the window is `transparent: true` and `lib.rs` applies a native
+`NSVisualEffectMaterial::Sidebar`. For that real blurred material to show, the `#app`
+shell must NOT paint over it. `main.tsx` sets `data-vibrancy="on"` on macOS, and
+`base.css` then makes `#app` transparent — so the translucent toolbar/sidebar blur the
+**real desktop material**, not a flat color. The file list keeps a near-opaque background
+(readability), exactly like real Finder: opaque content, translucent chrome.
+
 ### Breadcrumb
 
 - Background: `var(--glass-mid)` + `var(--blur-light)`
@@ -171,17 +200,25 @@ Enable antialiasing on body: `-webkit-font-smoothing: antialiased`
 - Radius: `var(--r-md)`
 - Segment links: `var(--accent)` color, hover gets `var(--accent-light)` bg
 
-### File rows
+### File rows — Finder **list view** style
 
-- No background by default (file list area has slight tint)
-- Hover: `var(--glass-mid)` + light blur
-- Selected: `var(--accent-sel)` + inner ring `box-shadow: inset 0 0 0 1px rgba(0,122,255,0.4)`
+The main file list mimics Finder's list view, NOT the source-list style used by the
+sidebar. Rows are full-bleed (edge to edge, no margin, no radius) so selection reads as
+a continuous bar.
+
+- Zebra striping: every other row tinted with `var(--row-stripe)` (Finder's "% 2")
+- Hover (unselected only): `var(--row-hover)`
+- Selected (focused): solid `var(--row-selected)` bar + `var(--row-selected-text)` text —
+  no translucent fill, no ring. This is the Finder list-view selection.
 - Cut items: `opacity: 0.38`
-- Radius: `var(--r-sm)`, with `margin: 1px 6px` for spacing
+- No `border-radius`, no `margin` — full-width rows
+
+> The **sidebar** (`Places`) keeps the *source-list* selection: rounded `var(--accent-sel)`
+> translucent pill. Two different selection idioms, exactly like real Finder.
 
 ### Context menu — most important Liquid Glass surface
 
-- Background: multi-angle gradient glass (see styles.css)
+- Background: multi-angle gradient glass (see the ContextMenu component CSS)
 - Blur: `var(--blur-heavy)` — maximum vibrancy
 - Bright rim border: `1px solid var(--rim-bright)`
 - Corner radius: `var(--r-xl)` — macOS menus have large radii

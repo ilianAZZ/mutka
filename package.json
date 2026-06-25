@@ -9,7 +9,13 @@
     "type": "git",
     "url": "git+https://github.com/ilianAZZ/Macows-Explorer.git"
   },
-  "keywords": ["macos", "file-explorer", "tauri", "modular", "liquid-glass"],
+  "keywords": [
+    "macos",
+    "file-explorer",
+    "tauri",
+    "modular",
+    "liquid-glass"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -17,6 +23,7 @@
   },
   "dependencies": {
     "@tauri-apps/api": "^2.0.0",
+    "lucide-react": "^1.21.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -24,8 +31,8 @@
     "@tauri-apps/cli": "^2.0.0",
     "@types/react": "^18.3.1",
     "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.1",
     "typescript": "^5.5.3",
-    "vite": "^5.3.4",
-    "@vitejs/plugin-react": "^4.3.1"
+    "vite": "^5.3.4"
   }
 }

@@ -61,6 +61,14 @@ class TabManagerClass {
     this.emit();
   }
 
+  /** Create a new tab without switching to it. Caller must ensure an active tab exists first. */
+  openTabInBackground(path: string): void {
+    const id = this.idCounter++;
+    const label = path.split("/").pop() || "/";
+    this.tabs = [...this.tabs, { id, label, history: [path], historyIdx: 0 }];
+    this.emit();
+  }
+
   closeTab(id: number): void {
     const closing = this.tabs.find((t) => t.id === id);
     const remaining = this.tabs.filter((t) => t.id !== id);

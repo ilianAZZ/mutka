@@ -125,17 +125,17 @@ fn bad_command() -> String {
 }
 ```
 
-On the TypeScript side, always wrap `invoke` in try/catch for user-facing operations:
+On the TypeScript side, commands are reached only through `src/core/sandbox/capabilities.ts`
+(the single gateway — the one place that calls `invoke`); a module never calls `invoke`
+directly. The gateway maps a capability to its command:
 
 ```typescript
-try {
-  await invoke("delete_item", { path });
-  ctx.refresh();
-} catch (err: unknown) {
-  console.error("delete_item failed:", err);
-  // TODO: show error toast (needs a toast module)
-}
+// src/core/sandbox/capabilities.ts
+deleteItem: { permission: "fs:write", run: ([p]) => invoke("delete_item", { path: p }) },
 ```
+
+A module then calls `host.fs.deleteItem(path)` (which the gateway permission-checks) and
+wraps its own logic in try/catch, calling `host.refresh()` after a successful mutation.
 
 ---
 
@@ -161,7 +161,9 @@ The DOM `mousedown` event with `button === 3/4` never fires in Tauri. The fix is
 Mouse drivers (Logitech Options+, SteerMouse, etc.) convert the physical back/forward buttons
 to swipe gestures. This is macOS convention — raw HID mice without drivers emit
 `NSEventTypeOtherMouseDown` (type 25) instead, which is handled by the DOM fallback in
-`src/modules/mouse-navigation/index.ts`.
+`src/core/input-manager/InputManager.ts`. Both paths surface as the `"input:mouse-navigate"`
+event, which the `src/sandbox-builtins/mouse-navigation.ts` module reacts to via
+`host.nav` (it never calls `invoke` directly).
 
 **deltaX direction** — macOS swipe convention, universal across all drivers:
 

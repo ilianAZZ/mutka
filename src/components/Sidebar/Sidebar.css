@@ -1,0 +1,56 @@
+/* ─── Sidebar shell ──────────────────────────────────────────────────────────── */
+.sidebar {
+  display: flex;
+  flex-shrink: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--glass-mid);
+  backdrop-filter: var(--blur-mid);
+  -webkit-backdrop-filter: var(--blur-mid);
+  border-left: 0.5px solid var(--rim-dark);
+}
+
+.sidebar--collapsed {
+  width: auto;
+}
+
+/* ─── Panel content ──────────────────────────────────────────────────────────── */
+.sidebar-content {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ─── Icon tab strip ─────────────────────────────────────────────────────────── */
+.sidebar-strip {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: 2px;
+  padding: 6px 4px;
+}
+
+.sidebar-tab {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text, inherit);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.sidebar-tab:hover {
+  background: var(--hover, rgba(0, 0, 0, 0.06));
+}
+
+.sidebar-tab--active {
+  background: var(--accent-soft, rgba(0, 122, 255, 0.16));
+}

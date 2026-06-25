@@ -1,11 +1,24 @@
 ---
 name: new-module
-description: Create a new Macows Explorer module with actions, open handlers, and sidebar panels. Use when adding any new feature to the app.
+description: Create a new Macows Explorer module with commands and open handlers using defineModule. Use when adding any new feature to the app.
 ---
 
 # Skill: Create a new Macows Explorer module
 
-Use this skill whenever asked to add a new feature, action, or open handler to the app.
+Use this skill whenever asked to add a new feature, command, or open handler to the app.
+
+A module is a single ESM file that does `export default defineModule({ ... })`. It
+imports NOTHING from the core — its only window on the system is the `host` object
+passed to `setup(host)`. Built-in and community modules use the identical shape.
+
+- **Built-in** modules live at `src/sandbox-builtins/<name>.ts` and run in-process via
+  `LocalHost`.
+- **Community** modules are plain ESM at `~/.macows/modules/<id>/index.js` and run
+  ISOLATED in a Web Worker via `SandboxHost`. They cannot import `defineModule`, so they
+  `export default { ... }` the same object literal.
+
+Every capability a module uses must be declared in `permissions[]`, or the gateway
+denies the call.
 
 ## Step-by-step
 
@@ -13,102 +26,107 @@ Use this skill whenever asked to add a new feature, action, or open handler to t
 Format: `core.<name>` for built-ins, `<author>.<name>` for community modules.
 The ID is permanent — it can never be renamed after users install the module.
 
-### 2. Create the folder
+### 2. Create the file
 
 ```
-src/modules/<module-id>/
-├── index.ts       ← required: exports the MacowsModule object
-├── actions.ts     ← if the module has more than 2 actions
-├── handlers.ts    ← if the module has open handlers
-├── panels.ts      ← if the module has sidebar panels
-└── state.ts       ← if the module needs local state
+src/sandbox-builtins/<name>.ts        ← built-in (in this repo)
+~/.macows/modules/<id>/index.js       ← community (on the user's disk)
 ```
 
-### 3. Write `index.ts`
+One file per module. Keep it small.
+
+### 3. Write the module
 
 ```typescript
-// src/modules/<id>/index.ts
-import type { MacowsModule } from "../../core/types";
-// Import sub-files if you split actions/handlers/panels
-// import { myActions } from "./actions";
+// src/sandbox-builtins/<name>.ts
+import { defineModule } from "../core/sandbox/defineModule";
 
-export const myModule: MacowsModule = {
+export default defineModule({
   id: "author.module-name",
   name: "Human Readable Name",
   version: "1.0.0",
   description: "One sentence description.",
-  actions: [
-    // inline here, or import from ./actions.ts
+  permissions: ["fs:write", "dialog"],   // declare EVERY capability host.* uses
+  commands: [
+    {
+      id: "author.module-name.do-thing",   // MUST start with the module ID
+      label: "Do Thing",
+      shortcut: "meta+k",                   // optional
+      icon: "trash",                        // optional, icon-registry key
+      contextMenu: true,                    // show in right-click menu
+      contextMenuCategory: "File",          // optional grouping
+      when: { selection: "single" },        // serializable visibility (see below)
+    },
   ],
-  openHandlers: [],      // omit if none
-  sidebarPanels: [],     // omit if none
-  onMount: () => {},     // omit if no setup needed
-  onUnmount: () => {},   // omit if no cleanup needed
-};
-```
-
-### 4. Write actions (if any)
-
-```typescript
-// src/modules/<id>/actions.ts
-import { invoke } from "@tauri-apps/api/core";
-import type { MacowsAction } from "../../core/types";
-
-export const myAction: MacowsAction = {
-  id: "module-id.action-name",    // MUST start with module ID
-  label: "Action Label",
-  shortcut: "meta+k",             // optional
-  showInContextMenu: true,
-  isEnabled: (ctx) => ctx.selectedItems.length > 0,
-  execute: async (ctx) => {
-    try {
-      await invoke("rust_command_name", { path: ctx.currentDirectory });
-      ctx.refresh();
-    } catch (err: unknown) {
-      console.error("[module-id] action failed:", err);
-    }
+  setup(host) {
+    host.onCommand("author.module-name.do-thing", async (snapshot) => {
+      // snapshot = { selectedItems, currentDirectory, clipboard }
+      const item = snapshot.selectedItems[0];
+      const ok = await host.dialog.confirm({ message: `Delete ${item.name}?`, destructive: true });
+      if (!ok) return;
+      await host.fs.deleteItem(item.path);
+      await host.refresh();
+    });
   },
-};
+});
 ```
 
-### 5. Write open handlers (if any)
+A community module is byte-identical except it drops the `import` and exports the
+object literal directly: `export default { id: "...", ... }`.
 
-```typescript
-// src/modules/<id>/handlers.ts
-import type { MacowsOpenHandler } from "../../core/types";
+### 4. Command visibility — the `when` clause
 
-export const myHandler: MacowsOpenHandler = {
-  id: "module-id.handler-name",
-  priority: 5,   // > 0 to override core defaults, ≤ 100
-  matches: (item) => item.extension === "pdf",
-  handle: (item, ctx) => {
-    // implement open behavior
-  },
-};
-```
+Visibility is data, not a function (predicates can't cross the worker boundary).
+The host evaluates `when` against the live snapshot.
 
-### 6. Register the module in `src/App.tsx`
+`when.selection`: `any` | `none` | `some` | `single` | `multiple` | `singleDir` |
+`singleFile` | `files` | `dirs`.
+`when.clipboard`: `"hasItems"` (e.g. to gate a Paste command).
 
-Add TWO lines:
-```typescript
-// At the top with other module imports:
-import { myModule } from "./modules/<id>";
+### 5. The `host` API (all async)
 
-// In the registration block (after core modules):
-ModuleRegistry.register(myModule);
-```
+| Group | Methods | Permission |
+|---|---|---|
+| `host.fs` | `readDir`, `openItem`, `copyFiles`, `moveFiles`, `deleteItem`, `renameItem`, `createFile`, `createFolder` | `fs:read` / `fs:write` |
+| `host.board` | `readFiles`, `writeFiles(paths, "copy" \| "cut")` | `clipboard:read` / `clipboard:write` |
+| `host.nav` | `navigate`, `goBack`, `goForward`, `goUp` | `navigation` |
+| `host.tabs` | `openTab`, `openTabInBackground`, `isActive` | `navigation` |
+| `host.dialog` | `prompt({ message, placeholder?, defaultValue? })`, `confirm({ message, detail?, destructive? })` | `dialog` |
+| `host.sys` | `homeDir` | `fs:read` |
+| `host.refresh()` | re-read the current directory after a mutation | `fs:read` |
+
+Plus, registered inside `setup`:
+- `host.onCommand(id, (snapshot) => {})` — run when a command fires.
+- `host.onOpen(handlerId, (item) => {})` — run when an open handler matches (see `add-open-handler`).
+- `host.events.on(event, handler)` — subscribe to a whitelisted event (`"input:mouse-navigate"`, `"file:modifier-open"`).
+- `host.log(...)` — forwarded to the host console, prefixed with the module id.
+
+Permissions: `fs:read`, `fs:write`, `clipboard:read`, `clipboard:write`, `navigation`,
+`dialog`, `network`, `shell`.
+
+### 6. Open handlers (if any)
+
+See the `add-open-handler` skill. Declare them in `openHandlers: [...]` and register
+the runner with `host.onOpen(handlerId, (item) => {})`.
 
 ### 7. If a new Tauri command is needed
 
-Read `src-tauri/CLAUDE.md` and follow the "Adding a Tauri command" steps.
+Read `src-tauri/CLAUDE.md` and follow the "Adding a Tauri command" steps. Then expose
+it to modules by adding an entry to `src/core/sandbox/capabilities.ts` (the single
+gateway) — modules never call `invoke` directly.
+
+## No registration step
+
+Built-in modules are auto-discovered by `src/moduleLoader.ts` (`import.meta.glob` over
+`src/sandbox-builtins/*.ts`). Community modules are loaded from `~/.macows/modules/`.
+No `App.tsx` changes are ever needed.
 
 ## Checklist before finishing
 
 - [ ] Module ID is unique and follows `author.name` format
-- [ ] All action IDs are prefixed with the module ID
-- [ ] All `execute()` functions catch errors and log them
-- [ ] `ctx.refresh()` is called after any file system mutation
-- [ ] `onUnmount()` unsubscribes everything `onMount()` subscribed
-- [ ] No imports from `src/components/` in non-panel files
-- [ ] No imports from other modules
-- [ ] Module is registered in `App.tsx`
+- [ ] All command / handler IDs are prefixed with the module ID
+- [ ] Every `host.*` capability used is declared in `permissions[]`
+- [ ] Command `execute` logic lives in `host.onCommand`, not inline in `commands`
+- [ ] `host.refresh()` is called after any file-system mutation
+- [ ] A built-in imports ONLY `defineModule`; a community module imports nothing
+- [ ] Visibility expressed as a serializable `when` clause (no predicate functions)

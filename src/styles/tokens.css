@@ -34,6 +34,22 @@
   --accent-hover:  rgba(0, 122, 255, 0.22);
   --accent-sel:    rgba(0, 122, 255, 0.28);
 
+  /* List view (Finder-style file list) */
+  --row-stripe:        rgba(0, 0, 0, 0.028);   /* zebra: even-row tint */
+  --row-hover:         rgba(0, 0, 0, 0.045);   /* faint hover on unselected rows */
+  --row-selected:      #0A66E0;                /* focused selection: solid blue bar */
+  --row-selected-text: rgba(255, 255, 255, 0.95);
+
+  /* ── Glass control capsule — the ONE treatment every toolbar control shares ──
+     FLAT translucent fill (no vertical gradient, no specular line — that reads as a
+     dated gloss). Depth comes from a single soft shadow, not borders. */
+  --ctl-bg:        rgba(255, 255, 255, 0.45);
+  --ctl-bg-hover:  rgba(255, 255, 255, 0.70);
+  --ctl-bg-active: rgba(0, 0, 0, 0.08);
+  --ctl-blur:      blur(24px) saturate(150%);
+  --ctl-shadow:    0 0.5px 1.5px rgba(0, 0, 0, 0.10), 0 1px 3px rgba(0, 0, 0, 0.05);
+  --seg-divider:   rgba(0, 0, 0, 0.10);
+
   /* Geometry */
   --r-sm:   6px;
   --r-md:   10px;
@@ -48,8 +64,8 @@
 /* ─── Dark mode token overrides ─────────────────────────────────────────────── */
 /* Applied by ThemeManager.ts via document.documentElement.setAttribute("data-theme","dark") */
 [data-theme="dark"] {
-  --glass-heavy:   rgba(28,  28,  32,  0.82);
-  --glass-mid:     rgba(40,  40,  46,  0.70);
+  --glass-heavy:   rgba(30,  30,  33,  0.92);
+  --glass-mid:     rgba(34,  34,  38,  0.86);
   --glass-light:   rgba(58,  58,  66,  0.45);
   --glass-subtle:  rgba(255, 255, 255, 0.06);
 
@@ -68,4 +84,16 @@
   --accent-light:  rgba(0, 122, 255, 0.25);
   --accent-hover:  rgba(0, 122, 255, 0.35);
   --accent-sel:    rgba(0, 122, 255, 0.38);
+
+  --row-stripe:        rgba(255, 255, 255, 0.025);
+  --row-hover:         rgba(255, 255, 255, 0.05);
+  --row-selected:      #0A6CE6;
+  --row-selected-text: rgba(255, 255, 255, 0.95);
+
+  --ctl-bg:        rgba(255, 255, 255, 0.08);
+  --ctl-bg-hover:  rgba(255, 255, 255, 0.15);
+  --ctl-bg-active: rgba(0, 0, 0, 0.25);
+  --ctl-blur:      blur(24px) saturate(150%);
+  --ctl-shadow:    0 0.5px 1.5px rgba(0, 0, 0, 0.35), 0 1px 3px rgba(0, 0, 0, 0.22);
+  --seg-divider:   rgba(255, 255, 255, 0.12);
 }

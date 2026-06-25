@@ -1,0 +1,139 @@
+/* ─── Places sidebar (left) ────────────────────────────────────────────────── */
+/* Floating full-height frosted-glass pane (left). Translucent so the window's native
+   vibrancy shows through the blur — that's the real glass. Rounded card with gaps around
+   it (from #app padding/gap). */
+.places {
+  position: relative;
+  width: 210px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 12px 10px 16px;
+  background: var(--glass-mid);
+  backdrop-filter: var(--blur-mid);
+  -webkit-backdrop-filter: var(--blur-mid);
+  border: 0.5px solid var(--rim-mid);
+  border-radius: var(--r-lg);
+  box-shadow:
+    inset 0 1px 0 var(--rim-bright),   /* top inner edge light */
+    var(--shadow-panel);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  scrollbar-width: none;
+}
+
+.places::-webkit-scrollbar {
+  display: none;
+}
+
+.place-group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.place-group-header {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-subtle);
+  padding: 2px 8px 4px;
+}
+
+.place-item {
+  display: flex;
+  align-items: center;
+  border-radius: var(--r-sm);
+  transition: background 0.1s;
+}
+
+.place-item:hover {
+  background: var(--glass-light);
+}
+
+.place-item--active {
+  background: var(--accent-sel);
+}
+
+.place-item-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: none;
+  background: transparent;
+  border-radius: var(--r-sm);
+  color: var(--text-mid);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: default;
+}
+
+.place-item:hover .place-item-main {
+  color: var(--text);
+}
+
+.place-item--active .place-item-main {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.place-remove {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  margin-right: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-subtle);
+  font-size: 10px;
+  border-radius: 50%;
+  cursor: default;
+  opacity: 0;
+  transition: opacity 0.1s, background 0.1s, color 0.1s;
+}
+
+.place-item:hover .place-remove {
+  opacity: 1;
+}
+
+.place-remove:hover {
+  background: rgba(0, 0, 0, 0.10);
+  color: var(--text);
+}
+
+[data-theme="dark"] .place-remove:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.place-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--text-mid);   /* monochrome, like Finder dark mode (not accent blue) */
+  opacity: 0.9;
+}
+
+.place-item:hover .place-icon,
+.place-item--active .place-icon {
+  color: var(--text);
+}
+
+.place-icon--emoji {
+  font-size: 14px;
+  color: inherit;
+}
+
+.place-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

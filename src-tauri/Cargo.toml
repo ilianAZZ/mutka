@@ -23,6 +23,16 @@ tauri = { version = "2", features = [] }
 window-vibrancy = "0.5"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# Blocking HTTP client for the host-proxied `net` capability (WebDAV, etc.).
+# Bypasses WebView CORS and keeps network gated behind module permissions.
+# native-tls uses macOS Security.framework (no ring/rustls C build); the agent
+# must be built with an explicit TLS connector (see http_agent in lib.rs).
+ureq = { version = "2", default-features = false, features = ["native-tls"] }
+native-tls = "0.2"
+# macOS Keychain access for the `secrets` capability (WebDAV account passwords).
+keyring = "2"
+# Decode dropped-file bytes (Finder → app) passed from the WebView as base64.
+base64 = "0.22"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2"

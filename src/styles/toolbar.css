@@ -3,13 +3,13 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 14px 8px 80px; /* 80px = macOS traffic-light safe area */
+  padding: 8px 14px;   /* traffic lights live in the native titlebar, above the aside */
   min-height: 50px;
   flex-shrink: 0;
   background: var(--glass-heavy);
   backdrop-filter: var(--blur-mid);
   -webkit-backdrop-filter: var(--blur-mid);
-  border-bottom: 1px solid var(--rim-dark);
+  border-bottom: 0.5px solid var(--rim-dark);
   box-shadow: var(--shadow-inner);
   position: relative;
   z-index: 10;
@@ -17,63 +17,110 @@
 
 #toolbar .toolbar-nav {
   display: flex;
-  gap: 2px;
+  align-items: center;
+  gap: 6px;
 }
 
 #toolbar .toolbar-actions {
   display: flex;
-  gap: 4px;
+  gap: 8px;
   margin-left: auto;
 }
 
-/* ─── Toolbar buttons — glass pill style ────────────────────────────────────── */
-#toolbar .toolbar-btn {
-  background: none;
-  border: 1px solid transparent;
-  border-radius: var(--r-sm);
-  color: var(--text);
-  cursor: default;
-  font-size: 16px;
-  padding: 4px 9px;
-  line-height: 1;
-  min-width: 30px;
+/* ─── ONE glass capsule for every toolbar control ────────────────────────────────
+   Both single buttons (.toolbar-btn) and the back|forward segment (.toolbar-segment)
+   wear the identical Liquid Glass capsule so the whole toolbar is coherent. */
+#toolbar .toolbar-btn,
+#toolbar .toolbar-segment {
   display: flex;
+  align-items: stretch;
+  background: var(--ctl-bg);
+  backdrop-filter: var(--ctl-blur);
+  -webkit-backdrop-filter: var(--ctl-blur);
+  border: none;
+  border-radius: var(--r-lg);
+  box-shadow: var(--ctl-shadow);
+  color: var(--text);
+  transition: background 0.14s ease;
+}
+
+/* Single icon buttons (up, refresh, settings) — round, borderless glass */
+#toolbar .toolbar-btn {
+  cursor: default;
+  font-size: 15px;
+  line-height: 1;
+  width: 32px;
+  height: 32px;
+  padding: 0;
   align-items: center;
   justify-content: center;
-  transition: background 0.12s, border-color 0.12s;
 }
 
 #toolbar .toolbar-btn:hover:not(:disabled) {
-  background: var(--glass-mid);
-  backdrop-filter: var(--blur-light);
-  -webkit-backdrop-filter: var(--blur-light);
-  border-color: var(--rim-mid);
-  box-shadow: var(--shadow-inner), var(--shadow-panel);
+  background: var(--ctl-bg-hover);
 }
 
 #toolbar .toolbar-btn:active:not(:disabled) {
-  background: var(--glass-light);
-  border-color: var(--rim-bright);
+  background: var(--ctl-bg-active);
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.12),
+    0 1px 1px rgba(0, 0, 0, 0.06);
 }
 
 #toolbar .toolbar-btn:disabled {
-  opacity: 0.30;
+  opacity: 0.35;
   cursor: default;
 }
 
-@keyframes nav-btn-flash {
-  0%, 40% {
-    background: var(--glass-light);
-    border-color: var(--rim-bright);
-  }
-  100% {
-    background: none;
-    border-color: transparent;
-  }
+/* Segmented control: capsule is shared above; segments live inside it */
+#toolbar .toolbar-segment {
+  overflow: hidden;
+  padding: 0;
 }
 
-#toolbar .toolbar-btn--flash {
-  animation: nav-btn-flash 200ms ease-out forwards;
+#toolbar .seg-btn {
+  background: none;
+  border: none;
+  color: var(--text);
+  cursor: default;
+  font-size: 16px;
+  line-height: 1;
+  padding: 6px 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s ease;
+}
+
+#toolbar .seg-btn:hover:not(:disabled) {
+  background: var(--ctl-bg-hover);
+}
+
+#toolbar .seg-btn:active:not(:disabled) {
+  background: var(--ctl-bg-active);
+}
+
+#toolbar .seg-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+#toolbar .seg-divider {
+  width: 1px;
+  align-self: stretch;
+  margin: 5px 0;
+  background: var(--seg-divider);
+  flex-shrink: 0;
+}
+
+@keyframes nav-btn-flash {
+  0%, 40% { background: var(--ctl-bg-active); }
+  100%    { background: transparent; }
+}
+
+#toolbar .toolbar-btn--flash,
+#toolbar .seg-btn--flash {
+  animation: nav-btn-flash 220ms ease-out forwards;
 }
 
 /* ─── Status bar ─────────────────────────────────────────────────────────────── */

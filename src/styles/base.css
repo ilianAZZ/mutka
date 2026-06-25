@@ -1,25 +1,77 @@
 /* ─── Reset ──────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+* {
+  -webkit-user-select: none !important;
+  user-select: none !important;
+}
+
 body {
   background: transparent; /* Tauri vibrancy shows through */
   color: var(--text);
-  user-select: none;
   overflow: hidden;
 }
 
-/* ─── App shell ──────────────────────────────────────────────────────────────── */
+/* ─── App shell ──────────────────────────────────────────────────────────────────
+   Two columns: the Places sidebar (full height, left) and the main column (right).
+   The main column stacks the toolbar over the file content. */
 #app {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  align-items: stretch;
   height: 100vh;
   width: 100vw;
+  gap: 8px;
+  padding: 8px;
   /* Fallback when vibrancy is not available (Linux/Windows) */
-  background: rgba(240, 240, 245, 0.96);
+  background: rgba(236, 236, 240, 0.96);
 }
 
 [data-theme="dark"] #app {
-  background: rgba(22, 22, 26, 0.96);
+  background: rgba(18, 18, 21, 0.96);
+}
+
+/* The window's native vibrancy follows the macOS SYSTEM appearance, not our data-theme, so
+   on a light-appearance Mac it stays light and bleeds white through the gaps. We tint #app
+   over it: light + translucent in light mode (vibrancy shows), but a strong dark tint in
+   dark mode so the gap backdrop is reliably dark regardless of the system material. */
+[data-vibrancy="on"] #app {
+  background: rgba(235, 235, 240, 0.40);
+}
+
+[data-vibrancy="on"][data-theme="dark"] #app {
+  background: rgba(18, 18, 21, 0.88);
+}
+
+/* Right pane: a floating rounded card holding the toolbar over the file content. */
+#main-col {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 0.5px solid var(--rim-mid);
+  box-shadow: var(--shadow-panel);
+  background: rgba(248, 248, 250, 0.98);
+}
+
+[data-theme="dark"] #main-col {
+  background: rgba(26, 26, 28, 0.99);
+}
+
+/* The file content row (file list + any right sidebar). */
+#content-row {
+  display: flex;
+  flex-direction: row;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#content-row #file-list {
+  min-width: 0;
 }
 
 /* ─── Scrollbar ──────────────────────────────────────────────────────────────── */

@@ -1,0 +1,89 @@
+# Event Reference
+
+> **Keep this table in sync with the code.**
+> Add a row whenever you add an event to `src/core/event-bus/events.ts`, and remove a row when you delete one.
+
+All events are typed in `EventMap` (`src/core/event-bus/events.ts`). Use the `Events`
+constants — never raw strings.
+
+---
+
+## Core events
+
+| Constant | String key | Payload | Emitted by | Consumed by |
+|---|---|---|---|---|
+| `Events.Theme.changed` | `"theme:changed"` | `{ preference, resolved }` | `ThemeManager` | Theme-aware components |
+| `Events.Clipboard.changed` | `"clipboard:changed"` | `ClipboardState` | `ClipboardStore` (via the clipboard module) | `App.tsx` → `setClipboard()` |
+| `Events.Navigation.back` | `"navigation:back"` | `undefined` | `goBack()` in `App.tsx` | `App.tsx` → toolbar flash animation |
+| `Events.Navigation.forward` | `"navigation:forward"` | `undefined` | `goForward()` in `App.tsx` | `App.tsx` → toolbar flash animation |
+| `Events.File.modifierOpen` | `"file:modifier-open"` | `{ item, modifiers }` | `App.tsx` | `core.tabs` module (ctrl/⌘-open in tab) |
+| `Events.Module.registered` | `"module:registered"` | `{ moduleId }` | `ModuleRegistry` | `App.tsx` → refresh sidebar panels |
+| `Events.Module.unregistered` | `"module:unregistered"` | `{ moduleId }` | `ModuleRegistry` | `App.tsx` → refresh sidebar panels |
+| `Events.Error.action` | `"error:action"` | `{ actionId, error }` | `ModuleRegistry` | Future toast/notification module |
+| `Events.Input.mouseNavigate` | `"input:mouse-navigate"` | `{ direction }` | `InputManager` | `core.mouse-navigation` module |
+| `Events.Action.dispatch` | `"action:dispatch"` | `{ actionId }` | `ShortcutManager`, modules | `ModuleRegistry.executeAction()` (wired in `MR.init()`) |
+| `Events.Selection.changed` | `"selection:changed"` | `{ items }` | `SelectionStore` | `App.tsx` → `setSelected()` |
+| `Events.Tabs.changed` | `"tabs:changed"` | `TabsSnapshot` | `TabManager` | `App.tsx` → `setTabsSnap()` |
+| `Events.Tabs.lastClosed` | `"tabs:last-closed"` | `{ path }` | `TabManager` | `App.tsx` → sync global nav state |
+
+---
+
+## Which events a sandboxed module may subscribe to
+
+A module subscribes via `host.events.on(eventName, handler)` inside `setup`. This is a
+**trust surface**, so it is deliberately narrow: only events listed in
+`src/core/sandbox/eventWhitelist.ts` (`SUBSCRIBABLE_EVENTS`) are forwarded to a module.
+Anything else is ignored with a `console.warn`.
+
+| Whitelisted event | Used by |
+|---|---|
+| `"input:mouse-navigate"` | `core.mouse-navigation` (back/forward buttons) |
+| `"file:modifier-open"` | `core.tabs` (ctrl/⌘-click a folder → open in a tab) |
+
+For a worker module, `SandboxHost` subscribes on the EventBus and re-posts the payload
+over postMessage; for a built-in, `LocalHost` subscribes directly. Either way the
+whitelist is checked first. All other `EventMap` events (theme, clipboard, tabs,
+selection, module, error, navigation, action) are **host-internal** and not exposed to
+modules.
+
+---
+
+## Adding a new event (core)
+
+1. Add the entry to `EventMap` in `src/core/event-bus/events.ts`:
+   ```typescript
+   "my-subsystem:did-something": { path: string };
+   ```
+2. Add a constant to the `Events` object in the same file:
+   ```typescript
+   MySubsystem: {
+     didSomething: "my-subsystem:did-something",
+   },
+   ```
+3. Add a row to the table above.
+4. If a module should be able to subscribe to it, add it to `SUBSCRIBABLE_EVENTS` in
+   `src/core/sandbox/eventWhitelist.ts` — and only if it carries no sensitive state.
+
+---
+
+## Custom events from community modules
+
+A module can declare its own events via declaration merging on `EventMap`
+(see the comment block at the top of `events.ts`):
+
+```typescript
+declare module "../../core/event-bus/events" {
+  interface EventMap {
+    "acme.git-status:repo-changed": { path: string };
+  }
+}
+```
+
+> **Naming convention:** `"<module-id>:<past-tense-verb>"` — e.g.
+> `"acme.git-status:repo-changed"`. Module-scoped events must be prefixed with the
+> module ID to avoid collisions.
+
+Note that a sandboxed (worker) module cannot reach the EventBus directly — it has no
+core reference. It only receives the whitelisted events the host forwards to it, and
+emits side effects through `host.*` capabilities. Cross-module event broadcasting from
+within a worker is not a supported path today.

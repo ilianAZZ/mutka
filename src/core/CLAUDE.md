@@ -1,183 +1,259 @@
 # src/core/ — Infrastructure Layer
 
 This folder is the **skeleton of the app**. It has zero features.
-Modules and components depend on it; it depends on nothing inside `src/`.
+Modules and components depend on it; it depends on nothing inside `src/` outside core.
+
+Each subsystem lives in its own folder (`module-registry/`, `sandbox/`, `app-bridge/`,
+`event-bus/`, `shortcut-manager/`, `input-manager/`, `theme-manager/`, `tab-manager/`,
+`stores/`). `types.ts` holds the cross-cutting foundation types.
+
+---
+
+## How modules reach the system (read this first)
+
+A module — built-in or community — is `export default defineModule({ id, name, version,
+permissions, commands, openHandlers, setup })`. It imports NOTHING from core. In
+`setup(host)` it receives a `host` object, which is the ONLY way it touches anything
+privileged. Every `host.*` call is routed through the **permission gateway**.
+
+```text
+module.setup(host) → host.fs.readDir(p)
+  → gateway.ts: does the module's manifest declare the required permission?
+       no  → throws "Permission denied"
+       yes → capabilities.ts runs it (the ONLY place that calls invoke / AppBridge / TabManager)
+```
+
+Two runtimes host modules, **same format, same gateway**:
+
+- **`sandbox/LocalHost.ts`** — built-in/trusted modules, IN-PROCESS (direct calls).
+- **`sandbox/SandboxHost.ts`** — community/untrusted modules, ISOLATED in a Web Worker
+  (no DOM, no `invoke`, no core reference; reaches the system only via postMessage).
+
+Switching a module between the two is a one-line change in `moduleLoader.ts`; the module
+code is identical. For an author's guide, see `COMMUNITY_MODULES.md`.
 
 ---
 
 ## Files and their single responsibilities
 
-### `types.ts` — The Contract
+### `types.ts` — Foundation Types
 
-The ONLY file that defines public interfaces shared across modules, components, and the core.
-**If you need a new shared type, it goes here and only here.**
+Cross-cutting types used by multiple subsystems: `FileItem`, `ClipboardState`,
+`NavigationAPI`, `DialogAPI` (+ its option shapes), and `BaseContext` (the read-only view
+of app state used only by `isVisible`/`isEnabled`/`when` predicates — modules never act
+through it).
 
-Key types:
-- `FileItem` — a single FS entry (mirrors the Rust `FileItem` struct exactly)
-- `ActionContext` — the module's view of app state at execution time
-- `MacowsAction` — a named operation with shortcut + menu integration
-- `MacowsOpenHandler` — controls double-click behavior per item type
-- `MacowsSidebarPanel` — a panel a module can inject into the sidebar
-- `MacowsModule` — the top-level contract every module must satisfy
-- `ThemePreference` — `"system" | "light" | "dark"`
+Types that belong to a single subsystem live next to their owner:
+- `MacowsModule`, `MacowsAction`, `MacowsOpenHandler`, `MacowsSidebarPanel`,
+  `ModulePermission`, `ContextMenuCategories` → `module-registry/module-registry.types.ts`
+- `ThemePreference` → `theme-manager/theme-manager.types.ts`
+- `TabBarTab`, `TabsSnapshot` → `tab-manager/tab-manager.types.ts`
 
-**Critical invariant:** The `FileItem` interface must exactly mirror the Rust struct
-in `src-tauri/src/lib.rs` with `#[serde(rename_all = "camelCase")]`.
-If you change one, change the other.
+**Critical invariant:** `FileItem` must exactly mirror the Rust struct in
+`src-tauri/src/lib.rs` with `#[serde(rename_all = "camelCase")]`. Change one, change the other.
 
 ---
 
-### `ModuleRegistry.ts` — The Hub
+### `module-registry/` — The Hub
 
-Singleton that manages all registered modules.
+`ModuleRegistry.ts` is a singleton that stores what modules contribute and dispatches to
+them. Modules act through their OWN `host`, not through an injected context — the registry
+only stores actions/handlers and reads app state for visibility checks.
 
 Public API:
 ```typescript
+ModuleRegistry.init(): void                         // wire the "action:dispatch" bus listener once
 ModuleRegistry.register(module: MacowsModule): void
 ModuleRegistry.unregister(moduleId: string): void
-ModuleRegistry.executeAction(actionId: string, context: ActionContext): Promise<void>
-ModuleRegistry.resolveOpen(item: FileItem, context: ActionContext): Promise<void>
-ModuleRegistry.getContextMenuActions(context: ActionContext): MacowsAction[]
-ModuleRegistry.getToolbarActions(): MacowsAction[]
+ModuleRegistry.executeAction(actionId: string): Promise<void>
+ModuleRegistry.resolveOpen(item: FileItem): Promise<void>
+ModuleRegistry.getContextMenuActions(context: BaseContext, zone: MenuZone): ContextMenuGroup[]
 ModuleRegistry.getSidebarPanels(): MacowsSidebarPanel[]
-ModuleRegistry.getModules(): MacowsModule[]
 ```
 
-`executeAction` and `resolveOpen` are async and catch all errors per-module.
-If a module throws, it logs the error and emits `EventBus.emit("error:action", ...)` —
-it never crashes the app.
+- `init()` runs once from `App.tsx`; it subscribes to the `"action:dispatch"` EventBus
+  event so a shortcut or menu click resolves to `executeAction(actionId)`.
+- `executeAction` / `resolveOpen` are async and catch all errors per-module. On throw they
+  log and emit `"error:action"` — never crash the app. They take NO context argument; the
+  registry reads current state itself (via `SelectionStore`, `ClipboardStore`, `AppBridge`).
+- `getContextMenuActions` filters by the clicked `zone` (an action's
+  `contextMenuZones`, default file rows + empty background — see `menu/menuZone.ts`) and by
+  each action's `isVisible`, then groups by `contextMenuCategory` into `ContextMenuGroup[]`.
+  Right-clicks in an editable field resolve to `"editable"` and show the native menu instead.
 
-Modules are no longer registered manually in `App.tsx`.
-They are auto-discovered by `src/moduleLoader.ts` using Vite's `import.meta.glob`.
+`module-registry.types.ts` is the INTERNAL registry contract (`MacowsModule`,
+`MacowsAction`, `MacowsOpenHandler`, `MacowsSidebarPanel`, `ModulePermission`,
+`ContextMenuCategories`). Authors do NOT write these — they write `defineModule(...)` and
+`sandbox/proxyModule.ts` converts a manifest into a `MacowsModule` the registry stores.
 
-Registration order (enforced by moduleLoader):
-1. `core.navigation` (must be first — registers priority-0 open handlers)
-2. `core.clipboard`
-3. `core.file-ops`
-4. `core.mouse-navigation`
-5. Community modules (loaded after core modules are stable)
+Modules are auto-discovered by `src/moduleLoader.ts`; they are never registered by hand in
+`App.tsx`. Built-in open handlers register at priority 0 first, so community modules can
+override with a higher priority.
 
 **Do NOT** add business logic here. The registry dispatches; modules execute.
+There is no `connect()`, `buildContext()`, `tracePermissions()`, `getToolbarActions()`,
+or `getModules()` — those were removed.
 
 ---
 
-### `EventBus.ts` — Loose Coupling
+### `sandbox/` — The Module Runtime
 
-A simple publish/subscribe bus. Use it when two modules need to react to each other
-**without importing each other**.
+The module execution + permission layer. Files:
+
+| File | Responsibility |
+| --- | --- |
+| `defineModule.ts` | Author-facing helper. Types only — returns its argument unchanged. |
+| `hostProxy.ts` | Builds the `host` object (`fs`, `board`, `nav`, `tabs`, `dialog`, `sys`, `refresh`, `onCommand`, `onOpen`, `events.on`, `log`). All methods async. |
+| `capabilities.ts` | THE gateway vocabulary. Maps each capability to its required permission and the operation that fulfils it. The ONLY file that calls `invoke` / `AppBridge` / `TabManager`. |
+| `gateway.ts` | The permission barrier. Checks the manifest declared the required permission, then runs the capability. No declaration → throws. |
+| `LocalHost.ts` | In-process runtime for built-ins. |
+| `SandboxHost.ts` | Web-Worker runtime for community modules. |
+| `sandbox.worker.ts` | The worker entry that loads untrusted source and proxies host-calls. |
+| `protocol.ts` | The only shapes allowed to cross the host↔worker boundary (structured-clone safe): `SandboxCommand`, `SandboxOpenHandler`, `WhenClause`, `SandboxManifest`, `HostSnapshot`, wire messages. |
+| `proxyModule.ts` | Turns a manifest into a `MacowsModule` and registers it. |
+| `whenClause.ts` | Evaluates a declarative `when` clause against `BaseContext` (host-side). |
+| `eventWhitelist.ts` | The set of events a module may subscribe to via `host.events.on`. |
+
+Permissions: `fs:read`, `fs:write`, `clipboard:read`, `clipboard:write`, `navigation`,
+`dialog`, `network`, `shell`. A module must declare every one it uses.
+
+Why `when` is data, not a function: a worker module can't hand a predicate across
+postMessage, so visibility is described declaratively (`selection`, `clipboard`) and
+evaluated host-side via `whenClause.ts`.
+
+---
+
+### `app-bridge/AppBridge.ts` — React State Bridge
+
+A handful of privileged operations live in `App.tsx` React state: navigation history, the
+modal dialog, and directory refresh. `App.tsx` connects a provider once via
+`AppBridge.connect(...)`; the `nav`, `dialog`, and `app.refresh` capabilities read through
+it. This is what lets those capabilities exist without core knowing about React.
+
+---
+
+### `event-bus/` — Loose Coupling
+
+`EventBus.ts` is a typed publish/subscribe bus; `events.ts` defines the `EventMap` (every
+event → payload type) and the `Events` name constants. Use it when two parts need to react
+to each other **without importing each other**.
 
 ```typescript
-// Module A emits
-EventBus.emit("file:created", { path: "/foo/bar.txt" });
-
-// Module B listens (in onMount)
-const unsub = EventBus.on("file:created", (data) => { ... });
-// Module B unsubscribes (in onUnmount)
+EventBus.emit(Events.Clipboard.changed, state);
+const unsub = EventBus.on(Events.Clipboard.changed, (s) => { ... });
 unsub();
 ```
 
-Event naming convention: `"<noun>:<verb>"` — e.g. `"file:created"`, `"module:registered"`, `"theme:changed"`.
+Use `Events.Namespace.name` constants, not bare strings. Community modules add custom
+events via declaration merging on `EventMap` (see the comment in `events.ts`).
 
-**Do NOT** use the EventBus for data that a component needs to render.
-For rendering, pass data via props or React state. EventBus is for side effects.
+**Do NOT** use the EventBus for data a component renders — pass that via props/state.
 
-#### Known events (keep this table up to date)
+#### Known events (keep this in sync with `events.ts`)
 
-| Event | Emitted by | Payload | Consumed by |
-| --- | --- | --- | --- |
-| `"navigation:back"` | `goBack()` in `App.tsx` | none | `App.tsx` toolbar flash animation |
-| `"navigation:forward"` | `goForward()` in `App.tsx` | none | `App.tsx` toolbar flash animation |
-| `"theme:changed"` | `ThemeManager` | `{ resolved: "dark" \| "light" }` | any theme-aware component |
-| `"clipboard:changed"` | `core.clipboard` module | `ClipboardState` | `App.tsx` (updates React clipboard state) |
-| `"error:action"` | `ModuleRegistry` | `{ actionId, error }` | future toast/notification module |
-| `"module:registered"` | `ModuleRegistry` | `{ moduleId }` | Module Manager UI |
-| `"module:unregistered"` | `ModuleRegistry` | `{ moduleId }` | Module Manager UI |
+| Event | Payload | Notes |
+| --- | --- | --- |
+| `theme:changed` | `{ preference; resolved }` | from `ThemeManager` |
+| `clipboard:changed` | `ClipboardState` | from `ClipboardStore` / clipboard module |
+| `navigation:back` / `navigation:forward` | `undefined` | toolbar flash animation |
+| `file:modifier-open` | `{ item; modifiers }` | ctrl/⌘-open of an item (subscribable by modules) |
+| `module:registered` / `module:unregistered` | `{ moduleId }` | sidebar-panel refresh |
+| `error:action` | `{ actionId; error }` | failed action |
+| `input:mouse-navigate` | `{ direction }` | mouse back/forward (subscribable by modules) |
+| `tabs:changed` | `TabsSnapshot` | any tab-state mutation |
+| `tabs:last-closed` | `{ path }` | last tab closed → global nav resumes |
+| `action:dispatch` | `{ actionId }` | a shortcut/menu requests an action run |
+| `selection:changed` | `{ items }` | from `SelectionStore` |
 
-When you add a new event, add a row here. Undocumented events become invisible debt.
+Of these, modules may subscribe ONLY to the whitelisted set in
+`sandbox/eventWhitelist.ts` (currently `input:mouse-navigate`, `file:modifier-open`).
 
 ---
 
-### `ShortcutManager.ts` — Keyboard
+### `shortcut-manager/ShortcutManager.ts` — Keyboard
 
-Listens to `document keydown`. When a registered shortcut fires, dispatches
-`CustomEvent("macows:action", { detail: { actionId } })` on `document`.
-
-`App.tsx` listens to `macows:action` and calls `ModuleRegistry.executeAction()`.
+Listens to `document keydown`, normalizes the combo, and emits `"action:dispatch"` on the
+EventBus when a registered shortcut fires. `ModuleRegistry` (wired in `init()`) runs the
+matching action.
 
 Shortcut format (normalized): `"meta+c"`, `"meta+shift+n"`, `"f2"`, `"meta+backspace"`.
 Parts: `meta`, `ctrl`, `alt`, `shift`, then the key name (lowercase).
 
-**Conflict rule**: last registration wins. If two modules bind the same shortcut,
-the second one overrides the first with a `console.warn` message. Document your
-shortcuts in your module's README to avoid silent conflicts.
+**Conflict rule**: last registration wins, with a `console.warn`. Document your shortcuts.
 
 ---
 
-### `InputManager.ts` — Low-level Input Capture
+### `input-manager/InputManager.ts` — Low-level Input Capture
 
-Captures raw platform input events and translates them to semantic EventBus events.
-Modules subscribe to these events instead of touching `document.addEventListener` directly.
+Captures raw platform input and translates it to semantic EventBus events. Modules
+subscribe to those events instead of touching `document.addEventListener`.
 
 ```typescript
-InputManager.init()    // called once at app startup (module scope in App.tsx)
-InputManager.dispose() // called on app teardown
+InputManager.init()    // once at app startup (module scope in App.tsx)
+InputManager.dispose()
 ```
 
-#### Events emitted
+Emits `"input:mouse-navigate"` (`{ direction: "back" | "forward" }`) from either the Tauri
+NSEvent monitor (driver-managed mice) or a DOM `mousedown` with `button === 3`/`4` (raw HID
+mice). Modules never need to know which path fired.
 
-| Event | Payload | When |
-| --- | --- | --- |
-| `"input:mouse-navigate"` | `{ direction: "back" \| "forward" }` | Mouse button 3/4 (DOM) or NSEvent swipe (Tauri) |
-
-#### Two paths for mouse navigation (see mouse-navigation/CLAUDE.md for details)
-
-- **Path A** (driver-managed mice): Tauri NSEvent monitor in `lib.rs` emits `"mouse-navigate"`. `InputManager` subscribes via `listen()` and re-emits on the EventBus.
-- **Path B** (raw HID mice): DOM `mousedown` with `button === 3` or `4`. `InputManager` intercepts and re-emits on the EventBus.
-
-Modules never need to know which path fired — they just receive `"input:mouse-navigate"`.
-
-**Rules for this singleton:**
-- Must NEVER dispatch `macows:action` directly (that is feature logic → belongs in a module)
-- Must NEVER call `invoke()` (Tauri commands are feature level)
-- May use `listen()` for platform-level event subscriptions
+**Rules:** never dispatch actions directly; never call `invoke()` for feature logic; may use
+`listen()` for platform-level subscriptions.
 
 ---
 
-### `ThemeManager.ts` — Dark / Light
+### `tab-manager/TabManager.ts` — Tabs (single source of truth)
 
-Reads the user's theme preference from `localStorage` key `"macows.theme"`.
-Falls back to `"system"` if not set.
+Owns all tab state AND the current directory when a tab is active. Drives the `TabBar`
+component via the `"tabs:changed"` event. Modules reach it ONLY through the `tabs`
+capability (`openTab`, `openTabInBackground`, `isActive`); the `nav` capability's
+navigate/back/forward also resolve against the active tab. Emits `"tabs:changed"`,
+`"tabs:last-closed"`, and `"navigation:back"/"forward"`.
 
-Applies the theme by setting `data-theme="dark"` or `data-theme="light"` on `<html>`.
-CSS variables in `styles.css` use `[data-theme="dark"]` selectors.
+---
+
+### `stores/` — Plain State Singletons
+
+`SelectionStore.ts` (current selection, emits `"selection:changed"`) and
+`ClipboardStore.ts` (current clipboard, emits `"clipboard:changed"`). They are the
+authoritative read source the registry uses to build a `BaseContext` for visibility checks.
+
+---
+
+### `theme-manager/ThemeManager.ts` — Dark / Light
+
+Reads the preference from `localStorage` `"macows.theme"` (falls back to `"system"`),
+applies `data-theme` on `<html>`, and emits `"theme:changed"` when it resolves.
 
 ```typescript
 ThemeManager.get(): ThemePreference
 ThemeManager.set(pref: ThemePreference): void
-ThemeManager.getResolved(): "dark" | "light"  // resolves "system" to actual value
+ThemeManager.getResolved(): "dark" | "light"
 ```
 
-The `"system"` value listens to `window.matchMedia("(prefers-color-scheme: dark)")`.
-When the OS theme changes, `ThemeManager` updates `data-theme` automatically and emits
-`EventBus.emit("theme:changed", { resolved: "dark" | "light" })`.
+`"system"` follows `window.matchMedia("(prefers-color-scheme: dark)")` and updates live.
 
 ---
 
 ## Rules for this folder
 
-1. **No React imports** — core files must work without a UI framework
-2. **No `invoke()` calls** — core files never call Tauri commands
-3. **No imports from `src/modules/` or `src/components/`**
-4. **Only singletons** — `ModuleRegistry`, `EventBus`, `ShortcutManager`, `ThemeManager` are each instantiated once and exported as a named const
-5. **No async initialization** — all setup is synchronous; async work belongs in modules
+1. **No React imports** — core is framework-agnostic infrastructure.
+2. **No `invoke()` calls — ONE exception:** `sandbox/capabilities.ts` is the single system
+   gateway and intentionally calls `invoke`. No other core file may.
+3. **No imports from `src/sandbox-builtins/` or `src/components/`**.
+4. **Singletons** — `ModuleRegistry`, `EventBus`, `ShortcutManager`, `InputManager`,
+   `ThemeManager`, `TabManager`, `AppBridge`, and the stores are each instantiated once and
+   exported as a named const.
 
 ---
 
 ## Adding to the core
 
 Adding a new core file requires answering YES to ALL:
-- [ ] Is it shared infrastructure used by 3+ modules or components?
-- [ ] Does it have zero business logic (no file system knowledge, no UI rendering)?
-- [ ] Can it be fully unit-tested without Tauri?
+- [ ] Is it shared infrastructure used by multiple modules or components?
+- [ ] Does it have zero feature logic (no specific FS behavior, no UI rendering)?
+- [ ] Can it be reasoned about without knowing any specific module?
 
-If any answer is NO → put it in a module instead.
+To expose a NEW system operation to modules, do NOT add it ad hoc: add a Rust command in
+`lib.rs`, then a capability entry in `sandbox/capabilities.ts` mapped to its permission.
+If a capability isn't listed there, it does not exist for any module.

@@ -67,23 +67,22 @@ Macows-Explorer/
 │
 ├── src/                    # React + TypeScript frontend
 │   ├── core/
-│   │   ├── types.ts        # MacowsModule / MacowsAction contract
-│   │   ├── ModuleRegistry.ts
-│   │   ├── EventBus.ts
-│   │   └── ShortcutManager.ts
+│   │   ├── types.ts        # Foundation types
+│   │   └── sandbox/        # defineModule, host gateway, module runtimes
 │   │
-│   ├── modules/            # Built-in modules (each is a MacowsModule)
-│   │   ├── clipboard/      # copy, cut, paste
-│   │   └── file-ops/       # new file, new folder, rename, delete
+│   ├── sandbox-builtins/   # Built-in modules (one defineModule file each)
+│   │   ├── clipboard.ts    # copy, cut, paste
+│   │   └── file-ops.ts     # new file, new folder, rename, delete
 │   │
 │   ├── components/
-│   │   ├── FileList.tsx
-│   │   ├── Breadcrumb.tsx
-│   │   └── ContextMenu.tsx
+│   │   ├── FileList/
+│   │   ├── Breadcrumb/
+│   │   └── ContextMenu/
 │   │
 │   ├── App.tsx
 │   ├── main.tsx
-│   └── styles.css
+│   ├── moduleLoader.ts     # Auto-discovers built-in + community modules
+│   └── styles/             # Liquid Glass CSS tokens, split by concern
 │
 ├── package.json
 └── vite.config.ts
@@ -93,57 +92,65 @@ Macows-Explorer/
 
 ## Writing a module
 
-A module is a plain TypeScript object implementing `MacowsModule`. Drop it in
-`src/modules/your-module/index.ts`, register it in `App.tsx`, and it's live.
+A module is one file that does `export default defineModule({ ... })`. It imports nothing
+from the core and touches the system only through the `host` given to `setup`. Drop a
+built-in in `src/sandbox-builtins/my-module.ts` and it's auto-discovered — no registration.
 
 ```typescript
-// src/modules/my-module/index.ts
-import { MacowsModule } from "../../core/types";
+// src/sandbox-builtins/my-module.ts
+import { defineModule } from "../core/sandbox/defineModule";
 
-export const myModule: MacowsModule = {
+export default defineModule({
   id: "community.my-module",   // must be unique
   name: "My Module",
   version: "1.0.0",
-  actions: [
+  permissions: ["dialog"],     // declare every capability host.* uses
+  commands: [
     {
-      id: "my-module.hello",
+      id: "community.my-module.hello",
       label: "Say Hello",
       shortcut: "meta+h",
-      showInContextMenu: true,
-      execute: (ctx) => {
-        alert(`Hello from ${ctx.currentDirectory}!`);
-      },
+      contextMenu: true,
+      when: { selection: "any" },
     },
   ],
-};
+  setup(host) {
+    host.onCommand("community.my-module.hello", async (snapshot) => {
+      await host.dialog.confirm({ message: `Hello from ${snapshot.currentDirectory}!` });
+    });
+  },
+});
 ```
 
-```typescript
-// src/App.tsx — add two lines
-import { myModule } from "./modules/my-module";
-ModuleRegistry.register(myModule);
-```
+A community module is the same object literal, dropped in `~/.macows/modules/<id>/index.js`
+(without the `defineModule` import), and runs isolated in a Web Worker. See
+`COMMUNITY_MODULES.md`.
 
-### Action context
+### Command snapshot
+
+A command handler receives a serializable snapshot of app state:
 
 | Property           | Type             | Description                      |
 | ------------------ | ---------------- | -------------------------------- |
 | `selectedItems`    | `FileItem[]`     | Currently selected files         |
 | `currentDirectory` | `string`         | Absolute path of the open folder |
 | `clipboard`        | `ClipboardState` | What's in the clipboard          |
-| `navigate(path)`   | `fn`             | Open a different folder          |
-| `refresh()`        | `fn`             | Re-read current folder           |
 
-### Conditional actions
+Navigation, refresh, and dialogs are reached through `host.nav`, `host.refresh()`, and
+`host.dialog` (each gated by a permission).
+
+### Conditional commands
+
+Visibility is declarative data (not a function), so it can cross the worker boundary:
 
 ```typescript
-isEnabled: (ctx) => ctx.selectedItems.length > 0,
-isVisible: (ctx) => ctx.selectedItems.every(i => !i.isDir),
+when: { selection: "single" },      // any | none | some | single | multiple | singleDir | singleFile | files | dirs
+when: { clipboard: "hasItems" },    // e.g. gate a Paste command
 ```
 
 ### Calling Rust from a module
 
-Add a command in `src-tauri/src/lib.rs`:
+Modules never call `invoke` directly. Add a command in `src-tauri/src/lib.rs`:
 
 ```rust
 #[tauri::command]
@@ -153,9 +160,5 @@ fn my_command(path: String) -> Result<String, String> {
 // Don't forget to add it to .invoke_handler(tauri::generate_handler![..., my_command])
 ```
 
-Call it from TypeScript:
-
-```typescript
-import { invoke } from "@tauri-apps/api/core";
-const result = await invoke<string>("my_command", { path: "/some/path" });
-```
+Then expose it to modules by adding an entry to `src/core/sandbox/capabilities.ts` (the
+single gateway), behind the appropriate permission. The module reaches it via `host.*`.

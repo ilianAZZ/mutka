@@ -174,24 +174,43 @@ unsafe fn setup_my_monitor() {
 
 ---
 
-## Step 8 — Listen in the frontend module
+## Step 8 — Surface the event to modules
+
+Sandboxed modules cannot call `listen()` or `invoke()` — they only receive WHITELISTED
+events via `host.events.on(...)`. So a raw Tauri event is bridged in two steps:
+
+**8a.** In the core (e.g. `src/core/input-manager/InputManager.ts`, which runs in the
+main thread), subscribe to the Tauri event and re-emit it as a semantic app event:
 
 ```typescript
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 
 let unlisten: UnlistenFn | null = null;
 
-onMount(): void {
-    listen<string>("my-event", (event) => {
-        // handle event.payload
-    }).then((fn) => { unlisten = fn; })
-      .catch(() => { /* not in Tauri */ });
-},
-onUnmount(): void {
-    unlisten?.();
-    unlisten = null;
+listen<string>("my-event", (event) => {
+    // translate to a semantic event the app understands
+    EventBus.emit("input:my-thing", { /* payload */ });
+}).then((fn) => { unlisten = fn; })
+  .catch(() => { /* not in Tauri */ });
+
+// on teardown: unlisten?.();
+```
+
+**8b.** Add the semantic event name to the subscribable whitelist in
+`src/core/sandbox/eventWhitelist.ts`, then a module reacts to it:
+
+```typescript
+// src/sandbox-builtins/<name>.ts
+setup(host) {
+    host.events.on("input:my-thing", (payload) => {
+        // act via declared capabilities, e.g. host.nav.goBack()
+    });
 },
 ```
+
+Real example: `src/sandbox-builtins/mouse-navigation.ts` subscribes to
+`"input:mouse-navigate"` and reaches history navigation through `host.nav` (a declared
+`navigation` capability), never by dispatching an action.
 
 ---
 

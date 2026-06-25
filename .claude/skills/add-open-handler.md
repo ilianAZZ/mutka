@@ -9,112 +9,119 @@ Use this skill when a module wants to intercept double-click behavior for specif
 
 ## How open handlers work
 
-When the user double-clicks a file or folder, `ModuleRegistry.resolveOpen(item, ctx)` is called.
-It iterates all registered handlers sorted by priority (highest first).
-The first handler whose `matches(item)` returns `true` handles the open.
+A module declares open handlers as **data** in its `openHandlers` array and registers
+the function that runs them inside `setup` via `host.onOpen(handlerId, fn)`.
 
-Built-in defaults (priority 0, from `core.navigation`):
-- `item.isDir === true` → `ctx.navigate(item.path)` (opens folder in current window)
-- `item.isDir === false` → `invoke("open_item", { path })` (macOS system open)
+When the user double-clicks an item, the host picks the highest-priority handler whose
+serializable `match` clause fits the item, then runs the function the module registered
+under that handler's `handler` id. `match` is data (not a predicate) because a function
+can't cross the worker boundary — the host evaluates it.
+
+Built-in defaults (priority 0, from `src/sandbox-builtins/navigation.ts`):
+- folder (`isDir: true`) → `host.nav.navigate(item.path)`
+- file (`isDir: false`) → `host.fs.openItem(item.path)` (macOS system open)
+
+A module overrides these by registering a handler with a HIGHER priority.
+
+## The `match` clause
+
+`match` is a `SandboxOpenMatch`:
+
+```typescript
+{ isDir?: boolean; extensions?: string[] }
+```
+
+- `{ isDir: true }` — any folder
+- `{ isDir: false }` — any file
+- `{ extensions: ["png", "jpg", "jpeg", "gif", "webp"] }` — files with these extensions
+- `{ isDir: false, extensions: ["md"] }` — combine constraints
 
 ## Priority guide
 
 | Priority | Meaning |
 |---|---|
 | 0 | Core default — used by `core.navigation` |
-| 1–4 | Soft override — prefers in-app but fine if not loaded |
-| 5–9 | Strong override — this module owns this file type |
+| 1–9 | Soft override — this module prefers to handle this type |
 | 10–50 | Hard override — always handles this in-app |
 | 51–100 | Reserved for user-configured overrides |
 
 ## Step-by-step
 
-### 1. Decide on the file types or condition
+### 1. Declare the handler in `openHandlers`
 
 ```typescript
-// Example: handle markdown files
-matches: (item) => !item.isDir && item.extension === "md"
+import { defineModule } from "../core/sandbox/defineModule";
 
-// Example: handle all image formats
-matches: (item) =>
-  !item.isDir &&
-  ["png", "jpg", "jpeg", "gif", "webp", "svg", "avif"].includes(
-    item.extension?.toLowerCase() ?? ""
-  )
-
-// Example: override folder open (like a tabs module would)
-matches: (item) => item.isDir
-
-// Example: handle ALL items (catch-all override)
-matches: () => true
-```
-
-### 2. Write the handler in `handlers.ts`
-
-```typescript
-// src/modules/<id>/handlers.ts
-import type { MacowsOpenHandler } from "../../core/types";
-import { EventBus } from "../../core/EventBus";
-
-export const markdownHandler: MacowsOpenHandler = {
-  id: "my-module.open-markdown",
-  priority: 5,
-  matches: (item) => !item.isDir && item.extension === "md",
-  handle: (item, _ctx) => {
-    // Signal to a sidebar panel or overlay to show this file
-    EventBus.emit("markdown-viewer:open", { path: item.path });
+export default defineModule({
+  id: "author.image-viewer",
+  name: "Image Viewer",
+  version: "1.0.0",
+  permissions: ["navigation"],
+  openHandlers: [
+    {
+      id: "author.image-viewer.open-image",
+      priority: 10,                       // > 0 beats the core default
+      match: { isDir: false, extensions: ["png", "jpg", "jpeg", "gif", "webp"] },
+      handler: "open-image",              // the host.onOpen id to run on a match
+    },
+  ],
+  setup(host) {
+    // 2. Register the function the host runs when an item matches.
+    host.onOpen("open-image", (item) => {
+      host.log("would open image viewer for", item.path);
+      // e.g. open it in a tab, or hand off to the system:
+      host.tabs.openTab(item.path);
+    });
   },
-};
+});
 ```
 
-### 3. Include in the module
+### Real example: the core default
+
+`src/sandbox-builtins/navigation.ts` shows the canonical pattern — two priority-0
+handlers, each registered with `host.onOpen`:
 
 ```typescript
-// src/modules/<id>/index.ts
-import { markdownHandler } from "./handlers";
-
-export const myModule: MacowsModule = {
-  // ...
-  openHandlers: [markdownHandler],
-};
+openHandlers: [
+  { id: "core.navigation.open-folder", priority: 0, match: { isDir: true },  handler: "open-folder" },
+  { id: "core.navigation.open-file",   priority: 0, match: { isDir: false }, handler: "open-file" },
+],
+setup(host) {
+  host.onOpen("open-folder", (item) => { host.nav.navigate(item.path); });
+  host.onOpen("open-file",   (item) => { host.fs.openItem(item.path); });
+},
 ```
 
 ## Common patterns
 
-### Pattern: open a file in a sidebar panel
+### Pattern: open a folder in a new tab (override the folder default)
 
 ```typescript
-handle: (item, _ctx) => {
-  EventBus.emit("my-module:preview", { path: item.path });
-  // The sidebar panel listens to this event and updates its content
-}
-```
-
-### Pattern: open a folder in a new tab (tabs module)
-
-```typescript
-handle: (item, ctx) => {
-  // A tabs module would call into its own state management
-  TabsState.openNewTab(item.path);
-}
+openHandlers: [
+  { id: "author.tabs.open-folder", priority: 10, match: { isDir: true }, handler: "tab-open" },
+],
+setup(host) {
+  host.onOpen("tab-open", (item) => { host.tabs.openTab(item.path); });
+},
 ```
 
 ### Pattern: fall back to system if something fails
 
 ```typescript
-handle: async (item, _ctx) => {
+host.onOpen("open-custom", async (item) => {
   try {
-    await myCustomOpen(item.path);
+    await doCustomThing(item.path);
   } catch {
-    // Fall back to system open
-    await invoke("open_item", { path: item.path });
+    await host.fs.openItem(item.path);   // system open
   }
-}
+});
 ```
 
-## Important: handler registration order
+## Notes
 
-`core.navigation` is always registered first, at priority 0.
-Your handler with priority > 0 will always take precedence over it.
-If two handlers have the same priority, the one registered LATER wins
-(last-registration-wins is the tie-breaking rule).
+- Every capability the handler calls (`host.nav`, `host.tabs`, `host.fs`, …) must be
+  declared in `permissions[]`, or the gateway denies it.
+- The declarative `openHandlers` + `host.onOpen` shape is the AUTHOR API. The
+  `MacowsOpenHandler` interface in `module-registry.types.ts` (with `matches()` /
+  `handle()` functions) is the internal registry shape that a runtime builds from your
+  declaration — you do not write it directly.
