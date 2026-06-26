@@ -61,6 +61,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Build release notes from CHANGELOG
+        id: notes
+        run: |
+          {
+            echo 'body<<__NOTES_EOF__'
+            node scripts/extract-changelog.mjs "${{ steps.version.outputs.version }}" \
+              || echo "See the assets below to download and install."
+            echo '__NOTES_EOF__'
+          } >> "$GITHUB_OUTPUT"
+
       - name: Build & publish release
         uses: tauri-apps/tauri-action@v0
         env:
@@ -81,7 +91,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "Mutka ${{ github.ref_name }}"
-          releaseBody: "See the assets below to download and install."
-          releaseDraft: true # publish manually after you've checked the build
+          releaseBody: ${{ steps.notes.outputs.body }}
+          releaseDraft: false # auto-publish (it's signed + notarized in CI)
           prerelease: false
           args: --target universal-apple-darwin
