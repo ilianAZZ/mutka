@@ -1,7 +1,6 @@
 import type { MetadataRoute } from "next";
 import { source } from "@/lib/source";
-
-const SITE_URL = "https://mutka.dev";
+import { SITE_URL } from "@/lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const docs = source.getPages().map((page) => ({

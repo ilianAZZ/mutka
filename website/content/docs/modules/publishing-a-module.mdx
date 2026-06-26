@@ -1,0 +1,82 @@
+---
+title: Publishing a Module
+description: Name a GitHub repo mutka-module-* and it's auto-discovered in the Modules catalog.
+---
+
+Mutka's in-app **Modules** catalog is backed by GitHub. There's no registry to
+submit to and no approval step — **a public repository is discovered
+automatically as long as its name starts with `mutka-module-`**.
+
+## The naming convention
+
+```text
+mutka-module-<anything>
+```
+
+The Modules overlay searches GitHub for repositories whose **name** begins with
+`mutka-module-` (the search is `mutka-module- in:name`, sorted by stars). Any
+public repo that matches shows up in the catalog — yours included, automatically,
+once it's pushed.
+
+<Callout title="Examples">
+  `mutka-module-git-status`, `mutka-module-image-tools`,
+  `mutka-module-s3` are all discoverable. A repo named `my-mutka-plugin` is
+  **not** — the name must *start with* the prefix.
+</Callout>
+
+The search box in the overlay appends your free-text terms to the prefix, and can
+take GitHub qualifiers to narrow results (e.g. `org:my-org`).
+
+## What the repo must ship
+
+When a user picks your repo, Mutka downloads the module's source straight from the
+repository's default branch. A repo ships its module in one of two ways:
+
+### 1. A bare `index.js` at the root (single module)
+
+The simplest case. Drop your built module at the repository root as `index.js` and
+nothing else is required.
+
+### 2. A `mutka.config.json` (one or more modules)
+
+For built output in a subfolder, or to ship several modules from one repo, add a
+`mutka.config.json` at the root listing the entry path(s):
+
+```json
+{
+  "modules": [
+    { "entry": "dist/index.js" },
+    { "entry": "second/index.js" }
+  ]
+}
+```
+
+Each `entry` is downloaded and installed as a separate module. If no
+`mutka.config.json` is present, Mutka falls back to `index.js` at the root.
+
+## Validation, identity & consent
+
+- **Validated before install.** Every entry is loaded in a throwaway Web Worker to
+  confirm it's a real module that exports a valid manifest. A file that doesn't
+  load is rejected, never written to disk.
+- **The manifest is the source of truth.** The authoritative module ID comes from
+  the `id` in your `defineModule({ ... })` manifest — *not* from the repo name.
+  The install folder (`~/.mutka/modules/<id>/`) is named after it.
+- **Permissions are shown up front.** Before anything is written, the install
+  review dialog lists every permission your module declares, with dangerous ones
+  (`fs:write`, `network`, `secrets`, `clipboard:write`, `shell`) flagged. The
+  gateway still enforces those permissions at runtime regardless.
+
+## Checklist to get listed
+
+1. Build your module to a single ESM file (see [Writing a module](/docs/modules/writing-a-module)).
+2. Name the public GitHub repo `mutka-module-<name>`.
+3. Commit the entry as `index.js` at the root, **or** add a `mutka.config.json`
+   pointing at your entry path(s).
+4. Push. It appears in the in-app Modules catalog — no submission step.
+
+<Callout type="info" title="The catalog is a seam">
+  GitHub is the catalog source of truth *today*. The underlying `CatalogSource`
+  interface is designed so a future source (a curated DB of links, a private
+  registry) can replace it without changing how modules are written or installed.
+</Callout>

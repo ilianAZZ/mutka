@@ -2,6 +2,22 @@ import Link from "next/link";
 import { GITHUB_URL, DISCORD_URL } from "../layout.config";
 import { ModularBench } from "@/components/demo/ModularBench";
 
+function GitHubIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.29-.01-1.04-.02-2.05-3.34.73-4.04-1.61-4.04-1.61-.55-1.39-1.33-1.76-1.33-1.76-1.09-.74.08-.73.08-.73 1.2.09 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5.99.11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.11-3.17 0 0 1.01-.32 3.3 1.23a11.5 11.5 0 0 1 6 0c2.29-1.55 3.3-1.23 3.3-1.23.65 1.65.24 2.87.12 3.17.77.84 1.23 1.91 1.23 3.22 0 4.61-2.81 5.62-5.49 5.92.43.37.81 1.1.81 2.22 0 1.6-.01 2.9-.01 3.29 0 .32.21.7.82.58A12 12 0 0 0 24 12.5C24 5.87 18.63.5 12 .5Z" />
+    </svg>
+  );
+}
+
+function DiscordIcon({ size = 16 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M20.32 4.37A19.8 19.8 0 0 0 15.45 2.86a.07.07 0 0 0-.08.04c-.21.38-.44.87-.61 1.25a18.27 18.27 0 0 0-5.5 0c-.17-.39-.4-.87-.62-1.25a.08.08 0 0 0-.08-.04c-1.7.3-3.34.81-4.87 1.51a.07.07 0 0 0-.03.03C.53 9.05-.32 13.58.1 18.06a.08.08 0 0 0 .03.06 19.95 19.95 0 0 0 6 3.03.08.08 0 0 0 .09-.03c.46-.63.87-1.29 1.23-1.99a.08.08 0 0 0-.04-.11c-.65-.25-1.27-.55-1.87-.89a.08.08 0 0 1-.01-.13c.13-.1.25-.2.37-.3a.08.08 0 0 1 .08-.01c3.93 1.79 8.18 1.79 12.06 0a.08.08 0 0 1 .08.01c.12.1.24.21.37.3a.08.08 0 0 1-.01.13c-.6.35-1.22.64-1.87.89a.08.08 0 0 0-.04.11c.36.7.78 1.36 1.23 1.99a.08.08 0 0 0 .09.03 19.9 19.9 0 0 0 6.01-3.03.08.08 0 0 0 .03-.06c.5-5.18-.84-9.67-3.55-13.66a.06.06 0 0 0-.03-.03ZM8.02 15.33c-1.18 0-2.16-1.08-2.16-2.42 0-1.33.96-2.42 2.16-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.96 2.42-2.16 2.42Zm7.97 0c-1.18 0-2.16-1.08-2.16-2.42 0-1.33.96-2.42 2.16-2.42 1.21 0 2.18 1.1 2.16 2.42 0 1.34-.95 2.42-2.16 2.42Z" />
+    </svg>
+  );
+}
+
 const WHY = [
   {
     kicker: "no fork",
@@ -105,10 +121,10 @@ const IDEAS = [
 
 export default function HomePage() {
   return (
-    <main className="flex flex-1 flex-col">
+    <main className="flex flex-1 flex-col gap-56">
       {/* Hero — kept light: a title, one line, then the live demo */}
-      <section className="bench-stage">
-        <div className="mx-auto mb-9 max-w-2xl text-center">
+      <section className="bench-stage" aria-label="Introduction">
+        <header className="mx-auto mb-9 max-w-2xl text-center">
           <h1 className="mt-5 text-balance text-3xl font-semibold tracking-tight sm:text-[2.7rem] sm:leading-[1.08]">
             A file explorer built out of{" "}
             <span
@@ -138,13 +154,21 @@ export default function HomePage() {
               AI-buildable
             </span>
           </div>
-        </div>
+        </header>
         <ModularBench />
       </section>
 
       {/* What */}
-      <section className="mx-auto w-full max-w-3xl px-6 py-14">
-        <h2 className="text-2xl font-semibold tracking-tight">What is Mutka?</h2>
+      <section
+        className="mx-auto w-full max-w-3xl px-6 py-14"
+        aria-labelledby="what-heading"
+      >
+        <h2
+          id="what-heading"
+          className="text-2xl font-semibold tracking-tight"
+        >
+          What is Mutka?
+        </h2>
         <p className="mt-4 text-[15px] leading-relaxed text-fd-muted-foreground">
           Mutka is a community-driven, modular file explorer for macOS, built with
           Tauri&nbsp;2 and React. The core ships only infrastructure — a module
@@ -157,8 +181,14 @@ export default function HomePage() {
 
       {/* Why — an engineering "spec sheet": each guarantee backed by a
           one-line code proof of the mechanism, not a generic emoji card. */}
-      <section className="mx-auto w-full max-w-5xl px-6 py-6">
-        <h2 className="mb-2 text-2xl font-semibold tracking-tight">
+      <section
+        className="mx-auto w-full max-w-5xl px-6 py-6"
+        aria-labelledby="why-heading"
+      >
+        <h2
+          id="why-heading"
+          className="mb-2 text-2xl font-semibold tracking-tight"
+        >
           Why build it this way?
         </h2>
         <p className="mb-8 text-sm text-fd-muted-foreground">
@@ -190,9 +220,17 @@ export default function HomePage() {
       </section>
 
       {/* How — colourful numbered steps + syntax-highlighted code */}
-      <section className="mx-auto grid w-full max-w-5xl items-start gap-10 px-6 py-14 lg:grid-cols-[1fr_0.95fr]">
+      <section
+        className="mx-auto grid w-full max-w-5xl items-start gap-10 px-6 py-14 lg:grid-cols-[1fr_0.95fr]"
+        aria-labelledby="how-heading"
+      >
         <div>
-          <h2 className="text-2xl font-semibold tracking-tight">How a module works</h2>
+          <h2
+            id="how-heading"
+            className="text-2xl font-semibold tracking-tight"
+          >
+            How a module works
+          </h2>
           <p className="mt-3 text-sm text-fd-muted-foreground">
             One format, two runtimes, one gateway — the whole architecture in three
             ideas.
@@ -277,7 +315,10 @@ export default function HomePage() {
       </section>
 
       {/* Built by AI */}
-      <section className="mx-auto w-full max-w-5xl px-6 py-14">
+      <section
+        className="mx-auto w-full max-w-5xl px-6 py-14"
+        aria-labelledby="ai-heading"
+      >
         <div
           className="accent-card overflow-hidden p-8 sm:p-10"
           style={{ ["--ac" as string]: "#bf5af2" }}
@@ -290,7 +331,10 @@ export default function HomePage() {
               >
                 Built for the AI era
               </span>
-              <h2 className="mt-4 text-2xl font-semibold tracking-tight">
+              <h2
+                id="ai-heading"
+                className="mt-4 text-2xl font-semibold tracking-tight"
+              >
                 Modules are designed to be built by AI
               </h2>
               <p className="mt-3 text-[15px] leading-relaxed text-fd-muted-foreground">
@@ -334,8 +378,14 @@ export default function HomePage() {
       </section>
 
       {/* Crazy ideas */}
-      <section className="mx-auto w-full max-w-5xl px-6 py-6">
-        <h2 className="text-2xl font-semibold tracking-tight">
+      <section
+        className="mx-auto w-full max-w-5xl px-6 py-6"
+        aria-labelledby="ideas-heading"
+      >
+        <h2
+          id="ideas-heading"
+          className="text-2xl font-semibold tracking-tight"
+        >
           Go a little crazy
         </h2>
         <p className="mt-2 mb-7 text-sm text-fd-muted-foreground">
@@ -394,28 +444,46 @@ export default function HomePage() {
             href={GITHUB_URL}
             target="_blank"
             rel="noreferrer"
-            className="rounded-lg border border-fd-border px-4 py-2 text-sm font-medium transition hover:bg-fd-muted"
+            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+            style={{ background: "#24292e" }}
           >
+            <GitHubIcon />
             Star on GitHub
           </a>
           <a
             href={DISCORD_URL}
             target="_blank"
             rel="noreferrer"
-            className="rounded-lg border border-fd-border px-4 py-2 text-sm font-medium transition hover:bg-fd-muted"
+            className="inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium text-white transition hover:opacity-90"
+            style={{ background: "#5865F2" }}
           >
+            <DiscordIcon />
             Join the Discord
           </a>
         </div>
       </section>
 
-      <footer className="mt-10 border-t border-fd-border px-6 py-7 text-center text-xs text-fd-muted-foreground">
-        Mutka · MIT licensed ·{" "}
-        <a href={GITHUB_URL} target="_blank" rel="noreferrer" className="underline underline-offset-4">
+      <footer className="mt-10 flex flex-wrap items-center justify-center gap-2 border-t border-fd-border px-6 py-7 text-center text-xs text-fd-muted-foreground">
+        <span>Mutka · MIT licensed</span>
+        <span>·</span>
+        <a
+          href={GITHUB_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-fd-foreground transition hover:opacity-80"
+        >
+          <GitHubIcon size={14} />
           GitHub
-        </a>{" "}
-        ·{" "}
-        <a href={DISCORD_URL} target="_blank" rel="noreferrer" className="underline underline-offset-4">
+        </a>
+        <span>·</span>
+        <a
+          href={DISCORD_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 transition hover:opacity-80"
+          style={{ color: "#5865F2" }}
+        >
+          <DiscordIcon size={14} />
           Discord
         </a>
       </footer>

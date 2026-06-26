@@ -2,6 +2,7 @@
   "title": "Modules",
   "pages": [
     "writing-a-module",
+    "publishing-a-module",
     "permissions",
     "open-handlers",
     "virtual-file-system",

@@ -3,14 +3,18 @@ import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import { Inter } from "next/font/google";
-import { GITHUB_URL } from "./layout.config";
+import { GITHUB_URL, DISCORD_URL } from "./layout.config";
+import {
+  SITE_URL,
+  TITLE,
+  DESCRIPTION,
+  SHORT_DESCRIPTION,
+  OG_IMAGE,
+  TWITTER_IMAGE,
+  OG_IMAGE_ALT,
+} from "@/lib/site";
 
 const inter = Inter({ subsets: ["latin"] });
-
-const SITE_URL = "https://mutka.dev";
-const TITLE = "Mutka — A modular, community-driven file explorer for macOS";
-const DESCRIPTION =
-  "Mutka ships a minimal, rock-solid core and lets the community build everything else as modules — even copy-paste and navigation. Modules are a single file designed to be plugged in (and built by AI). Built with Tauri 2, React and the macOS Liquid Glass design language.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -51,6 +55,10 @@ export const metadata: Metadata = {
       "en-US": "/",
       "x-default": "/",
     },
+    types: {
+      // Advertise the AI-readable docs index (llmstxt.org) to crawlers.
+      "text/plain": [{ url: "/llms.txt", title: "llms.txt" }],
+    },
   },
   openGraph: {
     type: "website",
@@ -59,13 +67,23 @@ export const metadata: Metadata = {
     description: DESCRIPTION,
     siteName: "Mutka",
     locale: "en_US",
+    images: [
+      {
+        url: OG_IMAGE,
+        width: 1200,
+        height: 630,
+        alt: OG_IMAGE_ALT,
+        type: "image/png",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
     title: TITLE,
-    description:
-      "A minimal, rock-solid core. Everything else is a community module — designed to be plugged in and built by AI.",
+    description: SHORT_DESCRIPTION,
     creator: "@mutka",
+    site: "@mutka",
+    images: [{ url: TWITTER_IMAGE, alt: OG_IMAGE_ALT }],
   },
   robots: {
     index: true,
@@ -125,12 +143,52 @@ const jsonLd = {
       },
     },
     {
+      "@type": "WebPage",
+      "@id": `${SITE_URL}/#webpage`,
+      url: SITE_URL,
+      name: TITLE,
+      description: DESCRIPTION,
+      inLanguage: "en-US",
+      isPartOf: { "@id": `${SITE_URL}/#website` },
+      about: { "@id": `${SITE_URL}/#app` },
+      primaryImageOfPage: { "@id": `${SITE_URL}/#og` },
+      breadcrumb: { "@id": `${SITE_URL}/#breadcrumb` },
+    },
+    {
+      "@type": "BreadcrumbList",
+      "@id": `${SITE_URL}/#breadcrumb`,
+      itemListElement: [
+        { "@type": "ListItem", position: 1, name: "Home", item: SITE_URL },
+        {
+          "@type": "ListItem",
+          position: 2,
+          name: "Documentation",
+          item: `${SITE_URL}/docs`,
+        },
+      ],
+    },
+    {
+      "@type": "ImageObject",
+      "@id": `${SITE_URL}/#og`,
+      url: OG_IMAGE,
+      contentUrl: OG_IMAGE,
+      width: 1200,
+      height: 630,
+      caption: OG_IMAGE_ALT,
+    },
+    {
       "@type": "Organization",
       "@id": `${SITE_URL}/#org`,
       name: "Mutka",
       url: SITE_URL,
-      logo: `${SITE_URL}/icon.png`,
-      sameAs: [GITHUB_URL],
+      description: DESCRIPTION,
+      logo: {
+        "@type": "ImageObject",
+        url: `${SITE_URL}/icon.png`,
+        width: 512,
+        height: 512,
+      },
+      sameAs: [GITHUB_URL, DISCORD_URL],
     },
     {
       "@type": "SoftwareApplication",
@@ -146,9 +204,32 @@ const jsonLd = {
       license: "https://opensource.org/licenses/MIT",
       isAccessibleForFree: true,
       author: { "@id": `${SITE_URL}/#org` },
-      image: `${SITE_URL}/icon.png`,
+      publisher: { "@id": `${SITE_URL}/#org` },
+      image: { "@id": `${SITE_URL}/#og` },
+      screenshot: { "@id": `${SITE_URL}/#og` },
+      downloadUrl: `${GITHUB_URL}/releases`,
+      softwareHelp: `${SITE_URL}/docs`,
+      featureList: [
+        "Modular architecture — every feature is a single-file module",
+        "Permission-sandboxed modules running in isolated Web Workers",
+        "Built-in features use the same public module API as the community",
+        "AI-buildable modules with no build step and zero core imports",
+        "Native macOS Liquid Glass interface built on Tauri 2",
+      ],
       keywords:
         "macOS, file explorer, modular, Tauri, React, open source, AI modules",
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      "@id": `${SITE_URL}/#source`,
+      name: "Mutka",
+      description: DESCRIPTION,
+      codeRepository: GITHUB_URL,
+      programmingLanguage: ["TypeScript", "Rust"],
+      runtimePlatform: "Tauri 2",
+      license: "https://opensource.org/licenses/MIT",
+      author: { "@id": `${SITE_URL}/#org` },
+      about: { "@id": `${SITE_URL}/#app` },
     },
     {
       "@type": "FAQPage",

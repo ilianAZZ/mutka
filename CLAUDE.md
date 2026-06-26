@@ -87,13 +87,58 @@ Subsequent runs are fast (<5s for Rust changes, instant for TS/CSS changes).
 
 ---
 
+## Releasing — the tag IS the release trigger
+
+**Releases are not created from the GitHub UI and CI does not invent the tag.** A
+release happens because **a `vX.Y.Z` git tag is pushed**; that push (and only that
+push) triggers `.github/workflows/release.yml`, which builds the universal macOS
+bundle and creates a **draft** GitHub Release with the `.dmg`, `.app.tar.gz`, and
+updater `latest.json` + signature attached. You then click **Publish**.
+
+Versioning is **changeset-based** — never hand-edit a version number. The rules:
+
+1. **Every source-changing commit needs a changeset** (`src/`, `src-tauri/src/`, or
+   the manifests). Use the `add-changeset` skill; the pre-commit hook blocks commits
+   that lack one. Docs/chore/changeset-only commits are exempt.
+2. **Bump level**: `patch` (fix/refactor), `minor` (new feature/capability/permission/
+   event/Tauri command, backward-compatible), `major` (breaking change to the module
+   API — `host`/`defineModule`/`protocol.ts`/any documented contract). Highest staged
+   bump wins.
+3. **Cut the release** with `pnpm release` — it consumes the changesets, bumps the
+   three manifests in lockstep (`package.json`, `tauri.conf.json`, `Cargo.toml`),
+   writes `CHANGELOG.md`, commits `release: vX.Y.Z`, and **creates the tag**. Then
+   `git push --follow-tags` to push the tag and fire CI. Do **not** create the tag or
+   release by hand — `tauri-action` owns the release for that tag, so a manually
+   created one collides.
+
+See `docs/releasing.md` and `.changeset/README.md` for the full flow, and the
+`add-changeset` / `cut-release` skills.
+
+### Signing secrets (repo Actions secrets)
+
+Two independent concerns, both optional — CI still builds installable bundles without them:
+
+- **Apple code signing & notarization** (so the app opens with a normal double-click
+  instead of right-click → Open): `APPLE_CERTIFICATE` (base64 of the exported
+  `Developer ID Application` `.p12`), `APPLE_CERTIFICATE_PASSWORD` (that `.p12`'s
+  password), `APPLE_SIGNING_IDENTITY` (e.g. `Developer ID Application: Name (TEAMID)`),
+  `APPLE_ID` (your Apple developer account email), `APPLE_PASSWORD` (an
+  **app-specific password**, not your real one), `APPLE_TEAM_ID`. These require a paid
+  Apple Developer account. Unset today → builds are **unsigned**.
+- **Updater signing** (so the in-app auto-updater activates): `TAURI_SIGNING_PRIVATE_KEY`
+  (already set) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` if the key has one. This is
+  unrelated to Apple signing — it only signs the update payload against the public key
+  in `tauri.conf.json`.
+
+---
+
 ## Project structure
 
 ```text
 mutka/
 ├── CLAUDE.md                    ← you are here (project overview)
 ├── INSTALL.md                   ← end-user install guide
-├── docs/                        ← architecture.md, flows.md, events.md
+├── docs/                        ← architecture.md, flows.md, events.md, releasing.md
 │
 ├── dev-modules/                 ← repo-local community modules (DEV only)
 │   ├── com.dir-stats/index.js   ← example untrusted module, worker-loaded
