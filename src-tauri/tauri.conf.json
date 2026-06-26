@@ -31,9 +31,18 @@
     },
     "withGlobalTauri": true
   },
+  "plugins": {
+    "updater": {
+      "endpoints": [
+        "https://github.com/ilianAZZ/mutka/releases/latest/download/latest.json"
+      ],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMxQjc4MjNEMDQ3QjFGMQpSV1R4c1VmUUkzZ2JBd3B0UkwwVkUzQlF3K2lWSkV3Kyt0eFFvYkthSnpZL1RqOE9Pb2pqV3JZRwo="
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

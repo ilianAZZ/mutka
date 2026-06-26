@@ -1,0 +1,87 @@
+name: Release
+
+# Builds the macOS app and publishes it as a GitHub Release with attached
+# .dmg + .app.tar.gz assets. Triggered by pushing a version tag (e.g. v0.1.0).
+#
+# Versioning: the tag IS the version. The "sync-version" step rewrites the
+# version in package.json / tauri.conf.json / Cargo.toml to match the tag so
+# the three never drift, then tauri-action bundles with that version.
+
+on:
+  push:
+    tags:
+      - "v*" # v0.1.0, v0.2.0-beta.1, ...
+  # Allow a manual run from the Actions tab (builds, but skips publishing).
+  workflow_dispatch:
+
+# Needed so the workflow can create the GitHub Release and upload assets.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-14 # Apple-silicon runner; cross-compiles a universal binary
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Derive version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Sync version into manifests
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          # tauri.conf.json
+          node -e "const f='src-tauri/tauri.conf.json',j=require('./'+f);j.version='$VERSION';require('fs').writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
+          # package.json
+          node -e "const f='package.json',j=require('./'+f);j.version='$VERSION';require('fs').writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
+          # Cargo.toml (only the version line in the [package] section)
+          perl -i -pe 'BEGIN{$d=0} if(/^\[package\]/){$d=1} elsif(/^\[/){$d=0} s/^version = ".*"/version = "'"$VERSION"'"/ if $d' src-tauri/Cargo.toml
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache Cargo build
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build & publish release
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # --- Code signing & notarization (see SETUP below) ---
+          # Leave these secrets unset for an UNSIGNED build (works, but users
+          # must right-click → Open the first time). Set them to ship signed.
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # --- Updater signing (see UPDATES below) ---
+          # Set these to emit a signature + latest.json for the auto-updater.
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: ${{ github.ref_name }}
+          releaseName: "Mutka ${{ github.ref_name }}"
+          releaseBody: "See the assets below to download and install."
+          releaseDraft: true # publish manually after you've checked the build
+          prerelease: false
+          args: --target universal-apple-darwin

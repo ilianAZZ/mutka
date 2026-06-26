@@ -40,6 +40,11 @@ tauri-plugin-drag = "2"
 # (git status, recounts, …) react to on-disk changes. One non-recursive watcher,
 # re-armed by read_dir; the frontend debounces. See src/watcher.rs.
 notify = "6"
+# In-app auto-update: checks the GitHub Release `latest.json`, verifies the
+# update signature against the pubkey in tauri.conf.json, downloads + installs.
+# `process` provides the relaunch after an update is applied.
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2"

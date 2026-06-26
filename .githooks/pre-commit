@@ -1,0 +1,4 @@
+#!/bin/sh
+# Mutka pre-commit hook (shared via core.hooksPath = .githooks).
+# Ensures source-changing commits carry a changeset. Bypass: --no-verify.
+node scripts/check-changeset.mjs
