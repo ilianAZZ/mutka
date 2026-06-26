@@ -172,6 +172,7 @@ events via declaration merging on `EventMap` (see the comment in `events.ts`).
 | `file:external-drop`                        | `{ files; dest }`          | Finder drop → `core.drop-import` (subscribable)  |
 | `clipboard:changed`                         | `ClipboardState`           | from `ClipboardStore` / clipboard module         |
 | `navigation:back` / `navigation:forward`    | `undefined`                | toolbar flash animation                          |
+| `navigation:start`                          | `{ path }`                 | folder-open intent (subscribable)                |
 | `file:modifier-open`                        | `{ item; modifiers }`      | ctrl/⌘-open of an item (subscribable by modules) |
 | `module:registered` / `module:unregistered` | `{ moduleId }`             | sidebar-panel refresh                            |
 | `error:action`                              | `{ actionId; error }`      | failed action                                    |
@@ -180,6 +181,9 @@ events via declaration merging on `EventMap` (see the comment in `events.ts`).
 | `tabs:last-closed`                          | `{ path }`                 | last tab closed → global nav resumes             |
 | `action:dispatch`                           | `{ actionId }`             | a shortcut/menu requests an action run           |
 | `selection:changed`                         | `{ items }`                | from `SelectionStore`                            |
+| `listing:loaded`                            | `{ path; count }`          | items fetched+stored (subscribable)              |
+| `listing:rendered`                          | `{ path; count }`          | rows committed to DOM (subscribable)             |
+| `icons:settled`                             | `undefined`                | native icon fetch queue drained (subscribable)   |
 | `ui:changed`                                | `{ moduleId; surfaceId }`  | a module's declarative UI surface/modal changed  |
 | `statusbar:changed`                         | `undefined`                | a module status-bar item changed                 |
 | `directory:changed`                         | `{ path }`                 | current dir changed on disk (subscribable, debounced) |
@@ -187,7 +191,8 @@ events via declaration merging on `EventMap` (see the comment in `events.ts`).
 Of these, modules may subscribe ONLY to the whitelisted set in
 `sandbox/eventWhitelist.ts` (currently `app:ready`, `input:mouse-navigate`,
 `selection:changed`, `file:modifier-open`, `file:middle-open`, `file:open-no-app`,
-`file:external-drop`, `sidebar:item-remove`, `directory:changed`).
+`file:external-drop`, `sidebar:item-remove`, `directory:changed`, `navigation:start`,
+`listing:loaded`, `listing:rendered`, `icons:settled`).
 `ui:changed` / `statusbar:changed` are host-internal (React mirrors them) and not subscribable.
 
 ---

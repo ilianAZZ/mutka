@@ -16,6 +16,7 @@ constants — never raw strings.
 | `Events.Clipboard.changed` | `"clipboard:changed"` | `ClipboardState` | `ClipboardStore` (via the clipboard module) | `App.tsx` → `setClipboard()` |
 | `Events.Navigation.back` | `"navigation:back"` | `undefined` | `goBack()` in `App.tsx` | `App.tsx` → toolbar flash animation |
 | `Events.Navigation.forward` | `"navigation:forward"` | `undefined` | `goForward()` in `App.tsx` | `App.tsx` → toolbar flash animation |
+| `Events.Navigation.start` | `"navigation:start"` | `{ path }` | `navigateTo()` (`useNavigation`) | `core.telemetry` (open-folder timing) |
 | `Events.File.modifierOpen` | `"file:modifier-open"` | `{ item, modifiers }` | `App.tsx` | `core.tabs` module (ctrl/⌘-open in tab) |
 | `Events.Module.registered` | `"module:registered"` | `{ moduleId }` | `ModuleRegistry` | `App.tsx` → refresh sidebar panels |
 | `Events.Module.unregistered` | `"module:unregistered"` | `{ moduleId }` | `ModuleRegistry` | `App.tsx` → refresh sidebar panels |
@@ -23,6 +24,9 @@ constants — never raw strings.
 | `Events.Input.mouseNavigate` | `"input:mouse-navigate"` | `{ direction }` | `InputManager` | `core.mouse-navigation` module |
 | `Events.Action.dispatch` | `"action:dispatch"` | `{ actionId }` | `ShortcutManager`, modules | `ModuleRegistry.executeAction()` (wired in `MR.init()`) |
 | `Events.Selection.changed` | `"selection:changed"` | `{ items }` | `SelectionStore` | `App.tsx` → `setSelected()` |
+| `Events.Listing.loaded` | `"listing:loaded"` | `{ path, count }` | `useDirectoryListing` (after `read_dir`) | `core.telemetry` (data-fetch timing) |
+| `Events.Listing.rendered` | `"listing:rendered"` | `{ path, count }` | `FileList` (rows committed to DOM) | `core.telemetry` (render timing) |
+| `Events.Icons.settled` | `"icons:settled"` | `undefined` | `FileIconRegistry` (icon fetch queue drained) | `core.telemetry` (icon-load timing) |
 | `Events.Tabs.changed` | `"tabs:changed"` | `TabsSnapshot` | `TabManager` | `App.tsx` → `setTabsSnap()` |
 | `Events.Tabs.lastClosed` | `"tabs:last-closed"` | `{ path }` | `TabManager` | `App.tsx` → sync global nav state |
 | `Events.Ui.changed` | `"ui:changed"` | `{ moduleId, surfaceId }` | `UIStore` (via `ui` capability) | `DeclarativePanel` / `DeclarativeModal` re-render |
@@ -44,6 +48,7 @@ Anything else is ignored with a `console.warn`.
 | `"input:mouse-navigate"` | `core.mouse-navigation` (back/forward buttons) |
 | `"file:modifier-open"` | `core.tabs` (ctrl/⌘-click a folder → open in a tab) |
 | `"directory:changed"` | `core.auto-refresh` (re-read list when the dir changes on disk) |
+| `"navigation:start"` · `"listing:loaded"` · `"listing:rendered"` · `"icons:settled"` | `core.telemetry` (times each folder open: data fetch, render, icons) |
 | `"selection:changed"` | declarative panels reacting to the selection |
 | `"app:ready"` · `"file:middle-open"` · `"file:open-no-app"` · `"file:external-drop"` · `"sidebar:item-remove"` | various (e.g. `com.webdav` removes a sidebar account on `sidebar:item-remove`) |
 

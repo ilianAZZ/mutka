@@ -12,6 +12,11 @@ export const SUBSCRIBABLE_EVENTS = new Set<string>([
   "file:external-drop",
   "sidebar:item-remove",
   "directory:changed",
+  // Open-folder timing lifecycle events (consumed by core.telemetry).
+  "navigation:start",
+  "listing:loaded",
+  "listing:rendered",
+  "icons:settled",
 ]);
 
 export function isSubscribable(event: string): boolean {

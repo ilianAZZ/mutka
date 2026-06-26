@@ -18,6 +18,8 @@ export interface EventMap {
   "clipboard:changed": ClipboardState;
   "navigation:back": undefined;
   "navigation:forward": undefined;
+  /** User intent to open a folder (T0 of the open-folder timing). Whitelisted. */
+  "navigation:start": { path: string };
   "file:modifier-open": { item: FileItem; modifiers: { ctrl: boolean; meta: boolean } };
   "file:middle-open": { item: FileItem };
   /** A file was opened but no app claims it — the open-with module shows the picker. */
@@ -38,6 +40,12 @@ export interface EventMap {
   "selection:changed": { items: FileItem[] };
   /** Emitted by ListingStore when the visible items or active sort change. */
   "listing:changed": ListingSnapshot;
+  /** A directory's items were fetched and stored (after read_dir + sort). Whitelisted. */
+  "listing:loaded": { path: string; count: number };
+  /** The listing's rows were committed to the DOM (T_end of the open-folder timing). Whitelisted. */
+  "listing:rendered": { path: string; count: number };
+  /** Every in-flight native icon fetch has resolved (the icon queue drained). Whitelisted. */
+  "icons:settled": undefined;
   /** Emitted by ViewStore when a view preference (e.g. show-hidden) changes. */
   "view:changed": { showHidden: boolean };
   /** Coalesced signal that one or more custom-column cell values resolved. */
@@ -77,6 +85,7 @@ export const Events = {
   Navigation: {
     back: "navigation:back",
     forward: "navigation:forward",
+    start: "navigation:start",
   },
   File: {
     modifierOpen: "file:modifier-open",
@@ -102,6 +111,11 @@ export const Events = {
   },
   Listing: {
     changed: "listing:changed",
+    loaded: "listing:loaded",
+    rendered: "listing:rendered",
+  },
+  Icons: {
+    settled: "icons:settled",
   },
   View: {
     changed: "view:changed",

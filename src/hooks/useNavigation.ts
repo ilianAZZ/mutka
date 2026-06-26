@@ -53,6 +53,7 @@ export function useNavigation(): Navigation {
     : globalHistoryIdx < globalHistory.length - 1;
 
   const navigateTo = useCallback((path: string) => {
+    EventBus.emit(Events.Navigation.start, { path });
     if (TabManager.navigateTo(path)) { SelectionStore.clear(); return; }
     const next = [...globalHistory.slice(0, globalHistoryIdx + 1), path];
     setGlobalHistory(next);

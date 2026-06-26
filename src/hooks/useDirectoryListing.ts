@@ -22,6 +22,7 @@ export function useDirectoryListing(currentDir: string): DirectoryListing {
     try {
       const items = await FileSystemRegistry.readDir(currentDir);
       ListingStore.setItems(items);
+      EventBus.emit(Events.Listing.loaded, { path: currentDir, count: items.length });
       setLoadError(null);
       if (currentDir.startsWith("/")) localStorage.setItem(LAST_DIR_KEY, currentDir);
     } catch (err) {

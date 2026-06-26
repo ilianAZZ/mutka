@@ -175,6 +175,7 @@ mutka/
 │   │   ├── settings.ts          ← open settings (⌘,) → toggles SettingsStore
 │   │   ├── drop-import.ts       ← import files dropped from Finder (temp file → copy)
 │   │   ├── auto-refresh.ts      ← re-read the list on "directory:changed" (file watch)
+│   │   ├── telemetry.ts         ← times folder opens (data vs render) via nav/listing events
 │   │   └── reveal.ts            ← example: open with system default app
 │   │
 │   ├── styles/                  ← global CSS split by concern
