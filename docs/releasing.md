@@ -56,6 +56,46 @@ wires them): `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`,
 `APPLE_TEAM_ID`. Unsigned apps run, but the user must right-click → Open the first
 time (Gatekeeper). Signed + notarized apps open with a normal double-click.
 
+### Building the `APPLE_CERTIFICATE` `.p12` (two traps that fail the build)
+
+`APPLE_CERTIFICATE` is the base64 of a `.p12` containing a **Developer ID
+Application** certificate **and** its private key. Two mistakes each fail the
+`tauri build` codesign step:
+
+1. **Wrong certificate type.** It must be **Developer ID Application** (direct
+   distribution). *Apple Distribution* / *iPhone Distribution* (App Store) certs do
+   **not** work — the build errors with `certificate ... does not match provided
+   identity`. `APPLE_SIGNING_IDENTITY` must equal the cert's exact subject CN, e.g.
+   `Developer ID Application: Your Name (TEAMID)` — check with
+   `security find-identity -v -p codesigning` (the cert only appears there if its
+   private key is present on that machine).
+2. **OpenSSL 3 `.p12` format.** If you build the `.p12` with OpenSSL 3.x, export it
+   with `-legacy`, else Apple's `security import` on the runner fails with
+   `MAC verification failed during PKCS12 import (wrong password?)` — even when the
+   password is correct. The runner's `security` tool can't read OpenSSL 3's default
+   AES-256/SHA-256 encryption.
+
+Deterministic recipe (no Keychain needed — generate the key, create the cert from
+the CSR, bundle, and **verify before uploading**):
+
+```bash
+# 1. key + CSR
+openssl req -new -newkey rsa:2048 -nodes -keyout devid.key -out devid.csr \
+  -subj "/emailAddress=you@example.com/CN=Your Name Developer ID/C=US"
+# 2. upload devid.csr at developer.apple.com → Certificates → + → Developer ID
+#    Application → G2 Sub-CA → download developerID_application.cer
+# 3. bundle key + cert into a legacy-format .p12 (set an export password)
+openssl x509 -inform DER -in developerID_application.cer -out devid.pem
+openssl pkcs12 -export -out devid.p12 -inkey devid.key -in devid.pem \
+  -certpbe PBE-SHA1-3DES -keypbe PBE-SHA1-3DES -macalg sha1 -legacy
+# 4. VERIFY it's the right cert AND the password opens it before uploading
+openssl pkcs12 -in devid.p12 -nokeys -legacy -passin pass:THEPASSWORD \
+  | openssl x509 -noout -subject     # must show CN=Developer ID Application: ...
+# 5. set the secrets
+base64 -i devid.p12 | gh secret set APPLE_CERTIFICATE
+gh secret set APPLE_CERTIFICATE_PASSWORD     # the export password from step 3
+```
+
 ## Auto-updates
 
 The app ships the Tauri updater (`tauri-plugin-updater`, prompt mode — see
