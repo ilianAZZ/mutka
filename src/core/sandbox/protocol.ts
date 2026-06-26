@@ -253,11 +253,28 @@ export interface StatusBarItem {
 
 // ─── What a module reports about itself after loading ────────────────────────
 
+/** Who made a module, for display in the Modules UI. All fields optional. */
+export interface ModuleAuthor {
+  /** Display name shown on the card. */
+  name?: string;
+  /** GitHub login (user or org). Drives the avatar + profile link. When the
+   *  module is installed from a GitHub repo and this is omitted, the catalog
+   *  defaults it to the repo owner. */
+  github?: string;
+}
+
 export interface SandboxManifest {
   id: string;
   name: string;
   version: string;
   description?: string;
+  /** Display image: a `data:image/...` URI or an `https://` URL. Rendered via
+   *  <img src> only, so it is injection-safe. */
+  icon?: string;
+  /** Author shown in the Modules UI (avatar + profile link). */
+  author?: ModuleAuthor;
+  /** Free-form tags for discovery filtering (e.g. ["files", "git"]). */
+  tags?: string[];
   permissions: ModulePermission[];
   commands: SandboxCommand[];
   openHandlers: SandboxOpenHandler[];

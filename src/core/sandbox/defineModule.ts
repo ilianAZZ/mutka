@@ -1,4 +1,4 @@
-import type { SandboxCommand, SandboxOpenHandler, FileIconContribution, ColumnContribution, PanelContribution, SettingsSectionContribution } from "./protocol";
+import type { SandboxCommand, SandboxOpenHandler, FileIconContribution, ColumnContribution, PanelContribution, SettingsSectionContribution, ModuleAuthor } from "./protocol";
 import type { ModulePermission, SidebarItem } from "../module-registry/module-registry.types";
 import type { SandboxHostApi } from "./hostProxy";
 
@@ -14,6 +14,19 @@ export interface SandboxModuleDef {
   name?: string;
   version?: string;
   description?: string;
+  /**
+   * Display image for the Modules UI: a `data:image/...` URI (self-contained) or
+   * an `https://` URL. Rendered via <img src> only, so it is injection-safe.
+   */
+  icon?: string;
+  /**
+   * Who made this module — shown in the Modules UI as an avatar + profile link.
+   * `author.github` (a user or org login) drives the avatar; when omitted and the
+   * module is installed from a GitHub repo, it defaults to the repo owner.
+   */
+  author?: ModuleAuthor;
+  /** Free-form tags for discovery filtering, e.g. ["files", "git", "viewer"]. */
+  tags?: string[];
   /** Every privileged capability this module uses MUST be listed here. */
   permissions?: ModulePermission[];
   /** Commands surfaced into the app's menus / toolbar. */

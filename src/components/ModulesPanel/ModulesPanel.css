@@ -4,8 +4,13 @@
   position: fixed;
   inset: 0;
   z-index: 300;
-  background: rgba(0, 0, 0, 0.18);
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(6px) saturate(120%);
+  -webkit-backdrop-filter: blur(6px) saturate(120%);
+  animation: modules-fade-in 0.2s ease;
 }
+
+@keyframes modules-fade-in { from { opacity: 0; } to { opacity: 1; } }
 
 .modules-panel {
   position: fixed;
@@ -122,14 +127,22 @@
 .module-card {
   display: flex;
   align-items: flex-start;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: 13px;
+  padding: 14px 15px;
   border-radius: var(--r-lg);
-  background: var(--glass-subtle);
-  border: 1px solid var(--rim-dark);
+  background: var(--glass-mid);
+  border: 1px solid var(--rim-mid);
+  box-shadow: var(--shadow-inner), var(--shadow-panel);
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.14s, background 0.14s;
 }
 
-.module-card--error { border-color: color-mix(in srgb, crimson 40%, var(--rim-dark)); }
+.module-card:hover {
+  background: var(--glass-heavy);
+  box-shadow: var(--shadow-inner), var(--shadow-float);
+  transform: translateY(-1px);
+}
+
+.module-card--error { border-color: color-mix(in srgb, crimson 40%, var(--rim-mid)); }
 
 .module-card-main { flex: 1; min-width: 0; }
 
@@ -155,7 +168,7 @@
 }
 
 .module-card-source--builtin { color: var(--accent); }
-.module-card-source--dev { color: #b8860b; }
+.module-card-source--dev { color: var(--accent); }
 
 .module-card-desc { font-size: 12px; color: var(--text-mid); margin: 4px 0 8px; line-height: 1.4; }
 .module-card-error { font-size: 11.5px; color: crimson; margin: 4px 0 8px; }
@@ -270,46 +283,170 @@
   font-size: 13px;
 }
 
-.browse-source-note { font-size: 11px; color: var(--text-subtle); margin: 8px 2px 12px; }
-.browse-source-note code { font-family: ui-monospace, monospace; background: var(--glass-mid); padding: 0 4px; border-radius: 3px; }
 .browse-error { font-size: 12px; color: crimson; margin: 4px 2px; }
+
+/* Discovery filter chips */
+.browse-filters { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 2px; }
+
+.browse-filter {
+  border: 1px solid var(--rim-mid);
+  background: var(--glass-subtle);
+  color: var(--text-mid);
+  font-size: 11px;
+  font-family: ui-monospace, monospace;
+  padding: 3px 10px;
+  border-radius: 999px;
+  cursor: default;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.browse-filter:hover { color: var(--text); }
+.browse-filter--on {
+  background: var(--accent);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: var(--shadow-inner);
+}
+
+.browse-more {
+  display: block;
+  margin: 14px auto 4px;
+  border: 1px solid var(--rim-mid);
+  background: var(--glass-mid);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 7px 22px;
+  border-radius: var(--r-md);
+  cursor: default;
+  transition: background 0.12s;
+}
+.browse-more:hover { background: var(--glass-heavy); }
+.browse-more:disabled { opacity: 0.5; }
+
+/* Tags row on a catalog card */
+.catalog-card-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
+.catalog-card-tag {
+  font-size: 10.5px;
+  color: var(--text-subtle);
+  background: var(--glass-subtle);
+  padding: 1px 7px;
+  border-radius: 999px;
+}
 
 .catalog-list { display: flex; flex-direction: column; gap: 8px; }
 
 .catalog-card {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  align-items: flex-start;
+  gap: 13px;
+  padding: 15px;
   border-radius: var(--r-lg);
-  background: var(--glass-subtle);
-  border: 1px solid var(--rim-dark);
+  background: var(--glass-mid);
+  border: 1px solid var(--rim-mid);
+  box-shadow: var(--shadow-inner), var(--shadow-panel);
+  transition: transform 0.14s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.14s, background 0.14s;
 }
 
-.catalog-card-main { flex: 1; min-width: 0; }
-.catalog-card-title-row { display: flex; align-items: baseline; gap: 8px; }
-.catalog-card-name { font-size: 13.5px; font-weight: 600; color: var(--text); }
-.catalog-card-stars { font-size: 11px; color: var(--text-subtle); }
-.catalog-card-owner { font-size: 11px; color: var(--text-subtle); }
-.catalog-card-desc { font-size: 12px; color: var(--text-mid); margin: 4px 0; line-height: 1.4; }
+.catalog-card:hover {
+  background: var(--glass-heavy);
+  box-shadow: var(--shadow-inner), var(--shadow-float);
+  transform: translateY(-1px);
+}
+
+.catalog-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.catalog-card-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.catalog-card-name { font-size: 14px; font-weight: 600; color: var(--text); text-decoration: none; }
+a.catalog-card-name:hover { color: var(--accent); text-decoration: underline; }
+.catalog-card-version { font-size: 11px; color: var(--text-subtle); }
+.catalog-card-desc { font-size: 12px; color: var(--text-mid); margin: 0; line-height: 1.4; }
 .catalog-card-link { font-size: 11px; color: var(--accent); text-decoration: none; font-family: ui-monospace, monospace; }
 .catalog-card-link:hover { text-decoration: underline; }
 
 .catalog-install {
   flex-shrink: 0;
+  align-self: center;
   border: none;
-  background: var(--accent);
+  background: linear-gradient(180deg, color-mix(in srgb, var(--accent) 88%, white), var(--accent));
   color: #fff;
   font-size: 12px;
   font-weight: 600;
-  padding: 6px 16px;
+  padding: 7px 18px;
   border-radius: var(--r-md);
   cursor: default;
-  transition: background 0.12s, opacity 0.12s;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18), var(--shadow-inner);
+  transition: filter 0.12s, transform 0.1s, opacity 0.12s;
 }
 
-.catalog-install:hover { background: var(--accent-hover); }
-.catalog-install:disabled { opacity: 0.5; background: var(--ctl-bg); color: var(--text-subtle); }
+.catalog-install:hover { filter: brightness(1.06); }
+.catalog-install:active { transform: scale(0.97); }
+.catalog-install:disabled {
+  opacity: 1;
+  background: var(--ctl-bg);
+  color: var(--text-subtle);
+  box-shadow: inset 0 0 0 1px var(--rim-dark);
+}
+
+/* ─── Module icon (image or lettered fallback) ────────────────────────────── */
+.module-icon {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  border-radius: 13px;
+  object-fit: cover;
+  background: var(--glass-light);
+  box-shadow: var(--shadow-inner), 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.module-icon--fallback {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--accent) 92%, white), var(--accent));
+}
+
+/* ─── Source / origin pill (which provider surfaced a module) ──────────────── */
+.source-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-light);
+  color: var(--accent);
+}
+
+/* ─── Author badge (avatar + name → GitHub profile) ───────────────────────── */
+.author-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  font-size: 11.5px;
+  color: var(--text-mid);
+  text-decoration: none;
+}
+
+a.author-badge:hover { color: var(--accent); }
+a.author-badge:hover .author-badge-name { text-decoration: underline; }
+
+.author-badge-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--glass-mid);
+}
+
+.author-badge-name { font-weight: 500; }
+
+.module-card-main > .author-badge { margin: 4px 0 2px; }
 
 /* ─── Install review dialog ───────────────────────────────────────────────── */
 .install-review-backdrop {
@@ -351,12 +488,42 @@
 
 .install-review-warning strong { color: color-mix(in srgb, crimson 70%, var(--text)); }
 
-.install-review-modules { display: flex; flex-direction: column; gap: 14px; }
-.install-review-module-head { display: flex; align-items: baseline; gap: 8px; }
+.install-review-module-head { display: flex; align-items: center; gap: 10px; }
+.install-review-module-ident { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.install-review-module-title { display: flex; align-items: baseline; gap: 8px; }
 .install-review-module-name { font-size: 13px; font-weight: 600; color: var(--text); }
 .install-review-module-version { font-size: 11px; color: var(--text-subtle); }
-.install-review-module-desc { font-size: 12px; color: var(--text-mid); margin: 3px 0; line-height: 1.4; }
+.install-review-module-desc { font-size: 12px; color: var(--text-mid); margin: 8px 0 3px; line-height: 1.4; }
 .install-review-perms-label { font-size: 11px; font-weight: 600; color: var(--text-mid); margin-top: 6px; }
+
+.install-review-source-toggle {
+  align-self: flex-start;
+  margin-top: 10px;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 11.5px;
+  color: var(--accent);
+  cursor: default;
+}
+.install-review-source-toggle:hover { text-decoration: underline; }
+
+.install-review-source {
+  margin: 8px 0 0;
+  padding: 10px 12px;
+  max-height: 240px;
+  overflow: auto;
+  border-radius: var(--r-md);
+  background: var(--glass-mid);
+  border: 1px solid var(--rim-dark);
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-mid);
+  white-space: pre;
+  -webkit-user-select: text;
+  user-select: text;
+}
 .install-review-error { font-size: 12px; color: crimson; margin-top: 12px; }
 
 .install-review-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }

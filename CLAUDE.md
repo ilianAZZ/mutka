@@ -158,10 +158,12 @@ mutka/
 │   │   ├── descriptors.ts       ← the 3 module sources (built-in glob, dev glob, community invoke)
 │   │   ├── moduleConfig.ts      ← read/write ~/.mutka/config.json (disabled set + install meta)
 │   │   ├── probeManifest.ts     ← validate a module by loading it in a throwaway worker
-│   │   ├── githubCatalog.ts     ← CatalogSource over GitHub (mutka-module-* repos)
+│   │   ├── DiscoveryRegistry.ts ← registry of discovery sources (discover + resolve)
+│   │   ├── githubSource.ts      ← built-in ModuleDiscoverySource over GitHub (mutka-module-*)
+│   │   ├── authorInfo.ts        ← manifest author → avatar/profile URLs
 │   │   ├── installModule.ts     ← write a validated module to disk (install_module)
 │   │   ├── permissionInfo.ts    ← permission labels + dangerous-permission flags
-│   │   └── types.ts             ← ManagedModule, ModuleConfig, CatalogSource, …
+│   │   └── types.ts             ← ManagedModule, ModuleConfig, ModuleDiscoverySource, …
 │   │
 │   ├── sandbox-builtins/        ← trusted built-in modules (defineModule format)
 │   │   ├── navigation.ts        ← default open handlers (folder→navigate, file→open)
@@ -388,13 +390,14 @@ overlay). No App.tsx changes needed.
 The Modules overlay (components/ModulesPanel/) drives ModuleManager — all live, no restart:
   enable(id)    → descriptor.activate() spins up the host + registers it
   disable(id)   → ModuleRegistry.unregister(id) → onUnmount → host.dispose → worker.terminate()
-  install(repo) → githubCatalog.resolve() downloads + validates in a throwaway worker
-                  → install review dialog (permissions, dangerous ones flagged)
+  install(listing) → DiscoveryRegistry.resolve() fetches source + validates in a throwaway worker
+                  → install review dialog (permissions, dangerous ones flagged, source viewable)
                   → install_module writes ~/.mutka/modules/<id>/index.js → activate
   uninstall(id) → unregister + uninstall_module removes the dir
 Every change is persisted to ~/.mutka/config.json (disabled set + install metadata).
-GitHub is the catalog source of truth today; CatalogSource (types.ts) is the seam for
-a future DB of links / private registry. See src/module-manager/CLAUDE.md.
+Discovery is a registry of ModuleDiscoverySource's (githubSource built in today);
+the seam (types.ts) lets a future GitLab / local-folder / private-registry source —
+even one shipped as a module — drop in. See src/module-manager/CLAUDE.md.
 ```
 
 ### How a keyboard shortcut / command executes

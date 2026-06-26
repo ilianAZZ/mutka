@@ -193,6 +193,9 @@ that touches `invoke`, `AppBridge`, or `TabManager`.
 `navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `shell` (`shell` reserved —
 unused today). `fs:temp` writes only to the OS temp dir, so it is weaker than `fs:write`.
 
+For the full security picture — worker isolation, per-module secret/config namespacing,
+install-time confinement, and the residual risks — see [safety.md](./safety.md).
+
 ---
 
 ## Data flow: keyboard shortcut → command

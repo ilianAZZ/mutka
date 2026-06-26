@@ -101,6 +101,9 @@ interface RawModule {
   name?: string;
   version?: string;
   description?: string;
+  icon?: SandboxManifest["icon"];
+  author?: SandboxManifest["author"];
+  tags?: SandboxManifest["tags"];
   permissions?: SandboxManifest["permissions"];
   commands?: SandboxManifest["commands"];
   openHandlers?: SandboxManifest["openHandlers"];
@@ -129,6 +132,9 @@ async function loadModule(source: string): Promise<void> {
       name: def.name ?? def.id,
       version: def.version ?? "0.0.0",
       description: def.description,
+      icon: def.icon,
+      author: def.author,
+      tags: def.tags,
       permissions: def.permissions ?? [],
       commands: def.commands ?? [],
       openHandlers: def.openHandlers ?? [],

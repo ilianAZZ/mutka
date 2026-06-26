@@ -11,6 +11,14 @@ export default {
   id: "com.dir-stats",
   name: "Directory Stats",
   version: "1.0.0",
+  description: "Count files and folders in the current directory.",
+  // Card image: a self-contained SVG data URI (also accepts an https:// URL).
+  icon:
+    "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='6' fill='%234a90d9'/%3E%3Ctext x='12' y='17' font-size='13' font-family='sans-serif' text-anchor='middle' fill='white'%3E%CE%A3%3C/text%3E%3C/svg%3E",
+  // Shown on the card; github defaults to the repo owner if omitted.
+  author: { name: "Ilian", github: "ilianAZZ" },
+  // Free-form tags for discovery filtering.
+  tags: ["files", "stats"],
   permissions: ["fs:read"],
   commands: [
     {

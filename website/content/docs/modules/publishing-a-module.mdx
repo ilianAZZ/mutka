@@ -40,19 +40,40 @@ nothing else is required.
 ### 2. A `mutka.config.json` (one or more modules)
 
 For built output in a subfolder, or to ship several modules from one repo, add a
-`mutka.config.json` at the root listing the entry path(s):
+`mutka.config.json` at the root listing the entry path(s) under `projects`:
 
 ```json
 {
-  "modules": [
-    { "entry": "dist/index.js" },
-    { "entry": "second/index.js" }
-  ]
+  "projects": ["sql/index.js", "webdav/index.js"]
 }
 ```
 
-Each `entry` is downloaded and installed as a separate module. If no
-`mutka.config.json` is present, Mutka falls back to `index.js` at the root.
+Each path is downloaded and installed as a **separate module**, and each shows up
+as its **own card** in the catalog — a multi-module repo is not one lumped entry.
+If no `mutka.config.json` is present, Mutka falls back to `index.js` at the root.
+(The older `{ "modules": [{ "entry": "…" }] }` form is still accepted.)
+
+### Card metadata — image & author
+
+A module's catalog card (image, name, description, author) comes from its **own
+manifest**, not from `mutka.config.json`. Set them in `defineModule`:
+
+```ts
+export default defineModule({
+  id: "ilian.sqlite-browser",
+  name: "SQLite Browser",
+  description: "Open and browse .sqlite files.",
+  icon: "data:image/png;base64,iVBORw0KGgo…", // or an https:// URL
+  author: { name: "Ilian", github: "ilianAZZ" }, // github = user OR org login
+  permissions: ["fs:read"],
+  // …
+});
+```
+
+- `icon` is rendered with `<img src>` — use a `data:` URI (self-contained) or an
+  `https://` URL. No raw HTML/CSS, so it's injection-safe.
+- `author.github` drives the avatar and profile link. **Omit it and Mutka defaults
+  the author to the repo owner**, so credit shows even with no `author` block.
 
 ## Validation, identity & consent
 

@@ -1,11 +1,13 @@
+import { useState } from "react";
 import { dangerousPermissions } from "../../module-manager/permissionInfo";
-import type { CatalogEntry, ResolvedModule } from "../../module-manager/types";
+import type { ResolvedModule } from "../../module-manager/types";
+import { ModuleIcon } from "./ModuleIcon";
+import { AuthorBadge } from "./AuthorBadge";
 import { PermissionBadges } from "./PermissionBadges";
 
 interface InstallReviewDialogProps {
-  entry: CatalogEntry;
-  /** Modules resolved from the repo (downloaded + validated in a throwaway worker). */
-  resolved: ResolvedModule[];
+  /** The module being installed — source fetched + validated in a throwaway worker. */
+  resolved: ResolvedModule;
   installing: boolean;
   error: string | null;
   onConfirm: () => void;
@@ -13,24 +15,27 @@ interface InstallReviewDialogProps {
 }
 
 /**
- * Consent screen shown BEFORE an untrusted module is written + enabled. Lists
- * every module the repo ships and the permissions each requests, with sensitive
- * permissions called out explicitly so the user knows what they're granting.
+ * Consent screen shown BEFORE an untrusted module is written + enabled. Shows the
+ * module's identity, author, and the permissions it requests — read from the
+ * PROBED manifest (authoritative), not the discovery listing — with sensitive
+ * permissions flagged. The full source can be inspected inline before granting.
  */
 export function InstallReviewDialog({
-  entry,
   resolved,
   installing,
   error,
   onConfirm,
   onCancel,
 }: InstallReviewDialogProps) {
-  const allDangerous = dangerousPermissions(resolved.flatMap((r) => r.manifest.permissions));
+  const { listing, manifest, source } = resolved;
+  const permissions = manifest.permissions; // authoritative, from the probe
+  const allDangerous = dangerousPermissions(permissions);
+  const [showSource, setShowSource] = useState(false);
 
   return (
     <div className="install-review-backdrop" onClick={installing ? undefined : onCancel}>
       <div className="install-review" onClick={(e) => e.stopPropagation()}>
-        <h2 className="install-review-title">Install from {entry.repo}?</h2>
+        <h2 className="install-review-title">Install {manifest.name}?</h2>
         <p className="install-review-sub">
           This is community code that runs in an isolated sandbox. It can only do what you allow below.
         </p>
@@ -42,20 +47,41 @@ export function InstallReviewDialog({
           </div>
         )}
 
-        <div className="install-review-modules">
-          {resolved.map((r) => (
-            <div key={r.id} className="install-review-module">
-              <div className="install-review-module-head">
-                <span className="install-review-module-name">{r.manifest.name}</span>
-                <span className="install-review-module-version">v{r.manifest.version}</span>
+        <div className="install-review-module">
+          <div className="install-review-module-head">
+            <ModuleIcon icon={listing.icon ?? manifest.icon} name={manifest.name} />
+            <div className="install-review-module-ident">
+              <div className="install-review-module-title">
+                <span className="install-review-module-name">{manifest.name}</span>
+                <span className="install-review-module-version">v{manifest.version}</span>
               </div>
-              {r.manifest.description && (
-                <p className="install-review-module-desc">{r.manifest.description}</p>
-              )}
-              <div className="install-review-perms-label">Permissions requested:</div>
-              <PermissionBadges permissions={r.manifest.permissions} detailed />
+              <AuthorBadge author={listing.author} />
             </div>
-          ))}
+          </div>
+          {manifest.description && (
+            <p className="install-review-module-desc">{manifest.description}</p>
+          )}
+          <div className="install-review-perms-label">Permissions requested:</div>
+          <PermissionBadges permissions={permissions} detailed />
+
+          <button
+            type="button"
+            className="install-review-source-toggle"
+            onClick={() => setShowSource((s) => !s)}
+          >
+            {showSource ? "▾ Hide source" : "▸ View source"} ({source.length.toLocaleString()} bytes)
+          </button>
+          {showSource && (
+            <pre className="install-review-source">
+              <code>{source}</code>
+            </pre>
+          )}
+
+          {listing.homepageUrl && (
+            <a className="catalog-card-link" href={listing.homepageUrl} target="_blank" rel="noreferrer">
+              {listing.homepageUrl}
+            </a>
+          )}
         </div>
 
         {error && <p className="install-review-error">{error}</p>}

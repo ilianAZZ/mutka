@@ -5,7 +5,6 @@ import { collectDescriptors, makeWorkerDescriptor } from "./descriptors";
 import { loadConfig, saveConfig } from "./moduleConfig";
 import { writeModule } from "./installModule";
 import type {
-  CatalogEntry,
   ManagedModule,
   ModuleConfig,
   ModuleDescriptor,
@@ -120,20 +119,21 @@ class ModuleManagerClass {
    * Install (or update) a community module from an already-resolved, validated
    * download. Writes it to disk, records provenance, and activates it live.
    */
-  async install(resolved: ResolvedModule, entry: CatalogEntry): Promise<void> {
-    const meta = await writeModule(resolved, entry);
+  async install(resolved: ResolvedModule): Promise<void> {
+    const id = resolved.manifest.id;
+    const meta = await writeModule(resolved);
 
     // Updating an installed module: tear the old runtime down first.
-    const existing = this.modules.get(resolved.id);
-    if (existing?.status === "active") ModuleRegistry.unregister(resolved.id);
+    const existing = this.modules.get(id);
+    if (existing?.status === "active") ModuleRegistry.unregister(id);
 
-    this.config.installed[resolved.id] = meta;
-    this.config.disabled = this.config.disabled.filter((d) => d !== resolved.id);
+    this.config.installed[id] = meta;
+    this.config.disabled = this.config.disabled.filter((d) => d !== id);
     await saveConfig(this.config);
 
     // Build a descriptor from the in-memory source (already validated) so we
     // don't re-read disk; on next launch it loads from ~/.mutka/modules normally.
-    const descriptor = makeWorkerDescriptor(resolved.id, "community", async () => resolved.source);
+    const descriptor = makeWorkerDescriptor(id, "community", async () => resolved.source);
     const mod = this.upsert(descriptor, resolved.manifest, true, meta);
     await this.activate(mod);
     this.emit();
@@ -219,6 +219,8 @@ class ModuleManagerClass {
       name: manifest.name,
       version: manifest.version,
       description: manifest.description,
+      icon: manifest.icon,
+      author: manifest.author,
       permissions: manifest.permissions,
       source: descriptor.source,
       status: enabled ? "active" : "disabled",
@@ -236,6 +238,8 @@ class ModuleManagerClass {
     mod.name = manifest.name;
     mod.version = manifest.version;
     mod.description = manifest.description;
+    mod.icon = manifest.icon;
+    mod.author = manifest.author;
     mod.permissions = manifest.permissions;
   }
 

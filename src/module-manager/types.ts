@@ -1,5 +1,5 @@
 import type { ModulePermission } from "../core/module-registry/module-registry.types";
-import type { SandboxManifest } from "../core/sandbox/protocol";
+import type { SandboxManifest, ModuleAuthor } from "../core/sandbox/protocol";
 import type { LocalHost } from "../core/sandbox/LocalHost";
 import type { SandboxHost } from "../core/sandbox/SandboxHost";
 
@@ -40,6 +40,10 @@ export interface ManagedModule {
   name: string;
   version: string;
   description?: string;
+  /** Display image (data: URI or https URL) from the manifest, if any. */
+  icon?: string;
+  /** Author from the manifest, if any (avatar/profile derived in the UI). */
+  author?: ModuleAuthor;
   permissions: ModulePermission[];
   source: ModuleSource;
   status: ModuleStatus;
@@ -57,12 +61,12 @@ export interface ManagedModule {
 
 /** Where an installed community module came from. Extensible for future sources. */
 export interface InstalledMeta {
-  /** "owner/repo" on GitHub. */
-  repo: string;
-  /** Branch or tag the source was fetched from. */
+  /** Discovery source id it was installed from ("github", …). */
+  sourceId: string;
+  /** Opaque, provider-encoded locator used to re-fetch the source. */
   ref: string;
-  /** Path of the entry file within the repo (index.js, or from mutka.config.json). */
-  entry: string;
+  /** Human-readable origin for display (e.g. "owner/repo"). */
+  origin?: string;
   /** ISO timestamp recorded at install time (stamped by the caller). */
   installedAt: string;
 }
@@ -76,44 +80,82 @@ export interface ModuleConfig {
   installed: Record<string, InstalledMeta>;
 }
 
-// ─── Catalog (the installable-module source, GitHub today) ────────────────────
+// ─── Discovery (pluggable module-discovery sources) ───────────────────────────
 
-/** One installable repository surfaced by a CatalogSource. */
-export interface CatalogEntry {
-  /** "owner/repo". */
-  repo: string;
-  name: string;
-  description?: string;
-  owner: string;
-  stars: number;
-  defaultBranch: string;
-  htmlUrl: string;
-}
-
-/** One module resolved from a catalog entry, downloaded + validated, ready to install. */
-export interface ResolvedModule {
-  /** Authoritative id from the probed manifest. */
-  id: string;
-  manifest: SandboxManifest;
-  /** The downloaded ESM source. */
-  source: string;
-  /** Path within the repo this came from. */
-  entry: string;
+/** Author display info, resolved to concrete avatar/profile URLs. */
+export interface CatalogAuthor {
+  name?: string;
+  /** GitHub login (user or org). */
+  github?: string;
+  /** Avatar image URL (derived from the login). */
+  avatarUrl?: string;
+  /** Profile/org page URL (derived from the login). */
+  profileUrl?: string;
 }
 
 /**
- * The installable-module source. GitHub is the source of truth today; a future
- * source (a DB of GitHub links, a private registry) implements this same shape.
+ * A module surfaced by a discovery source — metadata only, no code yet. The core
+ * fetches the source (via the source's `fetchSource(ref)`) and probes it only at
+ * install time. `permissions` here are advisory (for filtering/preview); the
+ * authoritative set comes from probing the fetched source.
  */
-export interface CatalogSource {
-  /** Human label, e.g. "GitHub". */
+export interface ModuleListing {
+  /** Discovery source that surfaced this (its `id`). */
+  sourceId: string;
+  /** Opaque, provider-encoded locator passed back to `fetchSource`. */
+  ref: string;
+  id: string;
+  name: string;
+  version: string;
+  description?: string;
+  /** Display image (data: URI or https URL). */
+  icon?: string;
+  /** Author shown on the card (login defaults to the repo owner). */
+  author: CatalogAuthor | null;
+  /** Advisory permission preview (authoritative set is re-derived at install). */
+  permissions: ModulePermission[];
+  tags?: string[];
+  /** External page for the module (repo URL, etc.). */
+  homepageUrl?: string;
+}
+
+/** Filters + pagination passed to a discovery source. */
+export interface DiscoveryQuery {
+  text?: string;
+  permissions?: ModulePermission[];
+  tags?: string[];
+  extension?: string;
+  /** 1-based page number. */
+  page?: number;
+  perPage?: number;
+}
+
+/** A page of discovery results. */
+export interface DiscoveryResult {
+  listings: ModuleListing[];
+  /** Next page number, or undefined when there are no more results. */
+  nextPage?: number;
+}
+
+/**
+ * A pluggable module-discovery source. GitHub is the built-in one; a future
+ * source (GitLab, a local folder, a private registry) implements this same shape
+ * and registers with the DiscoveryRegistry — the manager + UI don't change.
+ */
+export interface ModuleDiscoverySource {
+  readonly id: string;
   readonly label: string;
-  /** Search the catalog. An empty query returns the default listing. */
-  search(query: string): Promise<CatalogEntry[]>;
-  /**
-   * Download + validate every module a catalog entry ships (one repo may carry
-   * several via mutka.config.json). Each is loaded in a throwaway worker; a
-   * module that fails to load is rejected, not returned.
-   */
-  resolve(entry: CatalogEntry): Promise<ResolvedModule[]>;
+  /** Find modules matching the query (one page). */
+  discover(query: DiscoveryQuery): Promise<DiscoveryResult>;
+  /** Return the ESM source for a listing's `ref` (however this source fetches). */
+  fetchSource(ref: string): Promise<string>;
+}
+
+/** A listing whose source has been fetched + validated, ready to install. */
+export interface ResolvedModule {
+  listing: ModuleListing;
+  /** The downloaded ESM source. */
+  source: string;
+  /** The probed manifest (authoritative id + permissions). */
+  manifest: SandboxManifest;
 }

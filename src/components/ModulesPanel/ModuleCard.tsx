@@ -1,5 +1,8 @@
 import type { ManagedModule, ModuleSource } from "../../module-manager/types";
+import { resolveAuthor } from "../../module-manager/authorInfo";
 import { PermissionBadges } from "./PermissionBadges";
+import { ModuleIcon } from "./ModuleIcon";
+import { AuthorBadge } from "./AuthorBadge";
 
 interface ModuleCardProps {
   module: ManagedModule;
@@ -8,16 +11,22 @@ interface ModuleCardProps {
   onDelete: (id: string) => void;
 }
 
+// Built-in and dev modules both ship with the app — surfaced together as "Bundled".
 const SOURCE_LABEL: Record<ModuleSource, string> = {
-  builtin: "Built-in",
-  dev: "Dev module",
+  builtin: "Bundled",
+  dev: "Bundled",
   community: "Installed",
 };
 
-/** One row in the installed list: identity, source, permissions, enable/delete. */
+/** One row in the installed list: icon, identity, author, permissions, enable/delete. */
 export function ModuleCard({ module, busy, onToggle, onDelete }: ModuleCardProps) {
+  // The author login defaults to the repo owner ("owner/repo") for installs.
+  const author = resolveAuthor(module.author, module.installed?.origin?.split("/")[0]);
+
   return (
     <div className={`module-card${module.status === "error" ? " module-card--error" : ""}`}>
+      <ModuleIcon icon={module.icon} name={module.name} />
+
       <div className="module-card-main">
         <div className="module-card-title-row">
           <span className="module-card-name">{module.name}</span>
@@ -26,6 +35,8 @@ export function ModuleCard({ module, busy, onToggle, onDelete }: ModuleCardProps
             {SOURCE_LABEL[module.source]}
           </span>
         </div>
+
+        {author && <AuthorBadge author={author} />}
 
         {module.description && <p className="module-card-desc">{module.description}</p>}
         {module.status === "error" && module.error && (

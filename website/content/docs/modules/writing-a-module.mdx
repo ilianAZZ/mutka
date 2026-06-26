@@ -17,6 +17,9 @@ export default defineModule({
   id: "author.my-module",
   name: "My Module",
   version: "1.0.0",
+  description: "What it does, in one line.",
+  icon: "data:image/png;base64,…",      // optional card image (data: or https URL)
+  author: { name: "You", github: "you" }, // optional; defaults to the repo owner
   permissions: ["dialog"],              // declare every capability host.* uses
   commands: [
     {
