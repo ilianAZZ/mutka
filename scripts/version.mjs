@@ -147,7 +147,8 @@ function main() {
       stdio: "inherit",
       env: { ...process.env, SKIP_CHANGESET: "1" },
     });
-    execSync(`git tag v${version}`, { cwd: ROOT, stdio: "inherit" });
+    // Annotated tag (not lightweight) so `git push --follow-tags` pushes it.
+    execSync(`git tag -a v${version} -m "release: v${version}"`, { cwd: ROOT, stdio: "inherit" });
     console.log(`\nTagged v${version}. Push with:  git push --follow-tags`);
   } else {
     console.log(`\nReview the diff, then:  git commit -am "release: v${version}" && git tag v${version} && git push --follow-tags`);
