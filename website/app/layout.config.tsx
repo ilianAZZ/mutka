@@ -33,6 +33,11 @@ export const baseOptions: BaseLayoutProps = {
   githubUrl: GITHUB_URL,
   links: [
     {
+      text: "Features",
+      url: "/features",
+      active: "nested-url",
+    },
+    {
       text: "Documentation",
       url: "/docs",
       active: "nested-url",

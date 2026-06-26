@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { GITHUB_URL, DISCORD_URL } from "../layout.config";
 import { ModularBench } from "@/components/demo/ModularBench";
+import { FeatureCardGrid } from "@/components/features/FeatureCardGrid";
 
 function GitHubIcon({ size = 16 }: { size?: number }) {
   return (
@@ -144,15 +145,15 @@ export default function HomePage() {
             rebuild itself.
           </p>
           <div className="hero-badges">
-            <span className="hero-badge" style={{ ["--ac" as string]: "#0a84ff" }}>
+            <Link href="/features/modular-architecture" className="hero-badge" style={{ ["--ac" as string]: "#0a84ff" }}>
               One-file modules
-            </span>
-            <span className="hero-badge" style={{ ["--ac" as string]: "#30d158" }}>
+            </Link>
+            <Link href="/features/safety" className="hero-badge" style={{ ["--ac" as string]: "#30d158" }}>
               Permission-sandboxed
-            </span>
-            <span className="hero-badge" style={{ ["--ac" as string]: "#ff9f0a" }}>
+            </Link>
+            <Link href="/features/ai-built-modules" className="hero-badge" style={{ ["--ac" as string]: "#ff9f0a" }}>
               AI-buildable
-            </span>
+            </Link>
           </div>
         </header>
         <ModularBench />
@@ -177,6 +178,35 @@ export default function HomePage() {
           navigation, list columns, cloud mounts. The features that ship in the box
           and the ones you install from the community are written the same way.
         </p>
+      </section>
+
+      {/* Featured articles — the deep-dive index, surfaced in the main flow */}
+      <section
+        className="mx-auto w-full max-w-5xl px-6 py-6"
+        aria-labelledby="features-heading"
+      >
+        <div className="mb-7 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <span className="ft-kicker">deep dives</span>
+            <h2
+              id="features-heading"
+              className="mt-2 text-2xl font-semibold tracking-tight"
+            >
+              Explore the features
+            </h2>
+            <p className="mt-2 text-sm text-fd-muted-foreground">
+              Four articles on the ideas behind Mutka — the architecture, the
+              sandbox, the extension manager and AI-built modules.
+            </p>
+          </div>
+          <Link
+            href="/features"
+            className="shrink-0 text-sm font-medium text-[var(--mutka-accent)] underline-offset-4 hover:underline"
+          >
+            All features →
+          </Link>
+        </div>
+        <FeatureCardGrid />
       </section>
 
       {/* Why — an engineering "spec sheet": each guarantee backed by a

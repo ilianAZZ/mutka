@@ -1,4 +1,5 @@
 import "./global.css";
+import "@/components/features/articles.css";
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import { RootProvider } from "fumadocs-ui/provider/next";

@@ -1,0 +1,559 @@
+/*
+ * Styles for the feature articles + hub (app/features) and the homepage
+ * showcase. Lives next to the components it styles (components/features/*).
+ * Imported once from app/layout.tsx — it relies on the design tokens and
+ * Tailwind/Fumadocs layers set up in app/global.css, so it loads after it.
+ */
+
+/* ============================================================= *
+ *  FEATURE ARTICLES (/features)                                 *
+ *  A modular, section-based template. Each page is themed by an *
+ *  accent set on --ac / --mutka-accent at the <main> root.      *
+ * ============================================================= */
+
+.ft-article,
+.ft-hub {
+  width: 100%;
+  max-width: 64rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4.5rem;
+}
+
+/* The sections inside <article> need their own vertical rhythm — the parent's
+   gap only spaces the breadcrumb / article / related / footer blocks. Without
+   this the sections stack flush against each other. */
+.ft-sections {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(3.5rem, 7vw, 6rem);
+}
+
+/* breadcrumbs */
+.ft-crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--color-fd-muted-foreground);
+}
+.ft-crumbs a {
+  color: var(--color-fd-muted-foreground);
+  transition: color 0.15s;
+}
+.ft-crumbs a:hover { color: var(--ac); }
+.ft-crumbs [aria-current="page"] { color: var(--color-fd-foreground); font-weight: 500; }
+
+/* shared headings + copy */
+.ft-kicker {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ac);
+}
+.ft-h2 {
+  font-size: clamp(1.4rem, 3vw, 1.85rem);
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+.ft-p {
+  margin-top: 0.9rem;
+  font-size: 15.5px;
+  line-height: 1.65;
+  color: var(--color-fd-muted-foreground);
+}
+.ft-p code,
+.ft-bullets code {
+  font-size: 0.88em;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: color-mix(in srgb, var(--ac) 10%, var(--color-fd-muted));
+  color: var(--color-fd-foreground);
+}
+.ft-intro {
+  margin-top: 0.6rem;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--color-fd-muted-foreground);
+  max-width: 44rem;
+}
+.ft-prose--lede .ft-p { font-size: 16.5px; max-width: 46rem; }
+
+/* hero */
+.ft-hero { display: flex; flex-direction: column; gap: 1rem; align-items: flex-start; }
+.ft-hero .hero-badges { justify-content: flex-start; margin-top: 0.5rem; }
+.ft-hero-title {
+  font-size: clamp(2rem, 5.5vw, 3rem);
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  line-height: 1.06;
+}
+.ft-hero-sub {
+  max-width: 42rem;
+  font-size: 16.5px;
+  line-height: 1.6;
+  color: var(--color-fd-muted-foreground);
+}
+
+/* CTA buttons */
+.ft-cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 0.4rem; }
+.ft-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 17px;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: transform 0.15s, opacity 0.15s, background 0.15s, border-color 0.15s;
+}
+.ft-btn:hover { transform: translateY(-1px); }
+.ft-btn--primary { background: var(--ac); color: #fff; }
+.ft-btn--primary:hover { opacity: 0.92; }
+.ft-btn--ghost {
+  border: 1px solid color-mix(in srgb, var(--ac) 40%, var(--color-fd-border));
+  color: var(--color-fd-foreground);
+}
+.ft-btn--ghost:hover { border-color: var(--ac); background: color-mix(in srgb, var(--ac) 8%, transparent); }
+.ft-btn--dark { background: #24292e; color: #fff; }
+
+/* split block: copy + media */
+.ft-split {
+  display: grid;
+  gap: clamp(1.5rem, 4vw, 3rem);
+  align-items: center;
+  grid-template-columns: 1fr;
+}
+@media (min-width: 860px) {
+  .ft-split { grid-template-columns: 1fr 1fr; }
+  .ft-split--rev .ft-split-copy { order: 2; }
+}
+.ft-bullets {
+  margin-top: 1.1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  list-style: none;
+  padding: 0;
+}
+.ft-bullets li {
+  position: relative;
+  padding-left: 1.6rem;
+  font-size: 14.5px;
+  line-height: 1.5;
+  color: var(--color-fd-muted-foreground);
+}
+.ft-bullets li::before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ac);
+}
+.ft-split .ft-cta-row { margin-top: 1.3rem; }
+.ft-img {
+  width: 100%;
+  height: auto;
+  border-radius: 14px;
+  border: 1px solid var(--color-fd-border);
+}
+
+/* grid of cards */
+.ft-grid {
+  margin-top: 1.6rem;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+.ft-grid-card {
+  position: relative;
+  padding: 1.3rem 1.25rem;
+  border-radius: 14px;
+  border: 1px solid var(--color-fd-border);
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--ac) 9%, transparent), transparent 60%),
+    var(--color-fd-card);
+}
+.ft-grid-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  font-weight: 800;
+  color: #fff;
+  background: linear-gradient(150deg, var(--ac), color-mix(in srgb, var(--ac) 55%, #000));
+  box-shadow: 0 6px 15px -8px var(--ac);
+}
+.ft-grid-title { margin-top: 0.8rem; font-size: 15px; font-weight: 600; }
+.ft-grid-body { margin-top: 0.4rem; font-size: 13.5px; line-height: 1.55; color: var(--color-fd-muted-foreground); }
+
+/* numbered steps */
+.ft-steps { margin-top: 1.6rem; display: flex; flex-direction: column; gap: 1.4rem; list-style: none; padding: 0; }
+.ft-step { display: flex; gap: 1rem; }
+.ft-step-title { font-size: 15px; font-weight: 600; }
+.ft-step-body { margin-top: 0.3rem; font-size: 14px; line-height: 1.55; color: var(--color-fd-muted-foreground); }
+
+/* code card */
+.ft-code {
+  margin-top: 1.4rem;
+  overflow-x: auto;
+  border-radius: 14px;
+  border: 1px solid var(--color-fd-border);
+  padding: 1.25rem 1.4rem;
+  font-size: 13px;
+  line-height: 1.7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.ft-code-line { display: block; white-space: pre; }
+.ft-caption { margin-top: 0.7rem; font-size: 13px; font-style: italic; color: var(--color-fd-muted-foreground); }
+
+/* FAQ accordion (native <details> — no JS, fully crawlable) */
+.ft-faq { margin-top: 1.4rem; display: flex; flex-direction: column; border-top: 1px solid var(--color-fd-border); }
+.ft-faq-item { border-bottom: 1px solid var(--color-fd-border); }
+.ft-faq-item summary {
+  cursor: pointer;
+  list-style: none;
+  padding: 1rem 2rem 1rem 0;
+  position: relative;
+  font-size: 15px;
+  font-weight: 600;
+}
+.ft-faq-item summary::-webkit-details-marker { display: none; }
+.ft-faq-item summary::after {
+  content: "+";
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 18px;
+  font-weight: 400;
+  color: var(--ac);
+  transition: transform 0.2s;
+}
+.ft-faq-item[open] summary::after { transform: translateY(-50%) rotate(45deg); }
+.ft-faq-item p { padding: 0 0 1.1rem; font-size: 14.5px; line-height: 1.6; color: var(--color-fd-muted-foreground); }
+
+/* callout aside */
+.ft-callout {
+  position: relative;
+  padding: 1.4rem 1.5rem 1.4rem 1.7rem;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--ac) 30%, var(--color-fd-border));
+  background: color-mix(in srgb, var(--ac) 7%, var(--color-fd-card));
+  overflow: hidden;
+}
+.ft-callout::before {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 4px;
+  background: var(--ac);
+}
+.ft-callout-title { font-size: 16px; font-weight: 600; }
+.ft-callout-body { margin-top: 0.5rem; font-size: 14.5px; line-height: 1.6; color: var(--color-fd-muted-foreground); }
+
+/* closing CTA banner */
+.ft-banner { padding: 2.4rem 2rem; text-align: center; }
+.ft-banner-title { font-size: clamp(1.3rem, 3vw, 1.7rem); font-weight: 600; }
+.ft-banner-body { margin-top: 0.6rem; font-size: 15px; color: var(--color-fd-muted-foreground); }
+.ft-banner .ft-cta-row { justify-content: center; margin-top: 1.3rem; }
+
+/* related + footer */
+.ft-related-card { display: flex; flex-direction: column; transition: transform 0.18s, border-color 0.18s; }
+.ft-related-card:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--ac) 45%, var(--color-fd-border)); }
+.ft-related-go { margin-top: 0.7rem; font-size: 13px; font-weight: 600; color: var(--ac); }
+.ft-foot {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--color-fd-border);
+  padding-top: 1.6rem;
+  font-size: 14px;
+}
+.ft-foot a { color: var(--color-fd-muted-foreground); transition: color 0.15s; }
+.ft-foot a:hover { color: var(--ac); }
+
+/* ---- features hub ---------------------------------------------- */
+.ft-hub-head { display: flex; flex-direction: column; gap: 1rem; align-items: flex-start; }
+.ft-hub-grad {
+  background: linear-gradient(110deg, #0a84ff, #bf5af2 55%, #ff375f);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.ft-hub-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12.5px;
+  color: var(--color-fd-muted-foreground);
+}
+
+/* ============================================================= *
+ *  FEATURE ARTICLE CARDS — shared by the homepage showcase and  *
+ *  the /features hub. Built on .accent-card (lift + glow).       *
+ * ============================================================= */
+.feat-grid {
+  display: grid;
+  gap: 1.1rem;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+}
+/* hub layout: a wide lead card spanning the top, the rest below */
+@media (min-width: 720px) {
+  .feat-grid--lead { grid-template-columns: repeat(3, 1fr); }
+  .feat-grid--lead .feat-card--lead { grid-column: 1 / -1; }
+}
+
+.feat-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.5rem 1.45rem 1.35rem;
+  isolation: isolate;
+}
+.feat-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 12px;
+  font-size: 20px;
+  color: #fff;
+  background: linear-gradient(150deg, var(--ac), color-mix(in srgb, var(--ac) 52%, #000));
+  box-shadow: 0 8px 20px -9px var(--ac);
+}
+.feat-card-main { flex: 1; }
+.feat-label {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ac);
+}
+.feat-title {
+  margin-top: 0.45rem;
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+  color: var(--color-fd-foreground);
+}
+.feat-hook {
+  margin-top: 0.55rem;
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--color-fd-muted-foreground);
+}
+.feat-topics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 0.9rem;
+  list-style: none;
+  padding: 0;
+}
+.feat-topics li {
+  font-size: 11px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  color: color-mix(in srgb, var(--ac) 80%, var(--color-fd-foreground));
+  background: color-mix(in srgb, var(--ac) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ac) 25%, transparent);
+}
+.feat-go {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ac);
+  transition: gap 0.18s;
+}
+.feat-card:hover .feat-go { text-decoration: underline; text-underline-offset: 3px; }
+
+/* the lead card gets a roomier two-column layout on wide screens */
+@media (min-width: 720px) {
+  .feat-card--lead {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 1.5rem;
+    padding: 1.7rem 1.8rem;
+  }
+  .feat-card--lead .feat-title { font-size: 20px; }
+  .feat-card--lead .feat-go { white-space: nowrap; }
+}
+
+/* ============================================================= *
+ *  FEATURE VISUALS — keyed CSS illustrations for split blocks    *
+ * ============================================================= */
+.fv { display: flex; justify-content: center; }
+.fv-card {
+  width: 100%;
+  max-width: 360px;
+  padding: 1.1rem 1.2rem;
+  border-radius: 16px;
+  border: 1px solid var(--color-fd-border);
+  background:
+    radial-gradient(130% 100% at 100% 0%, color-mix(in srgb, var(--ac) 12%, transparent), transparent 60%),
+    var(--color-fd-card);
+  box-shadow: 0 24px 50px -34px rgba(0, 0, 0, 0.5);
+}
+.fv-card-h {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-fd-muted-foreground);
+  margin-bottom: 0.9rem;
+}
+
+/* permission list */
+.fv-perm { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.fv-perm li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 11px;
+  border-radius: 9px;
+  font-size: 13px;
+  border: 1px solid var(--color-fd-border);
+}
+.fv-perm code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+.fv-perm-mark { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; font-size: 11px; font-weight: 800; color: #fff; }
+.fv-perm-tag { margin-left: auto; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.04em; }
+.fv-perm--ok { border-color: color-mix(in srgb, #30d158 35%, var(--color-fd-border)); }
+.fv-perm--ok .fv-perm-mark { background: #30d158; }
+.fv-perm--ok .fv-perm-tag { color: #30d158; }
+.fv-perm--no { opacity: 0.6; }
+.fv-perm--no .fv-perm-mark { background: color-mix(in srgb, var(--color-fd-muted-foreground) 60%, transparent); }
+.fv-perm--no code { text-decoration: line-through; }
+.fv-perm--no .fv-perm-tag { color: var(--color-fd-muted-foreground); }
+
+/* gateway diagram */
+.fv-gate { display: flex; flex-direction: column; gap: 0.7rem; text-align: center; }
+.fv-gate-node {
+  align-self: center;
+  padding: 7px 16px;
+  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid var(--color-fd-border);
+  background: var(--color-fd-muted);
+}
+.fv-gate-flow { display: flex; align-items: center; justify-content: center; gap: 8px; }
+.fv-gate-call {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  padding: 4px 9px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--ac) 12%, transparent);
+  color: var(--ac);
+}
+.fv-gate-arrow { color: var(--color-fd-muted-foreground); }
+.fv-gate-bar {
+  display: flex;
+  flex-direction: column;
+  padding: 9px;
+  border-radius: 10px;
+  color: #fff;
+  background: linear-gradient(140deg, var(--ac), color-mix(in srgb, var(--ac) 55%, #000));
+  box-shadow: 0 10px 24px -12px var(--ac);
+}
+.fv-gate-bar span { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; }
+.fv-gate-bar em { font-style: normal; font-size: 10.5px; opacity: 0.85; }
+.fv-gate-out { display: flex; justify-content: center; gap: 10px; font-size: 12px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.fv-gate-ok { color: #30d158; }
+.fv-gate-no { color: #ff453a; text-decoration: line-through; opacity: 0.7; }
+
+/* module tiles */
+.fv-tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7rem; }
+.fv-tile {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  border-radius: 13px;
+  font-size: 22px;
+  color: #fff;
+  background: linear-gradient(150deg, var(--ac), color-mix(in srgb, var(--ac) 55%, #000));
+  box-shadow: 0 8px 20px -10px var(--ac);
+}
+.fv-tile--ghost {
+  background: none;
+  color: var(--ac);
+  border: 1.5px dashed color-mix(in srgb, var(--ac) 55%, transparent);
+  box-shadow: none;
+}
+
+/* mock window */
+.fv-win { padding: 0; overflow: hidden; }
+.fv-win-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 13px;
+  border-bottom: 1px solid var(--color-fd-border);
+  background: color-mix(in srgb, var(--color-fd-muted-foreground) 5%, var(--color-fd-card));
+}
+.fv-win-bar i { width: 10px; height: 10px; border-radius: 50%; display: block; }
+.fv-win-bar span {
+  margin-left: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  color: var(--color-fd-muted-foreground);
+}
+.fv-win-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 9px 14px;
+  font-size: 13px;
+  border-bottom: 1px solid color-mix(in srgb, var(--color-fd-border) 55%, transparent);
+}
+.fv-win-row:last-child { border-bottom: none; }
+.fv-win-kind { color: var(--ac); font-size: 12px; }
+
+/* manager / install review */
+.fv-mgr-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13.5px;
+  font-weight: 600;
+  margin-bottom: 0.8rem;
+}
+.fv-mgr-actions { display: flex; gap: 9px; margin-top: 1rem; }
+.fv-mgr-btn {
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  border: 1px solid var(--color-fd-border);
+  color: var(--color-fd-muted-foreground);
+}
+.fv-mgr-btn--go { background: var(--ac); color: #fff; border-color: transparent; }
+
+/* AI prompt → module */
+.fv-ai-prompt {
+  padding: 11px 13px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--ac) 8%, var(--color-fd-muted));
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.fv-ai-out {
+  margin-top: 0.9rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--color-fd-muted-foreground);
+}
