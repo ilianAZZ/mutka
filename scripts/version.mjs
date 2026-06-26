@@ -140,7 +140,13 @@ function main() {
 
   if (tag) {
     execSync("git add -A", { cwd: ROOT, stdio: "inherit" });
-    execSync(`git commit -m "release: v${version}"`, { cwd: ROOT, stdio: "inherit" });
+    // The release commit bumps the manifests but intentionally carries no
+    // changeset (they were just consumed), so bypass the changeset pre-commit hook.
+    execSync(`git commit -m "release: v${version}"`, {
+      cwd: ROOT,
+      stdio: "inherit",
+      env: { ...process.env, SKIP_CHANGESET: "1" },
+    });
     execSync(`git tag v${version}`, { cwd: ROOT, stdio: "inherit" });
     console.log(`\nTagged v${version}. Push with:  git push --follow-tags`);
   } else {
