@@ -29,8 +29,10 @@ Two runtimes host modules, **same format, same gateway**:
 - **`sandbox/SandboxHost.ts`** — community/untrusted modules, ISOLATED in a Web Worker
   (no DOM, no `invoke`, no core reference; reaches the system only via postMessage).
 
-Switching a module between the two is a one-line change in `moduleLoader.ts`; the module
-code is identical. For an author's guide, see `COMMUNITY_MODULES.md`.
+Which runtime backs a module is decided by its source in `src/module-manager/descriptors.ts`
+(built-ins → `LocalHost`, dev/community → `SandboxHost`); the module code is identical
+either way. The `src/module-manager/` service owns discovery + the enable/disable/install
+lifecycle. For an author's guide, see `COMMUNITY_MODULES.md`.
 
 ---
 
@@ -88,9 +90,10 @@ ModuleRegistry.getSidebarPanels(): MutkaSidebarPanel[]
 `ContextMenuCategories`). Authors do NOT write these — they write `defineModule(...)` and
 `sandbox/proxyModule.ts` converts a manifest into a `MutkaModule` the registry stores.
 
-Modules are auto-discovered by `src/moduleLoader.ts`; they are never registered by hand in
-`App.tsx`. Built-in open handlers register at priority 0 first, so community modules can
-override with a higher priority.
+Modules are auto-discovered by `src/module-manager/` (via `ModuleManager.init()`); they are
+never registered by hand in `App.tsx`. Built-in open handlers register at priority 0 first,
+so community modules can override with a higher priority. `unregister` is also the hot path
+for **disabling** a module at runtime (the Modules overlay), which tears its worker down.
 
 **Do NOT** add business logic here. The registry dispatches; modules execute.
 There is no `connect()`, `buildContext()`, `tracePermissions()`, `getToolbarActions()`,
@@ -165,6 +168,7 @@ events via declaration merging on `EventMap` (see the comment in `events.ts`).
 | `theme:changed`                             | `{ preference; resolved }` | from `ThemeManager`                              |
 | `home:changed`                              | `{ homeDir }`              | from `HomeStore` (home dir resolved/overridden)  |
 | `settings:changed`                          | `{ open }`                 | from `SettingsStore` (overlay opened/closed)     |
+| `modules-ui:changed`                        | `{ open }`                 | from `ModulesStore` (module-manager overlay)     |
 | `file:external-drop`                        | `{ files; dest }`          | Finder drop → `core.drop-import` (subscribable)  |
 | `clipboard:changed`                         | `ClipboardState`           | from `ClipboardStore` / clipboard module         |
 | `navigation:back` / `navigation:forward`    | `undefined`                | toolbar flash animation                          |
@@ -244,6 +248,8 @@ and modules drive them through capabilities (never by importing the store):
   `core.home` via the `home` capability; any module may override it.
 - `SettingsStore.ts` — whether the settings overlay is open, emits `"settings:changed"`.
   Flipped by `core.settings` (⌘,) via the `settings` capability.
+- `ModulesStore.ts` — whether the module-manager overlay is open, emits
+  `"modules-ui:changed"`. Opened from the Settings panel ("Manage Modules…"). Core UI.
 - `UIStore.ts` — each module's declarative `UINode` surfaces + the active modal, emits
   `"ui:changed"`. Written by the `ui` capability; read by `components/Declarative/`.
 - `StatusBarStore.ts` — bottom status-bar items per module, emits `"statusbar:changed"`.

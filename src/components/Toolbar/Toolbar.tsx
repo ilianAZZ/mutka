@@ -1,3 +1,4 @@
+import { Puzzle } from "lucide-react";
 import { Breadcrumb } from "../Breadcrumb/Breadcrumb";
 
 interface ToolbarProps {
@@ -10,10 +11,11 @@ interface ToolbarProps {
   onForward: () => void;
   onUp: () => void;
   onRefresh: () => void;
+  onOpenModules: () => void;
   onOpenSettings: () => void;
 }
 
-/** The window toolbar: nav segment, breadcrumb path, refresh + settings actions. */
+/** The window toolbar: nav segment, breadcrumb path, refresh + modules + settings actions. */
 export function Toolbar({
   currentDir,
   flashedBtn,
@@ -24,6 +26,7 @@ export function Toolbar({
   onForward,
   onUp,
   onRefresh,
+  onOpenModules,
   onOpenSettings,
 }: ToolbarProps) {
   return (
@@ -51,6 +54,9 @@ export function Toolbar({
 
       <div className="toolbar-actions" data-tauri-drag-region>
         <button className="toolbar-btn" onClick={onRefresh} title="Refresh">↻</button>
+        <button className="toolbar-btn" onClick={onOpenModules} title="Modules">
+          <Puzzle size={15} strokeWidth={1.75} />
+        </button>
         <button className="toolbar-btn" onClick={onOpenSettings} title="Settings (⌘,)">⚙</button>
       </div>
     </div>

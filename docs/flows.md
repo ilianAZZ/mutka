@@ -100,16 +100,16 @@ How an untrusted module gets into an isolated Web Worker and becomes usable.
 
 ```mermaid
 sequenceDiagram
-    participant ML as moduleLoader.ts
+    participant MM as ModuleManager (descriptors.ts)
     participant Rust
     participant SH as SandboxHost
     participant W as Web Worker (sandbox.worker.ts)
     participant PM as proxyModule
     participant MR as ModuleRegistry
 
-    ML->>Rust: invoke("list_user_modules") → invoke("read_module_file", path)
-    Rust-->>ML: module source string
-    ML->>SH: new SandboxHost(source)
+    MM->>Rust: invoke("list_user_modules") → invoke("read_module_file", path)
+    Rust-->>MM: module source string
+    MM->>SH: new SandboxHost(source)  // when enabled; disabled → probeManifest only
     SH->>W: spawn worker; postMessage {t:"load", source}
     W->>W: import source from a blob URL
     W->>SH: {t:"ready", manifest}   // permissions known before any host-call

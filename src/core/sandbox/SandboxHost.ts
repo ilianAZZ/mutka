@@ -19,7 +19,7 @@ import type { FileItem } from "../types";
  */
 export class SandboxHost {
   private worker: Worker;
-  private manifest: SandboxManifest | null = null;
+  private manifestValue: SandboxManifest | null = null;
   private readonly ready: Promise<SandboxManifest>;
   private readonly eventUnsubs: Array<() => void> = [];
   // Correlated host→worker→host calls for column values (the mirror of the
@@ -40,8 +40,13 @@ export class SandboxHost {
     this.send({ t: "load", source });
   }
 
+  /** The module's manifest, available after register() resolves. */
+  get manifest(): SandboxManifest | null {
+    return this.manifestValue;
+  }
+
   /** Await the worker's manifest, then surface its commands to ModuleRegistry. */
-  async register(): Promise<void> {
+  async register(): Promise<SandboxManifest> {
     const manifest = await this.ready;
 
     // A community module may now back a virtual file system: each provider op is
@@ -69,6 +74,7 @@ export class SandboxHost {
       runUIEvent: (handler, value) => this.send({ t: "ui-event", handler, value }),
       dispose: () => this.dispose(),
     });
+    return manifest;
   }
 
   private runColumn(columnId: string, item: FileItem): Promise<ColumnCell | null> {
@@ -108,7 +114,7 @@ export class SandboxHost {
   ): void {
     switch (msg.t) {
       case "ready":
-        this.manifest = msg.manifest; // set early so host-calls during setup are gated correctly
+        this.manifestValue = msg.manifest; // set early so host-calls during setup are gated correctly
         resolveReady(msg.manifest);
         break;
       case "subscribe":

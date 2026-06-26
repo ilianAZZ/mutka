@@ -118,7 +118,8 @@ Key reads of the matrix:
 - **Runtime → Gateway** is the single chokepoint: every module capability call passes
   through `dispatchCapability`, which checks the permission first.
 - **App → Stores** is the one privileged direct read (trusted UI, no module identity).
-- **App.tsx imports no modules.** The three `moduleLoader` functions discover them.
+- **App.tsx imports no modules.** `ModuleManager.init()` (`src/module-manager/`) discovers
+  them from three sources and owns the enable/disable/install lifecycle.
 
 ---
 
@@ -229,19 +230,20 @@ is identical to the in-process case.
 ```mermaid
 sequenceDiagram
   participant App as App.tsx
-  participant Loader as moduleLoader.ts
+  participant MM as ModuleManager
   participant Host as LocalHost / SandboxHost
   participant PM as proxyModule
   participant MR as ModuleRegistry
 
-  App->>Loader: loadBuiltinSandboxModules() / loadCommunityModules() / loadDevModules()
-  loop each module
-    Loader->>Host: new LocalHost(def) | new SandboxHost(source)
+  App->>MM: ModuleManager.init()  // collectDescriptors() + loadConfig()
+  loop each enabled module
+    MM->>Host: new LocalHost(def) | new SandboxHost(source)
     Host->>Host: run setup(host) → module registers its command/open handlers
     Host->>PM: registerProxyModule(manifest, runtime)
     PM->>MR: register(MutkaModule)
     Note over MR: each command → MutkaAction (when → isVisible)<br/>bind shortcut · sort openHandlers by priority<br/>emit("module:registered")
   end
+  Note over MM: disabled modules: probe() reads the manifest in a throwaway worker (no register)
   App->>App: AppBridge.connect(provider) [once]
   App->>MR: ModuleRegistry.init()  // subscribe to "action:dispatch"
 ```

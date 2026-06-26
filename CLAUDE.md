@@ -105,8 +105,18 @@ mutka/
 │   ├── CLAUDE.md                ← frontend architecture rules
 │   ├── STYLE_GUIDE.md           ← macOS visual design rules
 │   ├── main.tsx                 ← entry point (mounts React root, imports CSS tokens)
-│   ├── App.tsx                  ← root component (no module imports — uses moduleLoader)
-│   ├── moduleLoader.ts          ← discovers built-in, community, and dev modules
+│   ├── App.tsx                  ← root component (no module imports — calls ModuleManager.init)
+│   │
+│   ├── module-manager/          ← module lifecycle + marketplace (app layer, calls invoke)
+│   │   ├── CLAUDE.md
+│   │   ├── ModuleManager.ts     ← singleton: discover, enable/disable/install/uninstall (live)
+│   │   ├── descriptors.ts       ← the 3 module sources (built-in glob, dev glob, community invoke)
+│   │   ├── moduleConfig.ts      ← read/write ~/.mutka/config.json (disabled set + install meta)
+│   │   ├── probeManifest.ts     ← validate a module by loading it in a throwaway worker
+│   │   ├── githubCatalog.ts     ← CatalogSource over GitHub (mutka-module-* repos)
+│   │   ├── installModule.ts     ← write a validated module to disk (install_module)
+│   │   ├── permissionInfo.ts    ← permission labels + dangerous-permission flags
+│   │   └── types.ts             ← ManagedModule, ModuleConfig, CatalogSource, …
 │   │
 │   ├── sandbox-builtins/        ← trusted built-in modules (defineModule format)
 │   │   ├── navigation.ts        ← default open handlers (folder→navigate, file→open)
@@ -161,6 +171,7 @@ mutka/
 │       ├── Declarative/         ← renders module UINode trees (view/form/panel/modal)
 │       ├── StatusBar/           ← bottom bar: core counts + module status items
 │       ├── SettingsPanel/       ← theme picker and app settings
+│       ├── ModulesPanel/        ← module manager overlay (installed list + GitHub browse + install review)
 │       ├── Sidebar/             ← hosts module-contributed sidebar panels
 │       └── TabBar/              ← tab strip
 │
@@ -171,8 +182,10 @@ mutka/
     └── src/
         ├── main.rs              ← entry point (calls lib::run)
         ├── watcher.rs           ← single FSEvents watcher for the current dir
+        ├── modules.rs           ← module discovery + install/uninstall + config (~/.mutka)
         └── lib.rs              ← all Tauri commands (read_dir, copy_files, …,
-                                   list_user_modules, read_module_file)
+                                   list_user_modules, read_module_file, install_module,
+                                   uninstall_module, read_module_config, write_module_config)
 ```
 
 ---
@@ -297,16 +310,15 @@ merely reading a directory can't loop back into a refresh.
 ### How modules are discovered and registered
 
 ```text
-App.tsx (module scope) fires three loaders from src/moduleLoader.ts:
-  loadBuiltinSandboxModules()
-    └── import.meta.glob("./sandbox-builtins/*.ts", { eager: true })
-          └── new LocalHost(def).register()   ← in-process, trusted
-  loadCommunityModules()
-    └── invoke("list_user_modules") → for each: invoke("read_module_file", path)
-          └── new SandboxHost(source).register()   ← isolated Web Worker
-  loadDevModules()  (DEV only)
-    └── import.meta.glob("../dev-modules/*/index.js", { query: "?raw" })
-          └── new SandboxHost(source).register()   ← exercises the worker path locally
+App.tsx (module scope) calls ModuleManager.init() (src/module-manager/):
+  collectDescriptors() gathers the three sources (descriptors.ts):
+    builtin   import.meta.glob("../sandbox-builtins/*.ts")        → LocalHost(def)
+    dev       import.meta.glob("../../dev-modules/*/index.js","?raw") → SandboxHost(source)  (DEV only)
+    community invoke("list_user_modules") → invoke("read_module_file") → SandboxHost(source)
+  loadConfig() reads ~/.mutka/config.json (which modules are disabled)
+  for each descriptor:
+    enabled?  descriptor.activate() → host.register()  ← creates + registers the live host
+    disabled? descriptor.probe()    ← reads the manifest in a throwaway worker (no register)
 
 Each host: gets the module's manifest (setup runs in its runtime), then
 registerProxyModule() turns the manifest into a MutkaModule and registers it:
@@ -314,14 +326,31 @@ registerProxyModule() turns the manifest into a MutkaModule and registers it:
   ├── binds each command.shortcut via ShortcutManager
   └── stores each openHandler sorted by priority (desc)
 
-Once ALL loaders resolve AND AppBridge is connected, App emits `app:ready` — the
-launch hook. `core.home` listens for it to resolve the home dir into HomeStore and
-run the initial navigation. (Emitted after registration so subscriptions are wired,
-and after AppBridge.connect so `host.nav.navigate` reaches real React state.)
+Once ModuleManager.init() resolves (all enabled modules registered) AND AppBridge is
+connected, App emits `app:ready` — the launch hook. `core.home` listens for it to
+resolve the home dir into HomeStore and run the initial navigation. (Emitted after
+registration so subscriptions are wired, and after AppBridge.connect so
+`host.nav.navigate` reaches real React state.)
 ```
 
 Adding a built-in: drop a `.ts` file in `src/sandbox-builtins/`. Adding a community
-module: place `index.js` in `~/.mutka/modules/<id>/`. No App.tsx changes needed.
+module: place `index.js` in `~/.mutka/modules/<id>/` (or install one from the Modules
+overlay). No App.tsx changes needed.
+
+### How a module is enabled / disabled / installed / deleted at runtime
+
+```text
+The Modules overlay (components/ModulesPanel/) drives ModuleManager — all live, no restart:
+  enable(id)    → descriptor.activate() spins up the host + registers it
+  disable(id)   → ModuleRegistry.unregister(id) → onUnmount → host.dispose → worker.terminate()
+  install(repo) → githubCatalog.resolve() downloads + validates in a throwaway worker
+                  → install review dialog (permissions, dangerous ones flagged)
+                  → install_module writes ~/.mutka/modules/<id>/index.js → activate
+  uninstall(id) → unregister + uninstall_module removes the dir
+Every change is persisted to ~/.mutka/config.json (disabled set + install metadata).
+GitHub is the catalog source of truth today; CatalogSource (types.ts) is the seam for
+a future DB of links / private registry. See src/module-manager/CLAUDE.md.
+```
 
 ### How a keyboard shortcut / command executes
 

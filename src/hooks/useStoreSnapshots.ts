@@ -6,12 +6,14 @@ import { ClipboardStore } from "../core/stores/ClipboardStore";
 import { ListingStore } from "../core/stores/ListingStore";
 import { HomeStore } from "../core/stores/HomeStore";
 import { SettingsStore } from "../core/stores/SettingsStore";
+import { ModulesStore } from "../core/stores/ModulesStore";
 import type { FileItem, ClipboardState } from "../core/types";
 import type { ListingSnapshot } from "../core/stores/listing.types";
 
 export interface StoreSnapshots {
   homeDir: string;
   showSettings: boolean;
+  showModules: boolean;
   selected: FileItem[];
   clipboard: ClipboardState;
   listing: ListingSnapshot;
@@ -24,6 +26,7 @@ export interface StoreSnapshots {
 export function useStoreSnapshots(): StoreSnapshots {
   const [homeDir, setHomeDir] = useState<string>(HomeStore.homeDir);
   const [showSettings, setShowSettings] = useState<boolean>(SettingsStore.open);
+  const [showModules, setShowModules] = useState<boolean>(ModulesStore.open);
   const [selected, setSelected] = useState<FileItem[]>(SelectionStore.items);
   const [clipboard, setClipboard] = useState<ClipboardState>(ClipboardStore.state);
   const [listing, setListing] = useState<ListingSnapshot>(
@@ -32,9 +35,10 @@ export function useStoreSnapshots(): StoreSnapshots {
 
   useEffect(() => EventBus.on(Events.Home.changed, ({ homeDir }) => setHomeDir(homeDir)), []);
   useEffect(() => EventBus.on(Events.Settings.changed, ({ open }) => setShowSettings(open)), []);
+  useEffect(() => EventBus.on(Events.ModulesUi.changed, ({ open }) => setShowModules(open)), []);
   useEffect(() => EventBus.on(Events.Selection.changed, ({ items }) => setSelected(items)), []);
   useEffect(() => EventBus.on(Events.Clipboard.changed, (state) => setClipboard(state)), []);
   useEffect(() => EventBus.on(Events.Listing.changed, (snap) => setListing(snap)), []);
 
-  return { homeDir, showSettings, selected, clipboard, listing };
+  return { homeDir, showSettings, showModules, selected, clipboard, listing };
 }

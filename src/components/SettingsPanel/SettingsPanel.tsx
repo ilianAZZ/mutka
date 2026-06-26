@@ -4,6 +4,7 @@ import { ThemeManager } from "../../core/theme-manager/ThemeManager";
 import { ShortcutManager, type KeyBinding } from "../../core/shortcut-manager/ShortcutManager";
 import { ModuleRegistry } from "../../core/module-registry/ModuleRegistry";
 import { ViewStore } from "../../core/stores/ViewStore";
+import { ModulesStore } from "../../core/stores/ModulesStore";
 import { DeclarativePanel } from "../Declarative/DeclarativePanel";
 import "./SettingsPanel.css";
 
@@ -149,6 +150,12 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
               </button>
               <button className="settings-nav-row" onClick={() => setPage("keyboard")}>
                 <span>Keyboard Shortcuts</span><span className="settings-nav-chev">›</span>
+              </button>
+              <button
+                className="settings-nav-row"
+                onClick={() => { ModulesStore.setOpen(true); onClose(); }}
+              >
+                <span>Manage Modules…</span><span className="settings-nav-chev">›</span>
               </button>
               {modulePages.length > 0 && <div className="settings-nav-head">Modules</div>}
               {modulePages.map((m) => (

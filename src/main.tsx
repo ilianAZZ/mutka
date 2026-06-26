@@ -2,6 +2,7 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { App } from "./App";
 import { ThemeManager } from "./core/theme-manager/ThemeManager";
+import { checkForUpdates } from "./update";
 import "./styles/tokens.css";
 import "./styles/base.css";
 
@@ -20,3 +21,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <App />
   </React.StrictMode>
 );
+
+// Check for a newer signed release and prompt the user. Non-blocking — never
+// delays first paint, no-ops outside the native shell. See src/update.ts.
+void checkForUpdates();

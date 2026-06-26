@@ -48,6 +48,8 @@ export interface EventMap {
   "home:changed": { homeDir: string };
   /** Emitted by SettingsStore when the settings overlay opens or closes. */
   "settings:changed": { open: boolean };
+  /** Emitted by ModulesStore when the module-manager overlay opens or closes. */
+  "modules-ui:changed": { open: boolean };
   /** A module's declarative UI surface (panel/settings/popover/modal) changed. */
   "ui:changed": { moduleId: string; surfaceId: string };
   /** A module added/removed/updated a bottom status-bar item. */
@@ -121,6 +123,9 @@ export const Events = {
   },
   Settings: {
     changed: "settings:changed",
+  },
+  ModulesUi: {
+    changed: "modules-ui:changed",
   },
   Ui: {
     changed: "ui:changed",

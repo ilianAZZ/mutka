@@ -7,9 +7,10 @@ import { FileSystemRegistry } from "./core/file-system/FileSystemRegistry";
 import { DragService } from "./core/drag/DragService";
 import { SelectionStore } from "./core/stores/SelectionStore";
 import { SettingsStore } from "./core/stores/SettingsStore";
+import { ModulesStore } from "./core/stores/ModulesStore";
 import { ListingStore } from "./core/stores/ListingStore";
 import type { SortKey } from "./core/stores/listing.types";
-import { loadCommunityModules, loadBuiltinSandboxModules, loadDevModules } from "./moduleLoader";
+import { ModuleManager } from "./module-manager/ModuleManager";
 import { InputManager } from "./core/input-manager/InputManager";
 import { DirectoryWatcher } from "./core/file-watch/DirectoryWatcher";
 import { useColumns } from "./hooks/useColumns";
@@ -33,18 +34,16 @@ import type { SidebarPanelProps } from "./core/module-registry/module-registry.t
 import { ContextMenu } from "./components/ContextMenu/ContextMenu";
 import { Dialog } from "./components/Dialog/Dialog";
 import { SettingsPanel } from "./components/SettingsPanel/SettingsPanel";
+import { ModulesPanel } from "./components/ModulesPanel/ModulesPanel";
 import { StatusBar } from "./components/StatusBar/StatusBar";
 import { DeclarativeModal } from "./components/Declarative/DeclarativeModal";
 import { useActiveModal } from "./hooks/useActiveModal";
 import "./styles/toolbar.css";
 
-// Resolves once every module is registered, so `app:ready` (the launch hook
-// modules listen to) fires only after their event subscriptions are wired.
-const modulesReady = Promise.all([
-  loadBuiltinSandboxModules().catch((e) => console.error("[App] loadBuiltinSandboxModules:", e)),
-  loadCommunityModules().catch((e) => console.error("[App] loadCommunityModules:", e)),
-  loadDevModules().catch((e) => console.error("[App] loadDevModules:", e)),
-]);
+// Resolves once every enabled module is registered, so `app:ready` (the launch
+// hook modules listen to) fires only after their event subscriptions are wired.
+// ModuleManager owns discovery + lifecycle (enable/disable/install at runtime).
+const modulesReady = ModuleManager.init().catch((e) => console.error("[App] ModuleManager.init:", e));
 InputManager.init();
 DirectoryWatcher.init();
 
@@ -62,7 +61,7 @@ export function App() {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; zone: MenuZone } | null>(null);
 
   // ── State derived from stores + subsystems (one hook per concern) ────────────
-  const { homeDir, showSettings, selected, clipboard, listing } = useStoreSnapshots();
+  const { homeDir, showSettings, showModules, selected, clipboard, listing } = useStoreSnapshots();
   const { currentDir, canGoBack, canGoForward, navigateTo, goBack, goForward, goUp } = useNavigation();
   const { refresh, loadError } = useDirectoryListing(currentDir);
   const { rightPanels, sidebarItemGroups } = useSidebarContributions();
@@ -179,6 +178,7 @@ export function App() {
           onForward={goForward}
           onUp={goUp}
           onRefresh={refresh}
+          onOpenModules={() => ModulesStore.setOpen(true)}
           onOpenSettings={() => ModuleRegistry.executeAction("core.settings.toggle")}
         />
 
@@ -228,6 +228,8 @@ export function App() {
       )}
 
       {showSettings && <SettingsPanel onClose={() => SettingsStore.setOpen(false)} />}
+
+      {showModules && <ModulesPanel onClose={() => ModulesStore.setOpen(false)} />}
 
       {dialogState && <Dialog state={dialogState} onClose={closeDialog} />}
 

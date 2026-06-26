@@ -28,6 +28,7 @@ constants — never raw strings.
 | `Events.Ui.changed` | `"ui:changed"` | `{ moduleId, surfaceId }` | `UIStore` (via `ui` capability) | `DeclarativePanel` / `DeclarativeModal` re-render |
 | `Events.StatusBar.changed` | `"statusbar:changed"` | `undefined` | `StatusBarStore` (via `statusbar` capability) | `StatusBar` → re-read items |
 | `Events.Directory.changed` | `"directory:changed"` | `{ path }` | `DirectoryWatcher` (Rust `notify`) | `core.auto-refresh` + modules |
+| `Events.ModulesUi.changed` | `"modules-ui:changed"` | `{ open }` | `ModulesStore` | `App.tsx` → render the Modules overlay |
 
 ---
 

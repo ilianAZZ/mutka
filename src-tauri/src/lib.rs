@@ -28,7 +28,10 @@ use fs_ops::{
 use http::{http_download, http_request, http_upload};
 use icons::icon_for_type;
 use launch::{apps_for_file, open_with};
-use modules::{list_user_modules, read_module_file};
+use modules::{
+    install_module, list_user_modules, read_module_config, read_module_file, uninstall_module,
+    write_module_config,
+};
 use preview::{preview_update, quick_look};
 use secrets::{secret_delete, secret_get, secret_set};
 
@@ -38,6 +41,10 @@ pub fn run() {
         // Native OS file drag-out: dragging rows to Finder/another app moves the
         // real files (NSDraggingSession with file URLs), not just their paths.
         .plugin(tauri_plugin_drag::init())
+        // In-app updater (+ process for relaunch). The frontend checks for a
+        // newer release on launch and prompts before downloading. See src/update.ts.
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .setup(|app| {
             let window = app.get_webview_window("main").unwrap();
             #[cfg(target_os = "macos")]
@@ -93,6 +100,10 @@ pub fn run() {
             clipboard_read_files,
             list_user_modules,
             read_module_file,
+            install_module,
+            uninstall_module,
+            read_module_config,
+            write_module_config,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Mutka");

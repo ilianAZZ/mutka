@@ -21,7 +21,8 @@ import type { FileItem } from "../types";
  * lacks the DOM APIs (DOMParser, etc.) such providers usually need.
  */
 export class LocalHost {
-  private readonly manifest: SandboxManifest;
+  /** The module's manifest, derived from its def without running setup(). */
+  readonly manifest: SandboxManifest;
   private readonly commands = new Map<string, CommandHandler>();
   private readonly opens = new Map<string, OpenHandler>();
   private readonly columns = new Map<string, ColumnProvider>();
@@ -48,7 +49,7 @@ export class LocalHost {
     };
   }
 
-  async register(): Promise<void> {
+  async register(): Promise<SandboxManifest> {
     const host = createHostProxy({
       callHost: (cap, method, args) => dispatchCapability(this.manifest, cap, method, args),
       registerCommand: (id, fn) => this.commands.set(id, fn),
@@ -83,6 +84,7 @@ export class LocalHost {
       runUIEvent: (id, value) => this.run(this.uiEvents.get(id), value, `ui-event "${id}"`),
       dispose: () => this.dispose(),
     });
+    return this.manifest;
   }
 
   private async runColumn(columnId: string, item: FileItem): Promise<ColumnCell | null> {

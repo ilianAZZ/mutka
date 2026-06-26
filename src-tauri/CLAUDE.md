@@ -103,6 +103,23 @@ Rust command name (snake_case) → TypeScript invoke name (same snake_case strin
 | `open_item` | `"open_item"` | Open with macOS default app (`open`) |
 | `get_home_dir` | `"get_home_dir"` | Returns `$HOME` |
 
+### Module manager commands (`modules.rs`)
+
+All confined to `~/.mutka/` — a module can never be written or read elsewhere.
+Driven from the app layer by `src/module-manager/` (NOT from a module capability).
+
+| Rust function | TypeScript invoke | What it does |
+| --- | --- | --- |
+| `list_user_modules` | `"list_user_modules"` | List `~/.mutka/modules/<id>/index.js` entries |
+| `read_module_file` | `"read_module_file"` | Read one module file (path must be under the modules dir) |
+| `install_module` | `"install_module"` | Write a validated module to `~/.mutka/modules/<id>/index.js` |
+| `uninstall_module` | `"uninstall_module"` | Remove `~/.mutka/modules/<id>/` |
+| `read_module_config` | `"read_module_config"` | Read `~/.mutka/config.json` (`""` if missing) |
+| `write_module_config` | `"write_module_config"` | Write `~/.mutka/config.json` |
+
+`install_module` / `uninstall_module` validate the id is a safe single folder
+name (no separators, no `..`, no leading dot) before touching the filesystem.
+
 New commands should follow the same `<verb>_<noun>` pattern.
 
 ---
