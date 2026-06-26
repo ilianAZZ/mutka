@@ -2,6 +2,7 @@
   "name": "mutka-website",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.32.1",
   "description": "Mutka marketing site + documentation (Next.js + Fumadocs)",
   "scripts": {
     "dev": "next dev",

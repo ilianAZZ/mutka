@@ -3,12 +3,18 @@
 
 FROM node:22-alpine AS builder
 WORKDIR /app
-RUN corepack enable && corepack prepare pnpm@latest --activate
-# Install all deps (incl. dev) for the build. postinstall runs fumadocs-mdx.
+# Pin pnpm to the version in package.json's packageManager field. NOT @latest:
+# pnpm 11 enables the minimumReleaseAge supply-chain guard, which rejects very
+# recently published deps and breaks reproducible builds.
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+# Install deps first (cached unless the lockfile changes). --ignore-scripts
+# skips the fumadocs-mdx postinstall, which needs source files not copied yet.
 COPY package.json pnpm-lock.yaml ./
-RUN pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
-RUN pnpm build
+# Now that source.config.ts is present, run the fumadocs-mdx generation that the
+# postinstall would have done, then build.
+RUN pnpm exec fumadocs-mdx && pnpm build
 
 FROM node:22-alpine AS runner
 WORKDIR /app

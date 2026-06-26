@@ -195,20 +195,20 @@ Colours (`tint`) must be `var(--…)` design tokens; anything else is dropped.
 Every method is **async** (returns a Promise) and gated by the permission in the right
 column. Calling one without declaring its permission **throws**.
 
-| Capability       | Methods                                                                                                   | Permission                                            |
-| ---------------- | --------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Capability       | Methods                                                                                                                               | Permission                                                        |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
 | `host.fs`        | `readDir`, `openItem`, `readBytes`, `cloudStatus`, `copyFiles`, `moveFiles`, `deleteItem`, `renameItem`, `createFile`, `createFolder` | `fs:read` (reads/`openItem`/`readBytes`) · `fs:write` (mutations) |
-| `host.board`     | `readFiles`, `writeFiles(paths, "copy"\|"cut")`                                                           | `clipboard:read` / `clipboard:write`                  |
-| `host.nav`       | `navigate`, `goBack`, `goForward`, `goUp`                                                                 | `navigation`                                          |
-| `host.tabs`      | `openTab`, `openTabInBackground`, `isActive`                                                              | `navigation`                                          |
-| `host.dialog`    | `prompt`, `confirm`, `choose`                                                                            | `dialog`                                              |
-| `host.ui`        | `render(surfaceId, node)`, `clear(surfaceId)`, `modal(node\|null)`                                       | `ui`                                                  |
-| `host.statusbar` | `set(item)`, `remove(itemId)`                                                                             | `ui`                                                  |
-| `host.net`       | `request`, `download`, `upload`                                                                          | `network`                                             |
-| `host.config`    | `get(key)`, `set(key, value)`                                                                            | `storage`                                             |
-| `host.secrets`   | `get(key)`, `set(key, value)`, `delete(key)`                                                             | `secrets`                                             |
-| `host.sys`       | `homeDir`, `lastDir`, `writeTempFile`, `quickLook`, `appsForFile`, `openWith`, …                          | `fs:read` (most) · `fs:temp` (`writeTempFile`)        |
-| `host.refresh()` | re-read the current directory                                                                             | `fs:read`                                             |
+| `host.board`     | `readFiles`, `writeFiles(paths, "copy"\|"cut")`                                                                                       | `clipboard:read` / `clipboard:write`                              |
+| `host.nav`       | `navigate`, `goBack`, `goForward`, `goUp`                                                                                             | `navigation`                                                      |
+| `host.tabs`      | `openTab`, `openTabInBackground`, `isActive`                                                                                          | `navigation`                                                      |
+| `host.dialog`    | `prompt`, `confirm`, `choose`                                                                                                         | `dialog`                                                          |
+| `host.ui`        | `render(surfaceId, node)`, `clear(surfaceId)`, `modal(node\|null)`                                                                    | `ui`                                                              |
+| `host.statusbar` | `set(item)`, `remove(itemId)`                                                                                                         | `ui`                                                              |
+| `host.net`       | `request`, `download`, `upload`                                                                                                       | `network`                                                         |
+| `host.config`    | `get(key)`, `set(key, value)`                                                                                                         | `storage`                                                         |
+| `host.secrets`   | `get(key)`, `set(key, value)`, `delete(key)`                                                                                          | `secrets`                                                         |
+| `host.sys`       | `homeDir`, `lastDir`, `writeTempFile`, `quickLook`, `appsForFile`, `openWith`, …                                                      | `fs:read` (most) · `fs:temp` (`writeTempFile`)                    |
+| `host.refresh()` | re-read the current directory                                                                                                         | `fs:read`                                                         |
 
 Non-privileged helpers (no permission needed):
 
