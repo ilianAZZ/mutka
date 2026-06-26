@@ -57,15 +57,16 @@ pub fn run() {
 
                 // Inset the native traffic lights, and re-apply on resize because
                 // AppKit re-lays-out the standard buttons whenever the window resizes.
-                use cocoa::base::id;
+                // ns_window() hands back a void*; traffic_lights wants an NSWindow*.
+                type Id = *mut objc::runtime::Object;
                 if let Ok(ns_window) = window.ns_window() {
-                    unsafe { traffic_lights::position_traffic_lights(ns_window as id) };
+                    unsafe { traffic_lights::position_traffic_lights(ns_window as Id) };
                 }
                 let win = window.clone();
                 window.on_window_event(move |event| {
                     if let tauri::WindowEvent::Resized(_) = event {
                         if let Ok(ns_window) = win.ns_window() {
-                            unsafe { traffic_lights::position_traffic_lights(ns_window as id) };
+                            unsafe { traffic_lights::position_traffic_lights(ns_window as Id) };
                         }
                     }
                 });
