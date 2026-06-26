@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { FileItem } from "../../core/types";
 import type { SortKey, SortState } from "../../core/stores/listing.types";
 import type { ColumnDescriptor, ColumnCellState } from "../../core/columns/column.types";
 import { FileIcon } from "./FileIcon";
+import { FileIconRegistry } from "../../core/file-icons/FileIconRegistry";
 import "./FileList.css";
 
 interface Props {
@@ -33,6 +34,8 @@ interface Props {
   onDropExternal?: (files: FileList, destPath: string) => void;
   /** Start a native OS drag of items so dropping on Finder/other apps moves the real files. */
   onNativeDrag?: (items: FileItem[]) => void;
+  /** Fired after the rows for a new listing are committed to the DOM (timing hook). */
+  onRendered?: (count: number) => void;
 }
 
 function formatSize(bytes: number): string {
@@ -79,8 +82,18 @@ function renderCell(state: ColumnCellState | undefined): React.ReactNode {
 export function FileList({
   files, selected, cutItems, sort, error, currentDir, extraColumns, cellData, columnWidths, onColumnResize,
   onSelect, onOpen, onSortChange, onModifierOpen, onMiddleClick, onMoveItems, onDropExternal, onNativeDrag,
+  onRendered,
 }: Props) {
   const columns = extraColumns ?? [];
+
+  // Signal once the rows for a new listing are in the DOM (before paint). Fires
+  // only when the items array changes — icon/cell updates keep the same `files`
+  // reference — so it marks the end of an open, not every re-render.
+  useLayoutEffect(() => { onRendered?.(files.length); }, [files]);
+
+  // Render all of this folder's not-yet-cached icons in one off-main-thread
+  // batch (after paint), so opening a folder never blocks on icon rendering.
+  useEffect(() => { FileIconRegistry.prefetch(files); }, [files]);
   // Effective width of a column: a stored override, else its default.
   const ew = useCallback(
     (id: string, def: number) => columnWidths?.[id] ?? def,

@@ -4,6 +4,7 @@ import { ModuleRegistry } from "./core/module-registry/ModuleRegistry";
 import { EventBus } from "./core/event-bus/EventBus";
 import { Events } from "./core/event-bus/events";
 import { FileSystemRegistry } from "./core/file-system/FileSystemRegistry";
+import { FileIconRegistry } from "./core/file-icons/FileIconRegistry";
 import { DragService } from "./core/drag/DragService";
 import { SelectionStore } from "./core/stores/SelectionStore";
 import { SettingsStore } from "./core/stores/SettingsStore";
@@ -46,6 +47,9 @@ import "./styles/toolbar.css";
 const modulesReady = ModuleManager.init().catch((e) => console.error("[App] ModuleManager.init:", e));
 InputManager.init();
 DirectoryWatcher.init();
+// Warm the icon cache from disk so previously-seen file types render instantly
+// on the first folder open (no IPC, no placeholder flash).
+void FileIconRegistry.preload();
 
 /** Read a dropped File as base64 (no data-URL prefix), for write_temp_file. */
 function readFileBase64(file: File): Promise<string> {
@@ -204,6 +208,7 @@ export function App() {
             onMoveItems={handleMoveItems}
             onDropExternal={handleDropExternal}
             onNativeDrag={(items) => DragService.startForItems(items)}
+            onRendered={(count) => EventBus.emit(Events.Listing.rendered, { path: currentDir, count })}
           />
 
           <Sidebar side="right" panels={rightPanels} panelProps={panelProps} />

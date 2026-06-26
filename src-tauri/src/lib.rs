@@ -26,7 +26,7 @@ use fs_ops::{
     open_item, read_dir, read_file_base64, rename_item, write_temp_file,
 };
 use http::{http_download, http_request, http_upload};
-use icons::icon_for_type;
+use icons::{icons_for_types, preload_icon_cache};
 use launch::{apps_for_file, open_with};
 use modules::{
     install_module, list_user_modules, read_module_config, read_module_file, uninstall_module,
@@ -82,7 +82,8 @@ pub fn run() {
             rename_item,
             delete_item,
             open_item,
-            icon_for_type,
+            icons_for_types,
+            preload_icon_cache,
             apps_for_file,
             open_with,
             get_home_dir,

@@ -1,5 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { FileItem } from "../types";
+import { EventBus } from "../event-bus/EventBus";
+import { Events } from "../event-bus/events";
 
 // =============================================================================
 // FILE ICON REGISTRY
@@ -11,12 +13,15 @@ import type { FileItem } from "../types";
 //      community author ships custom branding for a file type they own.
 //   2. Native macOS icon — the default. Rust asks NSWorkspace / Launch Services
 //      for the icon of a file TYPE (by extension, or the generic folder icon),
-//      i.e. exactly what Finder shows. Fetched once per extension and cached.
+//      i.e. exactly what Finder shows. A whole folder's icons are rendered in one
+//      off-main-thread batch (`prefetch` → `icons_for_types`) so opening a folder
+//      never blocks on icons; results are cached in memory and on disk, and the
+//      disk cache is warmed into memory at launch (`preload`).
 //
 // Like FileSystemRegistry, this is the documented exception to "only
-// capabilities.ts calls invoke": it owns the icon_for_type system call. Icons
-// are pure data (a data-URI string) — the renderer puts them in an <img src>,
-// never innerHTML, so even an SVG override cannot execute script.
+// capabilities.ts calls invoke": it owns the icons_for_types / preload_icon_cache
+// system calls. Icons are pure data (a data-URI string) — the renderer puts them
+// in an <img src>, never innerHTML, so even an SVG override cannot execute script.
 // =============================================================================
 
 /** Max accepted size of a module-supplied data-URI (defence for untrusted modules). */
@@ -51,8 +56,6 @@ class FileIconRegistryClass {
   private byModule = new Map<string, string[]>();
   /** nativeKey → resolved data-URI (one fetch per file type, then cached forever). */
   private nativeCache = new Map<string, string>();
-  /** In-flight native fetches, deduped by key. */
-  private pending = new Map<string, Promise<string | null>>();
 
   /**
    * Register a module's icon override for a set of extensions. Invalid or
@@ -89,41 +92,66 @@ class FileIconRegistryClass {
     return this.nativeCache.get(nativeKey(item)) ?? null;
   }
 
-  /** Resolve the icon, fetching (and caching) the native icon if needed. */
-  async resolve(item: FileItem): Promise<string | null> {
-    const known = this.resolveSync(item);
-    if (known) return known;
-    return this.fetchNative(item);
+  /**
+   * Warm the in-memory cache from the on-disk icon cache at launch, so a file
+   * type seen in a previous session renders with zero IPC on the first folder
+   * open (no placeholder flash). Emits "icons:settled" so any mounted rows pick
+   * up their icons. Best-effort — a failure just means a cold cache.
+   */
+  async preload(): Promise<void> {
+    try {
+      const cached = await invoke<{ key: string; dataUri: string }[]>("preload_icon_cache");
+      for (const { key, dataUri } of cached) this.nativeCache.set(key, dataUri);
+    } catch (err) {
+      console.error("[FileIconRegistry] preload_icon_cache failed:", err);
+    } finally {
+      EventBus.emit(Events.Icons.settled);
+    }
   }
 
-  private fetchNative(item: FileItem): Promise<string | null> {
-    const key = nativeKey(item);
-    const cached = this.nativeCache.get(key);
-    if (cached) return Promise.resolve(cached);
-
-    const inFlight = this.pending.get(key);
-    if (inFlight) return inFlight;
-
-    const promise = invoke<string>("icon_for_type", {
-      extension: item.isDir ? null : item.extension ?? null,
-      isDir: item.isDir,
-      // Bundles and custom-icon folders resolve to their OWN icon, keyed by path;
-      // everything else resolves by type (extension or generic folder).
-      path: needsPathIcon(item) ? item.path : null,
-    })
-      .then((dataUri) => {
-        this.nativeCache.set(key, dataUri);
-        this.pending.delete(key);
-        return dataUri;
-      })
-      .catch((err) => {
-        console.error(`[FileIconRegistry] icon_for_type failed for ${key}:`, err);
-        this.pending.delete(key);
-        return null;
+  /**
+   * Render every not-yet-known native icon for a listing in ONE off-main-thread
+   * call, then cache the results. This is what keeps opening a folder fast: the
+   * whole folder's file types are rendered together off the UI thread instead of
+   * one blocking call per type. Emits "icons:settled" when done (the timing hook
+   * the telemetry module reads).
+   */
+  async prefetch(items: FileItem[]): Promise<void> {
+    // One spec per unique native key that we don't already have (and that isn't
+    // covered by a module override).
+    const keys: string[] = [];
+    const specs: { extension: string | null; isDir: boolean; path: string | null }[] = [];
+    const seen = new Set<string>();
+    for (const item of items) {
+      if (!item.isDir && this.overrides.get((item.extension ?? "").toLowerCase())) continue;
+      const key = nativeKey(item);
+      if (this.nativeCache.has(key) || seen.has(key)) continue;
+      seen.add(key);
+      keys.push(key);
+      specs.push({
+        extension: item.isDir ? null : item.extension ?? null,
+        isDir: item.isDir,
+        // Bundles and custom-icon folders resolve to their OWN icon, keyed by path.
+        path: needsPathIcon(item) ? item.path : null,
       });
+    }
 
-    this.pending.set(key, promise);
-    return promise;
+    if (specs.length === 0) {
+      // Everything is already cached — still signal so timing closes out.
+      EventBus.emit(Events.Icons.settled);
+      return;
+    }
+
+    try {
+      const results = await invoke<(string | null)[]>("icons_for_types", { specs });
+      results.forEach((uri, i) => {
+        if (uri) this.nativeCache.set(keys[i], uri);
+      });
+    } catch (err) {
+      console.error("[FileIconRegistry] icons_for_types failed:", err);
+    } finally {
+      EventBus.emit(Events.Icons.settled);
+    }
   }
 }
 

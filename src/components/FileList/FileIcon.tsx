@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import type { FileItem } from "../../core/types";
 import { FileIconRegistry } from "../../core/file-icons/FileIconRegistry";
+import { EventBus } from "../../core/event-bus/EventBus";
+import { Events } from "../../core/event-bus/events";
 
 interface FileIconProps {
   item: FileItem;
@@ -8,9 +10,11 @@ interface FileIconProps {
 
 /**
  * Renders a file's icon. The image comes from FileIconRegistry: a module-supplied
- * override if one exists, otherwise the native macOS icon (fetched once per file
- * type and cached). The data-URI is always placed in an <img src> — never
- * innerHTML — so even an SVG override cannot execute script.
+ * override if one exists, otherwise the native macOS icon. Icons are fetched in a
+ * single batch per folder (FileIconRegistry.prefetch, off the main thread) and
+ * cached; this component just reads the cache and re-reads when the batch
+ * finishes ("icons:settled"). The data-URI is always placed in an <img src> —
+ * never innerHTML — so even an SVG override cannot execute script.
  *
  * A symlink gets a small ↗ overlay badge, like the alias arrow in Finder.
  */
@@ -19,15 +23,10 @@ export function FileIcon({ item }: FileIconProps) {
   const [src, setSrc] = useState<string | null>(() => FileIconRegistry.resolveSync(item));
 
   useEffect(() => {
-    let cancelled = false;
-    const known = FileIconRegistry.resolveSync(item);
-    setSrc(known);
-    if (!known) {
-      FileIconRegistry.resolve(item).then((resolved) => {
-        if (!cancelled) setSrc(resolved);
-      });
-    }
-    return () => { cancelled = true; };
+    const update = (): void => setSrc(FileIconRegistry.resolveSync(item));
+    update();
+    // The batch (or the launch preload) fills the cache then emits this; re-read.
+    return EventBus.on(Events.Icons.settled, update);
   }, [item.path, item.extension, item.isDir]);
 
   return (
