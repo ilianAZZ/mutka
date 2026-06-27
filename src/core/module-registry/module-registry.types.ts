@@ -31,6 +31,7 @@ export type ModulePermission =
   | "storage"        // reads/writes its own persisted config (per-module namespace)
   | "secrets"        // reads/writes its own credentials in the macOS Keychain
   | "ui"             // renders declarative panels/popups/settings + status-bar items
+  | "discovery"      // contributes a module-discovery source (+ probes module sources)
   | "shell";         // executes shell or system commands
 
 // ─── Context menu categories ──────────────────────────────────────────────────

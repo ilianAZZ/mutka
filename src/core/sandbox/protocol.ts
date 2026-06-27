@@ -290,6 +290,14 @@ export interface SandboxManifest {
   panels: PanelContribution[];
   /** Declarative settings sections this module contributes. */
   settingsSections: SettingsSectionContribution[];
+  /** Module-discovery sources this module contributes (served over host RPC). */
+  discoverySources: DiscoverySourceDecl[];
+}
+
+/** A discovery source a module declares (and serves via host.onDiscover/onFetchSource). */
+export interface DiscoverySourceDecl {
+  id: string;
+  label: string;
 }
 
 /** Serializable snapshot of app state handed to a command when it runs. */
@@ -310,6 +318,8 @@ export type WorkerToHost =
   | { t: "column-result"; id: number; ok: false; error: string }
   | { t: "provider-result"; id: number; ok: true; value: unknown }
   | { t: "provider-result"; id: number; ok: false; error: string }
+  | { t: "discovery-result"; id: number; ok: true; value: unknown }
+  | { t: "discovery-result"; id: number; ok: false; error: string }
   | { t: "subscribe"; event: string }
   | { t: "sidebar"; items: SidebarItem[] }
   | { t: "log"; level: "log" | "warn" | "error"; args: unknown[] }
@@ -326,8 +336,13 @@ export type HostToWorker =
   | { t: "ui-event"; handler: string; value: unknown }
   /** Ask the module's file-system provider to handle one operation. */
   | { t: "provider"; id: number; scheme: string; method: ProviderMethod; args: unknown[] }
+  /** Ask the module's discovery source to discover/fetchSource. */
+  | { t: "discovery"; id: number; sourceId: string; method: DiscoveryMethod; args: unknown[] }
   | { t: "event"; event: string; payload: unknown };
 
 /** The file-system provider operations a module may implement (mirrors hostProxy). */
 export type ProviderMethod =
   | "list" | "openFile" | "createFolder" | "createFile" | "deleteItem" | "renameItem" | "copyFiles" | "moveFiles";
+
+/** The discovery operations a module may implement (mirrors hostProxy). */
+export type DiscoveryMethod = "discover" | "fetchSource";

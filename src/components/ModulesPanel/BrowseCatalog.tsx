@@ -35,7 +35,14 @@ export function BrowseCatalog({ installedIds, busyRef, onInstall }: BrowseCatalo
   const [loading, setLoading] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The live list of discovery sources (each contributed by a module).
+  const [sources, setSources] = useState(() => DiscoveryRegistry.list().map((s) => ({ id: s.id, label: s.label })));
   const reqId = useRef(0);
+
+  // Keep the source list in sync as discovery modules are enabled/disabled.
+  useEffect(() => DiscoveryRegistry.subscribe(() => {
+    setSources(DiscoveryRegistry.list().map((s) => ({ id: s.id, label: s.label })));
+  }), []);
 
   const search = useCallback(async (text: string, permissions: ModulePermission[], page: number) => {
     const id = ++reqId.current;
@@ -57,11 +64,13 @@ export function BrowseCatalog({ installedIds, busyRef, onInstall }: BrowseCatalo
     }
   }, []);
 
-  // Initial listing + debounced re-search when the text or filters change.
+  // Initial listing + debounced re-search when the text, filters, or the set of
+  // available sources change (enabling a discovery module re-queries).
+  const sourcesKey = sources.map((s) => s.id).join(",");
   useEffect(() => {
     const t = setTimeout(() => search(query, [...perms], 1), query ? 350 : 0);
     return () => clearTimeout(t);
-  }, [query, perms, search]);
+  }, [query, perms, search, sourcesKey]);
 
   const togglePerm = useCallback((p: ModulePermission) => {
     setPerms((prev) => {
@@ -78,6 +87,19 @@ export function BrowseCatalog({ installedIds, busyRef, onInstall }: BrowseCatalo
 
   return (
     <div className="browse">
+      <div className="browse-sources">
+        <span className="browse-sources-label">Sources</span>
+        {sources.length === 0 ? (
+          <span className="browse-sources-empty">No discovery sources — enable a discovery module</span>
+        ) : (
+          sources.map((s) => (
+            <span key={s.id} className="browse-source" title={`Discovery source: ${s.id}`}>
+              {s.label}
+            </span>
+          ))
+        )}
+      </div>
+
       <div className="browse-searchbar">
         <span className="browse-search-icon">🔍</span>
         <input

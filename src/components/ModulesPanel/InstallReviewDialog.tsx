@@ -55,7 +55,7 @@ export function InstallReviewDialog({
                 <span className="install-review-module-name">{manifest.name}</span>
                 <span className="install-review-module-version">v{manifest.version}</span>
               </div>
-              <AuthorBadge author={listing.author} />
+              <AuthorBadge author={listing.author ?? null} />
             </div>
           </div>
           {manifest.description && (

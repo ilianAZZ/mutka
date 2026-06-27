@@ -36,7 +36,7 @@ export function CatalogModuleCard({ listing, sourceLabel, installed, busy, onIns
           <span className="source-pill" title={`Discovered via ${sourceLabel}`}>{sourceLabel}</span>
         </div>
 
-        <AuthorBadge author={listing.author} />
+        <AuthorBadge author={listing.author ?? null} />
 
         {listing.description && <p className="catalog-card-desc">{listing.description}</p>}
 

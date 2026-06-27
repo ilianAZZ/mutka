@@ -1,12 +1,14 @@
 import { EventBus } from "../event-bus/EventBus";
 import type { EventMap } from "../event-bus/events";
-import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandler, type ColumnProvider, type UIEventHandler, type ProviderHandler, type ProviderMethod } from "./hostProxy";
+import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandler, type ColumnProvider, type UIEventHandler, type ProviderHandler, type ProviderMethod, type DiscoverHandler, type FetchSourceHandler } from "./hostProxy";
 import { dispatchCapability } from "./gateway";
 import { registerProxyModule } from "./proxyModule";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
 import { isSubscribable, deliverablePayload } from "./eventWhitelist";
 import { FileSystemRegistry } from "../file-system/FileSystemRegistry";
-import type { SandboxManifest, HostSnapshot, ColumnCell } from "./protocol";
+import { DiscoveryRegistry } from "../discovery/DiscoveryRegistry";
+import type { DiscoveryResult } from "../discovery/types";
+import type { SandboxManifest, HostSnapshot, ColumnCell, DiscoveryMethod } from "./protocol";
 import type { SandboxModuleDef } from "./defineModule";
 import type { FileItem } from "../types";
 
@@ -28,8 +30,10 @@ export class LocalHost {
   private readonly columns = new Map<string, ColumnProvider>();
   private readonly uiEvents = new Map<string, UIEventHandler>();
   private readonly providers = new Map<string, ProviderHandler>();
+  private readonly discoveries = new Map<string, DiscoverHandler | FetchSourceHandler>();
   private readonly eventUnsubs: Array<() => void> = [];
   private readonly registeredSchemes: string[] = [];
+  private readonly registeredSources: string[] = [];
 
   constructor(private readonly def: SandboxModuleDef) {
     this.manifest = {
@@ -49,6 +53,7 @@ export class LocalHost {
       columns: def.columns ?? [],
       panels: def.panels ?? [],
       settingsSections: def.settingsSections ?? [],
+      discoverySources: def.discoverySources ?? [],
     };
   }
 
@@ -60,6 +65,7 @@ export class LocalHost {
       registerColumn: (id, fn) => this.columns.set(id, fn),
       registerUIEvent: (id, fn) => this.uiEvents.set(id, fn),
       registerProvider: (scheme, method, fn) => this.providers.set(`${scheme}:${method}`, fn),
+      registerDiscovery: (sourceId, method, fn) => this.discoveries.set(`${sourceId}:${method}`, fn),
       setSidebarItems: (items) => ModuleRegistry.setDynamicSidebarItems(this.manifest.id, items),
       subscribe: (event, fn) => this.subscribe(event, fn),
       post: (m) => { if (m.t === "log") console[m.level](`[builtin:${this.manifest.id}]`, ...m.args); },
@@ -78,6 +84,16 @@ export class LocalHost {
         moveFiles: (paths, dest) => this.callProvider(scheme, "moveFiles", paths, dest) as Promise<void>,
       });
       this.registeredSchemes.push(scheme);
+    }
+
+    for (const decl of this.manifest.discoverySources) {
+      DiscoveryRegistry.register({
+        id: decl.id,
+        label: decl.label,
+        discover: (query) => this.callDiscovery(decl.id, "discover", [query]) as Promise<DiscoveryResult>,
+        fetchSource: (ref) => this.callDiscovery(decl.id, "fetchSource", [ref]) as Promise<string>,
+      });
+      this.registeredSources.push(decl.id);
     }
 
     registerProxyModule(this.manifest, {
@@ -99,6 +115,12 @@ export class LocalHost {
   private callProvider(scheme: string, method: ProviderMethod, ...args: unknown[]): Promise<unknown> {
     const fn = this.providers.get(`${scheme}:${method}`);
     if (!fn) return Promise.reject(new Error(`provider "${scheme}" has no "${method}" handler`));
+    return Promise.resolve((fn as (...a: unknown[]) => unknown)(...args));
+  }
+
+  private callDiscovery(sourceId: string, method: DiscoveryMethod, args: unknown[]): Promise<unknown> {
+    const fn = this.discoveries.get(`${sourceId}:${method}`);
+    if (!fn) return Promise.reject(new Error(`discovery source "${sourceId}" has no "${method}" handler`));
     return Promise.resolve((fn as (...a: unknown[]) => unknown)(...args));
   }
 
@@ -124,10 +146,12 @@ export class LocalHost {
   private dispose(): void {
     for (const unsub of this.eventUnsubs) unsub();
     for (const scheme of this.registeredSchemes) FileSystemRegistry.unregisterProvider(scheme);
+    for (const sourceId of this.registeredSources) DiscoveryRegistry.unregister(sourceId);
     this.commands.clear();
     this.opens.clear();
     this.columns.clear();
     this.uiEvents.clear();
     this.providers.clear();
+    this.discoveries.clear();
   }
 }

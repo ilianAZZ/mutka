@@ -1,4 +1,4 @@
-import type { SandboxCommand, SandboxOpenHandler, FileIconContribution, ColumnContribution, PanelContribution, SettingsSectionContribution, ModuleAuthor } from "./protocol";
+import type { SandboxCommand, SandboxOpenHandler, FileIconContribution, ColumnContribution, PanelContribution, SettingsSectionContribution, ModuleAuthor, DiscoverySourceDecl } from "./protocol";
 import type { ModulePermission, SidebarItem } from "../module-registry/module-registry.types";
 import type { SandboxHostApi } from "./hostProxy";
 
@@ -68,6 +68,14 @@ export interface SandboxModuleDef {
    * (DOMParser, etc.), so providers needing those should ship as built-ins.
    */
   fileSystemProviders?: string[];
+  /**
+   * Module-discovery sources this module provides (e.g. a GitLab or local-folder
+   * source). Declare `{ id, label }` here, then in setup serve them with
+   * host.onDiscover(id, …) and host.onFetchSource(id, …). The id appears in the
+   * Modules "Browse" tab; results are validated + installed by the core. Gated by
+   * the `discovery` permission (plus whatever the fetch needs, e.g. `network`).
+   */
+  discoverySources?: DiscoverySourceDecl[];
   /**
    * Runs once after load. Register command/open handlers and event subscriptions
    * here. Reaches the system only through `host.*` (each gated by permissions).

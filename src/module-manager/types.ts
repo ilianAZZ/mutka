@@ -80,82 +80,14 @@ export interface ModuleConfig {
   installed: Record<string, InstalledMeta>;
 }
 
-// ─── Discovery (pluggable module-discovery sources) ───────────────────────────
-
-/** Author display info, resolved to concrete avatar/profile URLs. */
-export interface CatalogAuthor {
-  name?: string;
-  /** GitHub login (user or org). */
-  github?: string;
-  /** Avatar image URL (derived from the login). */
-  avatarUrl?: string;
-  /** Profile/org page URL (derived from the login). */
-  profileUrl?: string;
-}
-
-/**
- * A module surfaced by a discovery source — metadata only, no code yet. The core
- * fetches the source (via the source's `fetchSource(ref)`) and probes it only at
- * install time. `permissions` here are advisory (for filtering/preview); the
- * authoritative set comes from probing the fetched source.
- */
-export interface ModuleListing {
-  /** Discovery source that surfaced this (its `id`). */
-  sourceId: string;
-  /** Opaque, provider-encoded locator passed back to `fetchSource`. */
-  ref: string;
-  id: string;
-  name: string;
-  version: string;
-  description?: string;
-  /** Display image (data: URI or https URL). */
-  icon?: string;
-  /** Author shown on the card (login defaults to the repo owner). */
-  author: CatalogAuthor | null;
-  /** Advisory permission preview (authoritative set is re-derived at install). */
-  permissions: ModulePermission[];
-  tags?: string[];
-  /** External page for the module (repo URL, etc.). */
-  homepageUrl?: string;
-}
-
-/** Filters + pagination passed to a discovery source. */
-export interface DiscoveryQuery {
-  text?: string;
-  permissions?: ModulePermission[];
-  tags?: string[];
-  extension?: string;
-  /** 1-based page number. */
-  page?: number;
-  perPage?: number;
-}
-
-/** A page of discovery results. */
-export interface DiscoveryResult {
-  listings: ModuleListing[];
-  /** Next page number, or undefined when there are no more results. */
-  nextPage?: number;
-}
-
-/**
- * A pluggable module-discovery source. GitHub is the built-in one; a future
- * source (GitLab, a local folder, a private registry) implements this same shape
- * and registers with the DiscoveryRegistry — the manager + UI don't change.
- */
-export interface ModuleDiscoverySource {
-  readonly id: string;
-  readonly label: string;
-  /** Find modules matching the query (one page). */
-  discover(query: DiscoveryQuery): Promise<DiscoveryResult>;
-  /** Return the ESM source for a listing's `ref` (however this source fetches). */
-  fetchSource(ref: string): Promise<string>;
-}
-
-/** A listing whose source has been fetched + validated, ready to install. */
-export interface ResolvedModule {
-  listing: ModuleListing;
-  /** The downloaded ESM source. */
-  source: string;
-  /** The probed manifest (authoritative id + permissions). */
-  manifest: SandboxManifest;
-}
+// ─── Discovery ────────────────────────────────────────────────────────────────
+// The discovery types + registry now live in core (the module runtimes type their
+// handlers against them). Re-exported here so existing importers keep working.
+export type {
+  CatalogAuthor,
+  ModuleListing,
+  DiscoveryQuery,
+  DiscoveryResult,
+  ModuleDiscoverySource,
+  ResolvedModule,
+} from "../core/discovery/types";

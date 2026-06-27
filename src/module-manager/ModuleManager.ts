@@ -38,6 +38,7 @@ function minimalManifest(id: string): SandboxManifest {
     columns: [],
     panels: [],
     settingsSections: [],
+    discoverySources: [],
   };
 }
 

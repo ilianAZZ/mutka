@@ -158,8 +158,7 @@ mutka/
 │   │   ├── descriptors.ts       ← the 3 module sources (built-in glob, dev glob, community invoke)
 │   │   ├── moduleConfig.ts      ← read/write ~/.mutka/config.json (disabled set + install meta)
 │   │   ├── probeManifest.ts     ← validate a module by loading it in a throwaway worker
-│   │   ├── DiscoveryRegistry.ts ← registry of discovery sources (discover + resolve)
-│   │   ├── githubSource.ts      ← built-in ModuleDiscoverySource over GitHub (mutka-module-*)
+│   │   ├── DiscoveryRegistry.ts ← re-export of core/discovery (sources come from modules)
 │   │   ├── authorInfo.ts        ← manifest author → avatar/profile URLs
 │   │   ├── installModule.ts     ← write a validated module to disk (install_module)
 │   │   ├── permissionInfo.ts    ← permission labels + dangerous-permission flags
@@ -176,6 +175,7 @@ mutka/
 │   │   ├── drop-import.ts       ← import files dropped from Finder (temp file → copy)
 │   │   ├── auto-refresh.ts      ← re-read the list on "directory:changed" (file watch)
 │   │   ├── telemetry.ts         ← times folder opens (data vs render) via nav/listing events
+│   │   ├── github-discovery.ts  ← module-discovery source for GitHub, shipped AS a module
 │   │   └── reveal.ts            ← example: open with system default app
 │   │
 │   ├── styles/                  ← global CSS split by concern
@@ -197,7 +197,11 @@ mutka/
 │   │   │   ├── proxyModule.ts   ← turns a manifest into a MutkaModule
 │   │   │   ├── LocalHost.ts     ← in-process runtime (trusted built-ins)
 │   │   │   ├── SandboxHost.ts   ← Web Worker runtime (untrusted community)
+│   │   │   ├── probeManifest.ts ← validate a source in a throwaway worker → manifest
 │   │   │   └── sandbox.worker.ts← the isolated realm community code runs in
+│   │   ├── discovery/           ← pluggable module discovery (sources come from modules)
+│   │   │   ├── DiscoveryRegistry.ts ← holds module-contributed sources; discover + resolve
+│   │   │   └── types.ts             ← ModuleListing, DiscoveryQuery/Result, ModuleDiscoverySource
 │   │   ├── module-registry/
 │   │   │   ├── ModuleRegistry.ts        ← register/unregister, dispatch actions/opens
 │   │   │   └── module-registry.types.ts ← MutkaModule/Action/permissions contract
@@ -306,10 +310,14 @@ The same format runs in two interchangeable runtimes, differing only in transpor
 | `sys.homeDir`                                                                    | `fs:read`           | Rust `get_home_dir` (the OS home dir)               |
 | `sys.lastDir`                                                                    | `fs:read`           | localStorage (last visited dir, for launch restore) |
 | `sys.writeTempFile`                                                              | `fs:temp`           | Rust `write_temp_file` (lower-risk than `fs:write`) |
+| `modules.probe`                                                                  | `discovery`         | `probeManifest` (validate a source → manifest, for discovery sources) |
 
 `ModulePermission`: `fs:read`, `fs:write`, `fs:temp`, `clipboard:read`, `clipboard:write`,
-`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `ui`, `shell`
-(`shell` is reserved — no capability uses it yet). `fs:temp` writes only to the OS temp dir,
+`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `ui`, `discovery`, `shell`
+(`shell` is reserved — no capability uses it yet). `discovery` lets a module contribute a
+module-discovery source (`discoverySources` + `host.onDiscover`/`onFetchSource`) and probe
+fetched sources (`host.modules.probe`); GitHub discovery ships as exactly such a built-in
+module (`sandbox-builtins/github-discovery.ts`). `fs:temp` writes only to the OS temp dir,
 so it is deliberately weaker than `fs:write`. `ui` gates declarative UI + status-bar
 contributions. There is deliberately no SQLite/`db` capability: a `.sqlite` file IS the
 database, so a module reads its bytes with `fs:read` and decodes the format in its own

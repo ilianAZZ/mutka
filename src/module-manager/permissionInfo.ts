@@ -76,6 +76,11 @@ export const PERMISSION_INFO: Record<ModulePermission, PermissionInfo> = {
     description: "Render panels, status-bar items, and settings sections.",
     dangerous: false,
   },
+  discovery: {
+    label: "Module discovery",
+    description: "Contribute a source that finds and fetches other installable modules.",
+    dangerous: true,
+  },
   shell: {
     label: "Run commands",
     description: "Execute shell or system commands.",

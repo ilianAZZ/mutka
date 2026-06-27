@@ -5,7 +5,9 @@ import { registerProxyModule } from "./proxyModule";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
 import { isSubscribable, deliverablePayload } from "./eventWhitelist";
 import { FileSystemRegistry } from "../file-system/FileSystemRegistry";
-import type { WorkerToHost, HostToWorker, SandboxManifest, ColumnCell, ProviderMethod } from "./protocol";
+import { DiscoveryRegistry } from "../discovery/DiscoveryRegistry";
+import type { DiscoveryResult } from "../discovery/types";
+import type { WorkerToHost, HostToWorker, SandboxManifest, ColumnCell, ProviderMethod, DiscoveryMethod } from "./protocol";
 import type { FileItem } from "../types";
 
 /**
@@ -30,6 +32,10 @@ export class SandboxHost {
   private providerSeq = 0;
   private readonly providerPending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
   private readonly registeredSchemes: string[] = [];
+  // Host→worker→host calls for discovery-source operations (discover/fetchSource).
+  private discoverySeq = 0;
+  private readonly discoveryPending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+  private readonly registeredSources: string[] = [];
 
   constructor(source: string) {
     this.worker = new Worker(new URL("./sandbox.worker.ts", import.meta.url), { type: "module" });
@@ -67,6 +73,16 @@ export class SandboxHost {
       this.registeredSchemes.push(scheme);
     }
 
+    for (const decl of manifest.discoverySources) {
+      DiscoveryRegistry.register({
+        id: decl.id,
+        label: decl.label,
+        discover: (query) => this.runDiscovery(decl.id, "discover", [query]) as Promise<DiscoveryResult>,
+        fetchSource: (ref) => this.runDiscovery(decl.id, "fetchSource", [ref]) as Promise<string>,
+      });
+      this.registeredSources.push(decl.id);
+    }
+
     registerProxyModule(manifest, {
       run: (commandId, snapshot) => this.send({ t: "run", commandId, snapshot }),
       runOpen: (handlerId, item) => this.send({ t: "open", handlerId, item }),
@@ -93,13 +109,24 @@ export class SandboxHost {
     });
   }
 
+  private runDiscovery(sourceId: string, method: DiscoveryMethod, args: unknown[]): Promise<unknown> {
+    const id = ++this.discoverySeq;
+    return new Promise<unknown>((resolve, reject) => {
+      this.discoveryPending.set(id, { resolve, reject });
+      this.send({ t: "discovery", id, sourceId, method, args });
+    });
+  }
+
   private dispose(): void {
     for (const unsub of this.eventUnsubs) unsub();
     for (const { reject } of this.columnPending.values()) reject(new Error("module disposed"));
     this.columnPending.clear();
     for (const { reject } of this.providerPending.values()) reject(new Error("module disposed"));
     this.providerPending.clear();
+    for (const { reject } of this.discoveryPending.values()) reject(new Error("module disposed"));
+    this.discoveryPending.clear();
     for (const scheme of this.registeredSchemes) FileSystemRegistry.unregisterProvider(scheme);
+    for (const sourceId of this.registeredSources) DiscoveryRegistry.unregister(sourceId);
     this.worker.terminate();
   }
 
@@ -144,6 +171,14 @@ export class SandboxHost {
         const pending = this.providerPending.get(msg.id);
         if (!pending) break;
         this.providerPending.delete(msg.id);
+        if (msg.ok) pending.resolve(msg.value);
+        else pending.reject(new Error(msg.error));
+        break;
+      }
+      case "discovery-result": {
+        const pending = this.discoveryPending.get(msg.id);
+        if (!pending) break;
+        this.discoveryPending.delete(msg.id);
         if (msg.ok) pending.resolve(msg.value);
         else pending.reject(new Error(msg.error));
         break;

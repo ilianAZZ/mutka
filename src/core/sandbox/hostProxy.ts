@@ -1,6 +1,7 @@
-import type { WorkerToHost, HostSnapshot, ColumnCell, ProviderMethod, UINode, StatusBarItem } from "./protocol";
+import type { WorkerToHost, HostSnapshot, ColumnCell, ProviderMethod, DiscoveryMethod, UINode, StatusBarItem } from "./protocol";
 import type { FileItem } from "../types";
 import type { SidebarItem } from "../module-registry/module-registry.types";
+import type { DiscoveryQuery, DiscoveryResult } from "../discovery/types";
 
 export type { ProviderMethod } from "./protocol";
 
@@ -22,6 +23,9 @@ export type TransferHandler = (paths: string[], dest: string) => void | Promise<
 export type ProviderHandler = ListHandler | OpenFileHandler | WriteHandler | RenameProviderHandler | TransferHandler;
 /** A UI-event handler (button/list/form interaction) registered via host.onUIEvent. */
 export type UIEventHandler = (value: unknown) => void | Promise<void>;
+/** A discovery source's two handlers, registered via host.onDiscover / onFetchSource. */
+export type DiscoverHandler = (query: DiscoveryQuery) => Promise<DiscoveryResult>;
+export type FetchSourceHandler = (ref: string) => Promise<string>;
 
 /** Options for host.net.request — a host-proxied HTTP call (bypasses CORS). */
 export interface NetRequestOptions {
@@ -142,6 +146,11 @@ export interface SandboxHostApi {
     download(options: NetDownloadOptions): Promise<unknown>;
     upload(options: NetUploadOptions): Promise<unknown>;
   };
+  /** Module tooling for discovery sources (gated by the `discovery` permission). */
+  modules: {
+    /** Validate an ESM source in a throwaway worker and return its manifest. */
+    probe(source: string): Promise<unknown>;
+  };
   /** Per-module persisted config (gated by the `storage` permission). */
   config: {
     get(key: string): Promise<unknown>;
@@ -181,6 +190,10 @@ export interface SandboxHostApi {
   onCopyFiles(scheme: string, handler: TransferHandler): void;
   /** Register the move handler (same-scheme sources). */
   onMoveFiles(scheme: string, handler: TransferHandler): void;
+  /** Register the discover handler for a declared discovery source. */
+  onDiscover(sourceId: string, handler: DiscoverHandler): void;
+  /** Register the fetch-source handler for a declared discovery source. */
+  onFetchSource(sourceId: string, handler: FetchSourceHandler): void;
   /** Replace this module's dynamic left-sidebar items (e.g. a bookmarks list). */
   sidebar: { set(items: SidebarItem[]): void };
   /** Subscribe to a whitelisted app event. */
@@ -196,6 +209,7 @@ interface Transport {
   registerColumn: (columnId: string, provider: ColumnProvider) => void;
   registerUIEvent: (handlerId: string, handler: UIEventHandler) => void;
   registerProvider: (scheme: string, method: ProviderMethod, handler: ProviderHandler) => void;
+  registerDiscovery: (sourceId: string, method: DiscoveryMethod, handler: DiscoverHandler | FetchSourceHandler) => void;
   setSidebarItems: (items: SidebarItem[]) => void;
   subscribe: (event: string, handler: EventHandler) => void;
   post: (m: WorkerToHost) => void;
@@ -276,6 +290,9 @@ export function createHostProxy(t: Transport): SandboxHostApi {
       download: (options) => callHost("net", "download", [options]),
       upload: (options) => callHost("net", "upload", [options]),
     },
+    modules: {
+      probe: (source) => callHost("modules", "probe", [source]),
+    },
     config: {
       get: (key) => callHost("config", "get", [key]),
       set: (key, value) => callHost("config", "set", [key, value]),
@@ -299,6 +316,8 @@ export function createHostProxy(t: Transport): SandboxHostApi {
     onRenameItem: (scheme, handler) => t.registerProvider(scheme, "renameItem", handler),
     onCopyFiles: (scheme, handler) => t.registerProvider(scheme, "copyFiles", handler),
     onMoveFiles: (scheme, handler) => t.registerProvider(scheme, "moveFiles", handler),
+    onDiscover: (sourceId, handler) => t.registerDiscovery(sourceId, "discover", handler),
+    onFetchSource: (sourceId, handler) => t.registerDiscovery(sourceId, "fetchSource", handler),
     sidebar: { set: (items) => t.setSidebarItems(items) },
     events: { on: (event, handler) => t.subscribe(event, handler) },
     log: (...args) => t.post({ t: "log", level: "log", args }),

@@ -14,6 +14,7 @@ import { UIStore } from "../stores/UIStore";
 import { StatusBarStore } from "../stores/StatusBarStore";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
 import { DragService } from "../drag/DragService";
+import { probeManifest } from "./probeManifest";
 import type { UINode, StatusBarItem } from "./protocol";
 
 /** localStorage key for the last visited local directory (restored at launch). */
@@ -88,6 +89,12 @@ export function createCapabilityTable(): CapabilityTable {
       request:  { permission: "network", run: ([opts]) => invoke("http_request", { req: opts }) },
       download: { permission: "network", run: ([opts]) => invoke("http_download", { req: opts }) },
       upload:   { permission: "network", run: ([opts]) => invoke("http_upload", { req: opts }) },
+    },
+    // Discovery-source tooling: validate an ESM source in a throwaway worker and
+    // read its manifest. A discovery module uses this to turn a fetched index.js
+    // into listing metadata; the worker spin-up stays in the host.
+    modules: {
+      probe: { permission: "discovery", run: ([source]) => probeManifest(source as string) },
     },
     config: {
       get: { permission: "storage", run: ([key], moduleId) => Promise.resolve(localStorage.getItem(cfgKey(moduleId, key))) },

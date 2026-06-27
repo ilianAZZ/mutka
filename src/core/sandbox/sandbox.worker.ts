@@ -9,7 +9,7 @@
 // asking the host (which checks permissions).
 // =============================================================================
 
-import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandler, type ColumnProvider, type UIEventHandler, type ProviderHandler } from "./hostProxy";
+import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandler, type ColumnProvider, type UIEventHandler, type ProviderHandler, type DiscoverHandler, type FetchSourceHandler } from "./hostProxy";
 import type { HostToWorker, WorkerToHost, SandboxManifest } from "./protocol";
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
@@ -20,6 +20,7 @@ const opens = new Map<string, OpenHandler>();
 const columns = new Map<string, ColumnProvider>();
 const uiEvents = new Map<string, UIEventHandler>();
 const providers = new Map<string, ProviderHandler>(); // `${scheme}:${method}` → handler
+const discoveries = new Map<string, DiscoverHandler | FetchSourceHandler>(); // `${sourceId}:${method}` → handler
 const events = new Map<string, EventHandler>();
 const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: unknown) => void }>();
 let callSeq = 0;
@@ -79,6 +80,20 @@ ctx.onmessage = async (e: MessageEvent<HostToWorker>): Promise<void> => {
       }
       break;
     }
+    case "discovery": {
+      const handler = discoveries.get(`${msg.sourceId}:${msg.method}`);
+      if (!handler) {
+        post({ t: "discovery-result", id: msg.id, ok: false, error: `discovery source "${msg.sourceId}" has no "${msg.method}" handler` });
+        break;
+      }
+      try {
+        const value = await (handler as (...a: unknown[]) => unknown)(...msg.args);
+        post({ t: "discovery-result", id: msg.id, ok: true, value });
+      } catch (err) {
+        post({ t: "discovery-result", id: msg.id, ok: false, error: String(err) });
+      }
+      break;
+    }
     case "event": {
       const handler = events.get(msg.event);
       if (handler) handler(msg.payload);
@@ -113,6 +128,7 @@ interface RawModule {
   columns?: SandboxManifest["columns"];
   panels?: SandboxManifest["panels"];
   settingsSections?: SandboxManifest["settingsSections"];
+  discoverySources?: SandboxManifest["discoverySources"];
   setup?: (host: ReturnType<typeof createHostProxy>) => void | Promise<void>;
 }
 
@@ -144,6 +160,7 @@ async function loadModule(source: string): Promise<void> {
       columns: def.columns ?? [],
       panels: def.panels ?? [],
       settingsSections: def.settingsSections ?? [],
+      discoverySources: def.discoverySources ?? [],
     };
     // Report BEFORE setup runs, so the host knows this module's permissions
     // before any host-call can be served.
@@ -156,6 +173,7 @@ async function loadModule(source: string): Promise<void> {
       registerColumn: (id, fn) => columns.set(id, fn),
       registerUIEvent: (id, fn) => uiEvents.set(id, fn),
       registerProvider: (scheme, method, fn) => providers.set(`${scheme}:${method}`, fn),
+      registerDiscovery: (sourceId, method, fn) => discoveries.set(`${sourceId}:${method}`, fn),
       setSidebarItems: (items) => post({ t: "sidebar", items }),
       subscribe: (event, fn) => { events.set(event, fn); post({ t: "subscribe", event }); },
       post,
