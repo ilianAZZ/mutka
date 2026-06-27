@@ -15,6 +15,28 @@ import type { HostToWorker, WorkerToHost, SandboxManifest } from "./protocol";
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
 const post = (m: WorkerToHost): void => ctx.postMessage(m);
 
+// =============================================================================
+// NO NATIVE NETWORK FROM A MODULE.
+//
+// A community module must NEVER make its own network calls — not `fetch`,
+// `XMLHttpRequest`, `WebSocket`, `EventSource`, `navigator.sendBeacon`, WebRTC,
+// a nested `Worker`, nor a remote dynamic `import()`. CORS does NOT make these
+// safe: it blocks READING a cross-origin reply, not SENDING the request, so they
+// would be an ungated exfiltration channel that defeats the `network` permission.
+//
+// The ONLY sanctioned egress is `host.net.*`, which the gateway checks against the
+// `network` permission and which runs in Rust (see capabilities.ts → http.rs).
+//
+// This is NOT enforced here by deleting globals (a denylist of API names is
+// fragile — easy to miss one, and it grows as the platform adds APIs). It is
+// enforced at the engine level by the app Content-Security-Policy: `connect-src`
+// is restricted to the Tauri IPC bridge (so no other host is reachable) and
+// `script-src` forbids remote origins (so remote `import()` can't load code).
+// WebKit applies that policy below JavaScript, in the worker realm too, so no
+// string trick / `eval` / `Function` can get around it. See
+// src-tauri/tauri.conf.json (`app.security.csp`) and docs/safety.md.
+// =============================================================================
+
 const commands = new Map<string, CommandHandler>();
 const opens = new Map<string, OpenHandler>();
 const columns = new Map<string, ColumnProvider>();

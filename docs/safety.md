@@ -44,6 +44,21 @@ is no other channel. A denied capability isn't just refused — it is **physical
 unreachable**, because the code that performs it (`invoke`, `AppBridge`,
 `TabManager`) lives on the other side of the worker boundary.
 
+**No native network.** A module must NOT make its own network calls — not `fetch`,
+`XMLHttpRequest`, `WebSocket`, `EventSource`, `navigator.sendBeacon`, WebRTC, a
+nested `Worker`, nor a remote dynamic `import()`. CORS does not make these safe: it
+blocks *reading* a cross-origin reply, not *sending* the request, so a raw `fetch`
+to an attacker's URL would be an **ungated exfiltration channel** that defeats the
+`network` permission. The only sanctioned egress is `host.net.*` (gated by
+`network`, executed in Rust). This is enforced **at the engine level by the app
+Content-Security-Policy** (`src-tauri/tauri.conf.json`), not by deleting JS globals
+(a denylist of API names would be fragile and incomplete): `connect-src` is
+restricted to the Tauri IPC bridge, so no other host is reachable, and `script-src`
+forbids remote origins, so a remote `import()` can't load code. WebKit applies that
+policy below JavaScript — in the worker realm too — so no `eval` / `Function` /
+string trick can get around it. The same CSP also confines the main (trusted)
+realm.
+
 > Built-in modules run in-process via `LocalHost` and *do* share the realm, which is
 > exactly why only first-party code is allowed to. The module source is identical
 > either way; only the transport differs.
