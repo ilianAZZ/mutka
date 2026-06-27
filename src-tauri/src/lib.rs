@@ -25,7 +25,7 @@ use fs_ops::{
     cloud_status, copy_files, create_dir_cmd, create_file, delete_item, get_home_dir, move_files,
     open_item, read_dir, read_file_base64, rename_item, write_temp_file,
 };
-use http::{http_download, http_request, http_upload};
+use http::http_request;
 use icons::{icons_for_types, preload_icon_cache};
 use launch::{apps_for_file, open_with};
 use modules::{
@@ -93,8 +93,6 @@ pub fn run() {
             quick_look,
             preview_update,
             http_request,
-            http_download,
-            http_upload,
             secret_set,
             secret_get,
             secret_delete,

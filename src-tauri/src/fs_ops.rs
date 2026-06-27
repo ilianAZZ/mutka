@@ -275,7 +275,12 @@ pub fn write_temp_file(filename: String, content_base64: String) -> Result<Strin
     let bytes = base64::engine::general_purpose::STANDARD
         .decode(content_base64.as_bytes())
         .map_err(|e| e.to_string())?;
-    let dest = std::env::temp_dir().join("mutka-dropped").join(&filename);
+    // Confine the write to the temp dir: take ONLY the final path component, so a
+    // crafted name like "../../x" can't escape into the user's real filesystem.
+    let safe_name = std::path::Path::new(&filename)
+        .file_name()
+        .ok_or("Invalid filename")?;
+    let dest = std::env::temp_dir().join("mutka-dropped").join(safe_name);
     if let Some(parent) = dest.parent() {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }

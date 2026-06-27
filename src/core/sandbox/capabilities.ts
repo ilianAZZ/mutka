@@ -48,6 +48,52 @@ function base64ToBytes(b64: string): Uint8Array {
   for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
   return out;
 }
+/** Encode raw bytes to base64 for the IPC bridge (chunked to avoid a huge spread). */
+function bytesToBase64(bytes: Uint8Array): string {
+  let bin = "";
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(bin);
+}
+
+/** Options accepted by the `net.request` capability (the module-facing shape). */
+interface NetRequestOptions {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  /** Text (UTF-8) or raw bytes; the gateway base64-encodes either for transport. */
+  body?: string | Uint8Array;
+}
+/** What `net.request` resolves to (decoded host-side from the Rust response). */
+interface NetResponse {
+  status: number;
+  headers: Record<string, string>;
+  /** Body decoded as UTF-8 text (use for JSON/XML/text APIs). */
+  body: string;
+  /** Body as raw bytes (use for binary downloads). */
+  bytes: Uint8Array;
+}
+
+/**
+ * The single network primitive. Pure I/O — it sends a request and returns the
+ * response; it NEVER reads or writes the filesystem. Uploads pass bytes obtained
+ * via `fs.readBytes` (fs:read); downloads write the response via `fs.*`/`sys.*`.
+ */
+async function netRequest(opts: NetRequestOptions): Promise<NetResponse> {
+  let bodyBase64: string | undefined;
+  if (opts.body !== undefined && opts.body !== null) {
+    const bytes = typeof opts.body === "string" ? new TextEncoder().encode(opts.body) : opts.body;
+    bodyBase64 = bytesToBase64(bytes);
+  }
+  const res = await invoke<{ status: number; headers: Record<string, string>; bodyBase64: string }>(
+    "http_request",
+    { req: { url: opts.url, method: opts.method, headers: opts.headers, bodyBase64 } }
+  );
+  const bytes = base64ToBytes(res.bodyBase64);
+  return { status: res.status, headers: res.headers, body: new TextDecoder().decode(bytes), bytes };
+}
 /** Keychain service name for a module's secrets. Must match SettingsPanel's. */
 export const secretService = (moduleId: string): string => `mutka.${moduleId}`;
 
@@ -86,9 +132,10 @@ export function createCapabilityTable(): CapabilityTable {
       choose:  { permission: "dialog", run: ([opts]) => AppBridge.dialog.choose(opts as Parameters<typeof AppBridge.dialog.choose>[0]) },
     },
     net: {
-      request:  { permission: "network", run: ([opts]) => invoke("http_request", { req: opts }) },
-      download: { permission: "network", run: ([opts]) => invoke("http_download", { req: opts }) },
-      upload:   { permission: "network", run: ([opts]) => invoke("http_upload", { req: opts }) },
+      // One role per command: `network` sends/receives bytes, it never touches
+      // the filesystem. Uploads pass bytes from fs.readBytes (fs:read); downloads
+      // save the response via fs.*/sys.writeTempFile.
+      request: { permission: "network", run: ([opts]) => netRequest(opts as NetRequestOptions) },
     },
     // Discovery-source tooling: validate an ESM source in a throwaway worker and
     // read its manifest. A discovery module uses this to turn a fetched index.js
@@ -148,9 +195,14 @@ export function createCapabilityTable(): CapabilityTable {
       homeDir:     { permission: "fs:read", run: () => invoke("get_home_dir") },
       // Last visited local directory, restored at launch. Null on first run.
       lastDir:     { permission: "fs:read", run: async () => localStorage.getItem(LAST_DIR_KEY) },
-      // Write a dropped file's bytes to a temp file, returning its path. Lower-risk
-      // than fs:write (OS temp dir only), so it has its own `fs:temp` permission.
-      writeTempFile: { permission: "fs:temp", run: ([filename, base64]) => invoke("write_temp_file", { filename, contentBase64: base64 }) },
+      // Write bytes to a temp file, returning its path. Accepts a Uint8Array (e.g.
+      // a downloaded response body) or a base64 string (a Finder-dropped file).
+      // Lower-risk than fs:write (OS temp dir only), so it has its own `fs:temp`
+      // permission. Rust confines the write to the temp dir by name (no traversal).
+      writeTempFile: { permission: "fs:temp", run: ([filename, data]) => {
+        const contentBase64 = data instanceof Uint8Array ? bytesToBase64(data) : String(data);
+        return invoke("write_temp_file", { filename, contentBase64 });
+      } },
       quickLook:   { permission: "fs:read", run: ([p]) => invoke("quick_look", { path: p }) },
       // Refresh the live Quick Look panel to a new path (no-op unless it is open).
       previewUpdate: { permission: "fs:read", run: ([p]) => invoke("preview_update", { path: p }) },
