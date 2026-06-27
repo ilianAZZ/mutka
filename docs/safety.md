@@ -146,11 +146,22 @@ capability still operates on real paths the user navigates to — see Residual r
 ## Layer 6 — Event whitelist
 
 A module can subscribe to app events via `host.events.on(...)`, but only to the
-**whitelisted** set in `core/sandbox/eventWhitelist.ts` (`app:ready`,
-`selection:changed`, `directory:changed`, the mouse/open events, …). A subscription
-to anything else is dropped with a warning. Host-internal events (e.g. another
-module's `ui:changed`) are **not** subscribable, so a module can't passively snoop on
-the rest of the app through the event bus.
+**whitelisted** set in `core/sandbox/eventWhitelist.ts`, and that set has two tiers (no
+event carries a credential — the gate is privacy, not secrecy):
+
+- **`SUBSCRIBABLE_EVENTS`** are delivered with their payload — trivial signals
+  (`app:ready`, `theme:changed`, …) or the single path/items a module legitimately acts
+  on (`selection:changed`, `directory:changed`, the mouse/open events, …).
+- **`NOTIFY_ONLY_EVENTS`** (`clipboard:changed`, `tabs:changed`, `action:dispatch`) are
+  delivered as a bare ping with the payload stripped to `undefined` (via
+  `deliverablePayload`): the occurrence is useful but the full payload would be
+  profiling-grade. A module that needs the data re-fetches it through a
+  permission-gated capability (e.g. `board.readFiles` needs `clipboard:read`).
+
+A subscription to anything else is dropped with a warning. Host-internal events that
+would leak other modules' state (e.g. `ui:changed`) or arbitrary internals
+(`error:action`) are on **neither** list, so a module can't passively snoop on the rest
+of the app through the event bus.
 
 ---
 

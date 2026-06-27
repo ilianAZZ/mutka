@@ -188,12 +188,28 @@ events via declaration merging on `EventMap` (see the comment in `events.ts`).
 | `statusbar:changed`                         | `undefined`                | a module status-bar item changed                 |
 | `directory:changed`                         | `{ path }`                 | current dir changed on disk (subscribable, debounced) |
 
-Of these, modules may subscribe ONLY to the whitelisted set in
-`sandbox/eventWhitelist.ts` (currently `app:ready`, `input:mouse-navigate`,
-`selection:changed`, `file:modifier-open`, `file:middle-open`, `file:open-no-app`,
-`file:external-drop`, `sidebar:item-remove`, `directory:changed`, `navigation:start`,
-`listing:loaded`, `listing:rendered`, `icons:settled`).
-`ui:changed` / `statusbar:changed` are host-internal (React mirrors them) and not subscribable.
+Of these, modules may subscribe ONLY to the events listed in
+`sandbox/eventWhitelist.ts`, in **two tiers** (no event carries a credential — the
+axis is privacy, not secrecy):
+
+- **`SUBSCRIBABLE_EVENTS`** — delivered WITH their payload. Either trivial signals
+  (`app:ready`, `navigation:back`/`forward`, `theme:changed`, `view:changed`,
+  `settings:changed`, `modules-ui:changed`, `sidebar:changed`,
+  `module:registered`/`unregistered`, `columns:cell-resolved`/`widths-changed`,
+  `icons:settled`) or the single path/items a module legitimately acts on
+  (`selection:changed`, `directory:changed`, `navigation:start`, `listing:loaded`,
+  `listing:rendered`, the `input:mouse-navigate` / `file:*` open intents,
+  `sidebar:item-remove`).
+- **`NOTIFY_ONLY_EVENTS`** — delivered as a bare ping with the payload stripped to
+  `undefined` (`clipboard:changed`, `tabs:changed`, `action:dispatch`). The
+  occurrence is useful (cache-bust, re-render) but the payload is profiling-grade
+  (the whole clipboard, every open tab, every command), so a module that needs the
+  data fetches it through a permission-gated capability (e.g. `board.readFiles`
+  needs `clipboard:read`). Both hosts strip the payload via `deliverablePayload`.
+
+`ui:changed` / `statusbar:changed` (would leak OTHER modules' surfaces) and
+`error:action` (arbitrary internals) are on neither list — host-internal and not
+subscribable.
 
 ---
 

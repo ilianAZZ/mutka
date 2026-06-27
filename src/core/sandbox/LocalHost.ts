@@ -4,7 +4,7 @@ import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandl
 import { dispatchCapability } from "./gateway";
 import { registerProxyModule } from "./proxyModule";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
-import { isSubscribable } from "./eventWhitelist";
+import { isSubscribable, deliverablePayload } from "./eventWhitelist";
 import { FileSystemRegistry } from "../file-system/FileSystemRegistry";
 import type { SandboxManifest, HostSnapshot, ColumnCell } from "./protocol";
 import type { SandboxModuleDef } from "./defineModule";
@@ -107,7 +107,11 @@ export class LocalHost {
       console.warn(`[builtin:${this.manifest.id}] event "${event}" is not subscribable — ignored`);
       return;
     }
-    this.eventUnsubs.push(EventBus.on(event as keyof EventMap, (payload: unknown) => handler(payload)));
+    this.eventUnsubs.push(
+      EventBus.on(event as keyof EventMap, (payload: unknown) =>
+        handler(deliverablePayload(event, payload))
+      )
+    );
   }
 
   private run<A>(fn: ((arg: A) => void | Promise<void>) | undefined, arg: A | HostSnapshot | FileItem, label: string): void {

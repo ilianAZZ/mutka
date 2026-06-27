@@ -63,8 +63,10 @@ sequenceDiagram
     AB->>AB: update history state → re-render
 ```
 
-Only events in `core/sandbox/eventWhitelist.ts` (`input:mouse-navigate`,
-`file:modifier-open`) reach modules. Everything else is denied at `host.events.on`.
+Only events in `core/sandbox/eventWhitelist.ts` reach modules — `SUBSCRIBABLE_EVENTS`
+(e.g. `input:mouse-navigate`, `file:modifier-open`) with their payload, and
+`NOTIFY_ONLY_EVENTS` (`clipboard:changed`, `tabs:changed`, `action:dispatch`) as a bare
+ping with the payload stripped. Everything else is denied at `host.events.on`.
 
 ---
 

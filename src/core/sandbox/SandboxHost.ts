@@ -3,7 +3,7 @@ import type { EventMap } from "../event-bus/events";
 import { dispatchCapability } from "./gateway";
 import { registerProxyModule } from "./proxyModule";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
-import { isSubscribable } from "./eventWhitelist";
+import { isSubscribable, deliverablePayload } from "./eventWhitelist";
 import { FileSystemRegistry } from "../file-system/FileSystemRegistry";
 import type { WorkerToHost, HostToWorker, SandboxManifest, ColumnCell, ProviderMethod } from "./protocol";
 import type { FileItem } from "../types";
@@ -157,7 +157,7 @@ export class SandboxHost {
       return;
     }
     const unsub = EventBus.on(event as keyof EventMap, (payload: unknown) =>
-      this.send({ t: "event", event, payload })
+      this.send({ t: "event", event, payload: deliverablePayload(event, payload) })
     );
     this.eventUnsubs.push(unsub);
   }

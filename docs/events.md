@@ -39,9 +39,12 @@ constants — never raw strings.
 ## Which events a sandboxed module may subscribe to
 
 A module subscribes via `host.events.on(eventName, handler)` inside `setup`. This is a
-**trust surface**, so it is deliberately narrow: only events listed in
-`src/core/sandbox/eventWhitelist.ts` (`SUBSCRIBABLE_EVENTS`) are forwarded to a module.
-Anything else is ignored with a `console.warn`.
+**trust surface**, so it is deliberately narrow. No event carries a credential — the
+only things on the bus are file paths/names, a few booleans/ids, and (for
+`file:external-drop`) file bytes — so the gate is about **privacy**, not secrecy, and
+it has **two tiers** in `src/core/sandbox/eventWhitelist.ts`:
+
+**`SUBSCRIBABLE_EVENTS`** — forwarded **with** their payload.
 
 | Whitelisted event | Used by |
 |---|---|
@@ -50,13 +53,25 @@ Anything else is ignored with a `console.warn`.
 | `"directory:changed"` | `core.auto-refresh` (re-read list when the dir changes on disk) |
 | `"navigation:start"` · `"listing:loaded"` · `"listing:rendered"` · `"icons:settled"` | `core.telemetry` (times each folder open: data fetch, render, icons) |
 | `"selection:changed"` | declarative panels reacting to the selection |
+| `"navigation:back"` · `"navigation:forward"` | nav-aware modules reacting to history moves |
+| `"theme:changed"` · `"view:changed"` · `"settings:changed"` · `"modules-ui:changed"` · `"sidebar:changed"` · `"module:registered"` · `"module:unregistered"` · `"columns:cell-resolved"` · `"columns:widths-changed"` | trivial signals (booleans / ids / theme) — nothing to protect |
 | `"app:ready"` · `"file:middle-open"` · `"file:open-no-app"` · `"file:external-drop"` · `"sidebar:item-remove"` | various (e.g. `com.webdav` removes a sidebar account on `sidebar:item-remove`) |
 
-For a worker module, `SandboxHost` subscribes on the EventBus and re-posts the payload
-over postMessage; for a built-in, `LocalHost` subscribes directly. Either way the
-whitelist is checked first. All other `EventMap` events (theme, clipboard, tabs,
-selection, module, error, navigation, action) are **host-internal** and not exposed to
-modules.
+**`NOTIFY_ONLY_EVENTS`** — forwarded as a bare ping, **payload stripped to
+`undefined`**. The occurrence is useful but the payload is profiling-grade.
+
+| Notify-only event | Why stripped | How to get the data |
+| --- | --- | --- |
+| `"clipboard:changed"` | full clipboard contents | re-read via `host.board.readFiles()` (`clipboard:read`) |
+| `"tabs:changed"` | every open tab's path | — (react to the ping only) |
+| `"action:dispatch"` | every command the user runs | — (react to the ping only) |
+
+For a worker module, `SandboxHost` subscribes on the EventBus and re-posts over
+postMessage; for a built-in, `LocalHost` subscribes directly. Either way the whitelist
+is checked first and `deliverablePayload(event, payload)` strips notify-only payloads.
+Events on **neither** list — `error:action` (arbitrary internals) and `ui:changed` /
+`statusbar:changed` (would leak other modules' surfaces) — are host-internal and never
+exposed to modules.
 
 ---
 
@@ -73,8 +88,10 @@ modules.
    },
    ```
 3. Add a row to the table above.
-4. If a module should be able to subscribe to it, add it to `SUBSCRIBABLE_EVENTS` in
-   `src/core/sandbox/eventWhitelist.ts` — and only if it carries no sensitive state.
+4. If a module should be able to subscribe to it, add it to `eventWhitelist.ts`:
+   `SUBSCRIBABLE_EVENTS` to deliver it with its payload (only if the payload carries
+   no sensitive state), or `NOTIFY_ONLY_EVENTS` to deliver it as a bare ping with the
+   payload stripped (when the occurrence is useful but the payload is profiling-grade).
 
 ---
 
