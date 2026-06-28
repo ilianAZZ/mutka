@@ -65,11 +65,13 @@ Release is unaffected. They run only on a real `v*` tag, not on a manual
 
 ## Code signing & notarization
 
-The build is **unsigned** unless these repo secrets are set (the workflow already
-wires them): `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`,
-`APPLE_SIGNING_IDENTITY`, `APPLE_ID`, `APPLE_PASSWORD` (an app-specific password),
-`APPLE_TEAM_ID`. Unsigned apps run, but the user must right-click → Open the first
-time (Gatekeeper). Signed + notarized apps open with a normal double-click.
+Signing is driven by these repo secrets (the workflow already wires them):
+`APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD`, `APPLE_SIGNING_IDENTITY`,
+`APPLE_ID`, `APPLE_PASSWORD` (an app-specific password), `APPLE_TEAM_ID`. **They are
+set today**, so releases ship signed with a Developer ID and notarized — the app
+opens with a normal double-click. If the secrets were ever unset, the build would
+fall back to **unsigned**, and the user would have to right-click → Open the first
+time (Gatekeeper).
 
 ### Building the `APPLE_CERTIFICATE` `.p12` (two traps that fail the build)
 

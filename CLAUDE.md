@@ -124,7 +124,8 @@ Two independent concerns, both optional — CI still builds installable bundles 
   password), `APPLE_SIGNING_IDENTITY` (e.g. `Developer ID Application: Name (TEAMID)`),
   `APPLE_ID` (your Apple developer account email), `APPLE_PASSWORD` (an
   **app-specific password**, not your real one), `APPLE_TEAM_ID`. These require a paid
-  Apple Developer account. Unset today → builds are **unsigned**.
+  Apple Developer account. **These are configured today** — releases ship signed with
+  `Developer ID Application: Ilian A (Y4VJKT428U)` and notarized (stapled).
 - **Updater signing** (so the in-app auto-updater activates): `TAURI_SIGNING_PRIVATE_KEY`
   (already set) and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` if the key has one. This is
   unrelated to Apple signing — it only signs the update payload against the public key
