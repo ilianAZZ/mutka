@@ -2,6 +2,7 @@ import Link from "next/link";
 import { GITHUB_URL, DISCORD_URL } from "../layout.config";
 import { ModularBench } from "@/components/demo/ModularBench";
 import { FeatureCardGrid } from "@/components/features/FeatureCardGrid";
+import { InstallCommand } from "@/components/InstallCommand";
 
 function GitHubIcon({ size = 16 }: { size?: number }) {
   return (
@@ -155,6 +156,7 @@ export default function HomePage() {
               AI-buildable
             </Link>
           </div>
+          <InstallCommand />
         </header>
         <ModularBench />
       </section>

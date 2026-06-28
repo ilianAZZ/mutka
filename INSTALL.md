@@ -1,5 +1,28 @@
 # Mutka — Installation Guide
 
+## Install the app (most people want this)
+
+> macOS only. Releases are signed with a Developer ID and notarized by Apple, so
+> they open with a normal double-click.
+
+**One-line install** — downloads the latest release to `/Applications` and adds the
+`mutka` CLI to your PATH:
+
+```bash
+curl -fsSL https://mutka.app/install/latest.sh | bash
+```
+
+That URL redirects to [`scripts/install.sh`](scripts/install.sh) so you can read it
+first. Re-run any time to update.
+
+**Manual install** — grab `Mutka_<version>_universal.dmg` from the
+[latest release](https://github.com/ilianAZZ/mutka/releases/latest) and drag **Mutka**
+into **Applications**.
+
+The rest of this guide is for **building Mutka from source**.
+
+---
+
 ## Prerequisites
 
 ### 1. Rust

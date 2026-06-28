@@ -59,7 +59,46 @@ Every module — built-in or community — is the same shape: `export default de
 
 ---
 
-## Prerequisites
+## Install
+
+> macOS only. Releases are signed with a Developer ID and notarized by Apple, so
+> they open with a normal double-click — no right-click or Gatekeeper workaround.
+
+### One-line install (recommended)
+
+Downloads the latest release into `/Applications` and adds the `mutka` CLI to your
+PATH:
+
+```bash
+curl -fsSL https://mutka.app/install/latest.sh | bash
+```
+
+Re-run it any time to update to the newest release. (The `mutka.app` URL just
+redirects to [`scripts/install.sh`](scripts/install.sh) in this repo, so you can
+read exactly what it runs first.)
+
+### Manual install (.dmg)
+
+1. Download `Mutka_<version>_universal.dmg` from the [latest release](https://github.com/ilianAZZ/mutka/releases/latest).
+2. Open the `.dmg` and drag **Mutka** into your **Applications** folder.
+3. *(Optional)* add the terminal CLI:
+
+   ```bash
+   bash <(curl -fsSL https://raw.githubusercontent.com/ilianAZZ/mutka/main/scripts/install-cli.sh)
+   ```
+
+### Using the CLI
+
+```bash
+mutka <path>           # open a directory in Mutka
+mutka --picker         # pick a file/folder (path printed to stdout)
+mutka --run <action>   # run a module action
+mutka --list-actions   # list all available actions
+```
+
+---
+
+## Prerequisites (for building from source)
 
 | Tool                          | Version          |
 | ----------------------------- | ---------------- |
@@ -73,7 +112,7 @@ xcode-select --install   # if not already installed
 
 ---
 
-## Getting started
+## Building from source
 
 ```bash
 git clone https://github.com/ilianAZZ/mutka.git

@@ -374,6 +374,46 @@
   background: var(--ac);
 }
 
+/* ---- install one-liner (hero) ---------------------------------- */
+.install-cmd {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 1.5rem;
+  max-width: 100%;
+  padding: 7px 7px 7px 14px;
+  border-radius: 11px;
+  border: 1px solid var(--color-fd-border);
+  background: color-mix(in srgb, var(--color-fd-muted) 60%, transparent);
+  backdrop-filter: blur(8px);
+}
+.install-cmd__text {
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow-x: auto;
+  color: var(--color-fd-foreground);
+}
+.install-cmd__prompt {
+  color: var(--color-fd-muted-foreground);
+  user-select: none;
+}
+.install-cmd__copy {
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 7px;
+  border: 1px solid color-mix(in srgb, var(--mutka-accent) 35%, var(--color-fd-border));
+  background: color-mix(in srgb, var(--mutka-accent) 12%, transparent);
+  color: color-mix(in srgb, var(--mutka-accent) 80%, var(--color-fd-foreground));
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.install-cmd__copy:hover {
+  background: color-mix(in srgb, var(--mutka-accent) 20%, transparent);
+}
+
 /* ============================================================= *
  *  INTERACTIVE MODULAR BENCH                                     *
  *  A small live Mutka window with icon "module" tiles you plug   *
