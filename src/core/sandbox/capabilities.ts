@@ -40,7 +40,12 @@ export interface CapabilityDef {
 
 export type CapabilityTable = Record<string, Record<string, CapabilityDef>>;
 
-const cfgKey = (moduleId: string, key: unknown): string => `mutka.modcfg.${moduleId}.${String(key)}`;
+// Namespace a module's config entry. The id↔key delimiter is ":" — NOT "." —
+// because a module id may itself contain dots (`com.acme.vault`), so a "." here
+// would let module "com" reach "com.acme.vault"'s keys via key "acme.vault.<k>"
+// (their joined strings would be identical). ":" can't appear in an id, so the
+// segment up to the first ":" is unambiguously the id → no cross-module collision.
+const cfgKey = (moduleId: string, key: unknown): string => `mutka.modcfg.${moduleId}:${String(key)}`;
 
 /** Decode a base64 string (from `read_file_base64`) into raw bytes. */
 function base64ToBytes(b64: string): Uint8Array {

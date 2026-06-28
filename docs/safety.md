@@ -67,9 +67,26 @@ realm.
   http, so credentials and user data can't be read or tampered with in transit.
   IP addresses, `localhost`, and bare hostnames are refused, which blocks SSRF to
   the cloud metadata endpoint (`169.254.169.254`), loopback services, and the LAN.
-- **`network:local`** — http or https to an **IP address or `localhost`** only
-  (e.g. a self-hosted server or NAS). A module that needs both internet and LAN
-  access declares both tiers; the install dialog flags each as sensitive.
+- **`network:local`** — http or https to a **private IP range** (RFC1918 / loopback /
+  link-local / CGNAT / IPv6 ULA) or **`localhost`** only (e.g. a self-hosted server or
+  NAS). A module that needs both internet and LAN access declares both tiers; the
+  install dialog flags each as sensitive.
+
+A **public IP literal** (e.g. `https://8.8.8.8`) and **plaintext http to a public
+domain** are refused by *both* tiers: public access must go through an https domain,
+local access through a private IP / localhost.
+
+`network:local` is the **broader-trust** tier: beyond a NAS/self-hosted server it can
+reach routers, admin panels, and internal services, and via a forwarding proxy on the
+LAN it can reach the internet too — so it is effectively a superset of `network:public`'s
+reach and should be granted more cautiously. Conversely `network:public` **cannot** reach
+a private network at all, with the single exception of DNS rebinding (below).
+
+Redirects are **not** followed: the HTTP agent is built with `redirects(0)`, so a 3xx
+is returned to the module as-is rather than fetched. Auto-following would reach a
+redirect target that was never tier-checked (the classic `network:public` →
+private/metadata SSRF bounce). A module that wants to follow a redirect re-requests
+the `Location` itself — which goes through `check_url_allowed` again.
 
 > Built-in modules run in-process via `LocalHost` and *do* share the realm, which is
 > exactly why only first-party code is allowed to. The module source is identical
@@ -149,8 +166,11 @@ coexisting beside it and reading its drawer. So the boundary is exactly as stron
 **id uniqueness**, which the single-directory-per-id install enforces.
 
 The same namespacing protects module config: `host.config.*` keys are stored under
-`mutka.modcfg.<moduleId>.<key>` with the id injected the same way — one module can't
-read another's stored config either.
+`mutka.modcfg.<moduleId>:<key>` with the id injected the same way — one module can't
+read another's stored config either. The id↔key delimiter is `:`, not `.`, on
+purpose: a module id may contain dots (`com.acme.vault`), so a `.` here would let
+module `com` reach `com.acme.vault`'s keys via key `acme.vault.<k>` (the joined
+strings would match). `:` can't appear in an id, so the id segment is unambiguous.
 
 ---
 

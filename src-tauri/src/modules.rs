@@ -52,11 +52,17 @@ pub fn list_user_modules() -> Result<Vec<UserModuleEntry>, String> {
 /// Restricted to ~/.mutka/modules/ — returns an error for any other path.
 #[tauri::command]
 pub fn read_module_file(path: String) -> Result<String, String> {
-    let allowed = modules_dir().to_string_lossy().to_string();
-    if !path.starts_with(&allowed) {
+    // Confine to ~/.mutka/modules/ with a CANONICALIZED, component-wise check. A
+    // raw string prefix would accept ".../modules-evil/…" (shared prefix) and would
+    // not collapse ".." — canonicalize resolves symlinks + ".." to a real path, and
+    // Path::starts_with compares whole path components.
+    let allowed = fs::canonicalize(modules_dir())
+        .map_err(|_| "Modules directory does not exist".to_string())?;
+    let canonical = fs::canonicalize(&path).map_err(|e| format!("Cannot read {}: {}", path, e))?;
+    if !canonical.starts_with(&allowed) {
         return Err(format!("Access denied: {} is outside ~/.mutka/modules", path));
     }
-    fs::read_to_string(&path).map_err(|e| format!("Cannot read {}: {}", path, e))
+    fs::read_to_string(&canonical).map_err(|e| format!("Cannot read {}: {}", canonical.display(), e))
 }
 
 // ─── Install / uninstall ──────────────────────────────────────────────────────

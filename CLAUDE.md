@@ -336,8 +336,8 @@ worker (see `com.sqlite-browser`) — the core stays format-agnostic.
 A module declares whichever it needs (or both):
 `network:public` allows **HTTPS to public domains only** — https is enforced so data
 can't be read in transit, and IPs/`localhost` are refused, which blocks SSRF to the
-cloud metadata endpoint and LAN services; `network:local` allows **http/https to IP
-addresses or `localhost`** (a self-hosted server or NAS). The URL is classified and
+cloud metadata endpoint and LAN services; `network:local` allows **http/https to a
+private IP range or `localhost`** (a self-hosted server or NAS — public IPs refused). The URL is classified and
 enforced in Rust (`http.rs` → `check_url_allowed`). Crucially, a module **cannot make
 native network calls at all** (`fetch`, `XMLHttpRequest`, `WebSocket`, a remote
 `import()`, …): the app Content-Security-Policy (`tauri.conf.json`) restricts

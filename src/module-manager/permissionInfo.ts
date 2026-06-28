@@ -63,7 +63,7 @@ export const PERMISSION_INFO: Record<ModulePermission, PermissionInfo> = {
   },
   "network:local": {
     label: "Local network access",
-    description: "Make requests to IP addresses or localhost (your machine and local network — e.g. a self-hosted server or NAS).",
+    description: "Make requests to private IP addresses or localhost — your machine and local network (a self-hosted server or NAS, but also routers, admin panels, internal services, and any local proxy that can forward traffic onward). Broader trust than internet access; public IPs must use a domain.",
     dangerous: true,
   },
   storage: {

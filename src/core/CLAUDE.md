@@ -123,8 +123,9 @@ Permissions: `fs:read`, `fs:write`, `fs:temp`, `clipboard:read`, `clipboard:writ
 `navigation`, `view`, `dialog`, `network:public`, `network:local`, `storage`, `secrets`,
 `ui`, `discovery`, `shell`. A module must declare every one it uses. `ui` gates
 declarative UI surfaces (`ui.*`) and status-bar items (`statusbar.*`). Network is two
-tiers — `network:public` (HTTPS to public domains only, https enforced; IPs/`localhost`
-refused) and `network:local` (http/https to IP addresses or `localhost`) — classified
+tiers — `network:public` (HTTPS to public domains only, https enforced; IPs refused)
+and `network:local` (http/https to a private IP range or `localhost`; public IPs
+refused) — classified
 and enforced in Rust; modules cannot make native `fetch`/socket calls (the app CSP
 allows egress only via `host.net`). `discovery` lets a module contribute a
 module-discovery source (`discoverySources` + `host.onDiscover`/`onFetchSource`) and

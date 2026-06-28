@@ -202,7 +202,7 @@ only through the gateway) are the only files that touch `invoke`, `AppBridge`, o
 `navigation`, `view`, `dialog`, `network:public`, `network:local`, `storage`, `secrets`,
 `ui`, `discovery`, `shell` (`shell` reserved — unused today). `fs:temp` writes only to the
 OS temp dir, so it is weaker than `fs:write`. The two network tiers (`network:public` =
-HTTPS to public domains only, https enforced; `network:local` = IPs/`localhost`) are
+HTTPS to public domains only, https enforced; `network:local` = private IPs/`localhost`) are
 classified and enforced in Rust; modules cannot make native network calls — the app CSP
 routes all egress through `host.net`. See [safety.md](./safety.md).
 

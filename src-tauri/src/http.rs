@@ -47,11 +47,14 @@ fn default_method() -> String {
 /// Reject a URL the calling module isn't permitted to reach. This is the SSRF /
 /// network-tier boundary, enforced in Rust (the trusted side):
 ///
-/// - host is an IP address or `localhost` → the `network:local` tier (http/https);
-/// - host is a public domain (has a dot + an alphabetic TLD) → the `network:public`
+/// - host is a **private IP range** (RFC1918 / loopback / link-local / ULA / …) or
+///   `localhost` → the `network:local` tier (http or https);
+/// - host is a **public domain** (a dot + an alphabetic TLD) → the `network:public`
 ///   tier, which additionally REQUIRES https so credentials/data can't be read in
 ///   transit;
-/// - anything else (single-label host, unknown scheme) → refused outright.
+/// - anything else — a **public IP literal**, a plaintext-http public domain, a
+///   single-label host, an unknown scheme — is refused. Public access must be by
+///   https domain; local access must be by private IP / localhost.
 ///
 /// Residual: `network:public` validates the hostname, not the resolved IP, so a
 /// public domain that resolves to a private address (DNS rebinding) is not caught
@@ -65,14 +68,8 @@ fn check_url_allowed(url: &str, allow_public: bool, allow_local: bool) -> Result
     let is_https = scheme == "https";
 
     match parsed.host() {
-        // Any IP literal (public or private) and localhost are the LOCAL tier.
-        Some(url::Host::Ipv4(_)) | Some(url::Host::Ipv6(_)) => {
-            if allow_local {
-                Ok(())
-            } else {
-                Err("This module lacks the \"network:local\" permission (IP addresses).".into())
-            }
-        }
+        Some(url::Host::Ipv4(ip)) => classify_ip(std::net::IpAddr::V4(ip), allow_local),
+        Some(url::Host::Ipv6(ip)) => classify_ip(std::net::IpAddr::V6(ip), allow_local),
         Some(url::Host::Domain(host)) => {
             if host.eq_ignore_ascii_case("localhost") {
                 return if allow_local {
@@ -90,10 +87,53 @@ fn check_url_allowed(url: &str, allow_public: bool, allow_local: bool) -> Result
                 }
                 Ok(())
             } else {
-                Err(format!("Host \"{}\" is not a public domain, IP address, or localhost.", host))
+                Err(format!("Host \"{}\" is not a public domain or a private IP / localhost.", host))
             }
         }
         None => Err("URL has no host.".into()),
+    }
+}
+
+/// An IP literal is reachable only via `network:local`, and only if it is a PRIVATE
+/// address — a public IP is refused outright (public access must go through a domain).
+fn classify_ip(ip: std::net::IpAddr, allow_local: bool) -> Result<(), String> {
+    if !is_private_ip(&ip) {
+        return Err(format!(
+            "Public IP address {} is not allowed — reach public hosts by https domain (network:public).",
+            ip
+        ));
+    }
+    if allow_local {
+        Ok(())
+    } else {
+        Err("This module lacks the \"network:local\" permission (private IP address).".into())
+    }
+}
+
+/// Whether an IP is in a private / non-public range: RFC1918, loopback, link-local,
+/// CGNAT, unspecified/broadcast (v4); loopback, unspecified, unique-local (fc00::/7)
+/// and link-local (fe80::/10) for v6, plus any IPv4-mapped v6 that wraps a private v4.
+fn is_private_ip(ip: &std::net::IpAddr) -> bool {
+    match ip {
+        std::net::IpAddr::V4(v4) => {
+            v4.is_private()
+                || v4.is_loopback()
+                || v4.is_link_local()
+                || v4.is_unspecified()
+                || v4.is_broadcast()
+                // 100.64.0.0/10 carrier-grade NAT
+                || (v4.octets()[0] == 100 && (v4.octets()[1] & 0xc0) == 0x40)
+        }
+        std::net::IpAddr::V6(v6) => {
+            v6.is_loopback()
+                || v6.is_unspecified()
+                || (v6.segments()[0] & 0xfe00) == 0xfc00 // unique local fc00::/7
+                || (v6.segments()[0] & 0xffc0) == 0xfe80 // link local  fe80::/10
+                || v6
+                    .to_ipv4_mapped()
+                    .map(|m| is_private_ip(&std::net::IpAddr::V4(m)))
+                    .unwrap_or(false)
+        }
     }
 }
 
@@ -124,11 +164,16 @@ pub struct HttpResponse {
 
 /// Build a ureq Agent with an explicit native-TLS connector. The default agent
 /// has NO TLS backend when rustls is disabled, so every HTTPS request must go
-/// through an agent built here.
+/// through an agent built here. Auto-redirects are DISABLED (`.redirects(0)`): a
+/// 3xx is handed back to the caller as-is, never followed. Following would fetch a
+/// redirect target that was never permission-checked (a `network:public` request
+/// could be bounced to a private/metadata host). A module that wants to follow a
+/// redirect re-requests the `Location` itself, which is validated again.
 fn http_agent() -> Result<ureq::Agent, String> {
     let connector = native_tls::TlsConnector::new().map_err(|e| e.to_string())?;
     Ok(ureq::AgentBuilder::new()
         .tls_connector(std::sync::Arc::new(connector))
+        .redirects(0)
         .build())
 }
 
@@ -164,6 +209,9 @@ fn read_response(resp: ureq::Response) -> Result<HttpResponse, String> {
 }
 
 /// Send one HTTP request and return its response. Pure network — no filesystem.
+/// One request, one response: redirects are NOT followed (the agent has
+/// `.redirects(0)`), so a 3xx is returned to the module as-is. That keeps the URL
+/// the module asked for the only one ever fetched, all of it tier-checked here.
 #[tauri::command]
 pub fn http_request(req: HttpRequestArgs) -> Result<HttpResponse, String> {
     use base64::Engine;
@@ -187,8 +235,8 @@ pub fn http_request(req: HttpRequestArgs) -> Result<HttpResponse, String> {
 
     match result {
         Ok(resp) => read_response(resp),
-        // ureq treats non-2xx as an error but still carries the response; surface
-        // it as a normal result so the module can read the status + body.
+        // ureq treats non-2xx (incl. a not-followed 3xx) as an error but still
+        // carries the response; surface it so the module reads the status + body.
         Err(ureq::Error::Status(_code, resp)) => read_response(resp),
         Err(e) => Err(e.to_string()),
     }
@@ -224,10 +272,13 @@ mod tests {
     }
 
     #[test]
-    fn ip_and_localhost_are_local_tier() {
+    fn private_ip_and_localhost_are_local_tier() {
+        // Private ranges + localhost, over http OR https, need network:local.
         assert!(allowed("http://127.0.0.1:8080/x", LOCAL_ONLY));
         assert!(allowed("https://127.0.0.1", LOCAL_ONLY));
         assert!(allowed("http://192.168.1.10", LOCAL_ONLY));
+        assert!(allowed("http://10.0.0.5", LOCAL_ONLY));
+        assert!(allowed("http://172.16.3.4", LOCAL_ONLY));
         assert!(allowed("http://localhost:3000", LOCAL_ONLY));
         assert!(allowed("http://[::1]:9000", LOCAL_ONLY)); // IPv6 loopback
         // ...and are refused for a public-only module.
@@ -236,9 +287,17 @@ mod tests {
     }
 
     #[test]
+    fn public_ip_literals_are_refused() {
+        // A public IP is neither tier — public access must be by https domain.
+        assert!(!allowed("https://8.8.8.8", BOTH));
+        assert!(!allowed("http://93.184.216.34", BOTH));
+        assert!(!allowed("https://[2606:4700:4700::1111]", BOTH));
+    }
+
+    #[test]
     fn ssrf_targets_need_local_tier_not_public() {
-        // The cloud metadata endpoint and any IP are local-tier, so network:public
-        // alone cannot reach them.
+        // The cloud metadata endpoint is link-local (private) → local-tier, so
+        // network:public alone cannot reach it.
         assert!(!allowed("http://169.254.169.254/latest/meta-data/", PUBLIC_ONLY));
         assert!(allowed("http://169.254.169.254/latest/meta-data/", LOCAL_ONLY));
     }
