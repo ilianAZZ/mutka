@@ -1,6 +1,6 @@
 name: Tests
 
-# Runs the automated test suite on every PR and push to main/dev. Two jobs:
+# Runs the automated test suite on every PR targeting main. Two jobs:
 #  - frontend: the gateway PERMISSION tests (fs:read / fs:write gates, the
 #    network:public / network:local tier flags, per-module config isolation,
 #    the event whitelist) + a typecheck, via Vitest on Linux.
@@ -11,9 +11,7 @@ name: Tests
 
 on:
   pull_request:
-    branches: [main, dev]
-  push:
-    branches: [main, dev]
+    branches: [main]
 
 concurrency:
   group: tests-${{ github.ref }}

@@ -2,7 +2,7 @@ name: Cancel PR workflows on merge/close
 
 on:
   pull_request:
-    branches: [main, dev]
+    branches: [main]
     types: [closed]
 
 permissions:
