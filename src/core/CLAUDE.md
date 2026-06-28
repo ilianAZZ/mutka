@@ -176,7 +176,7 @@ events via declaration merging on `EventMap` (see the comment in `events.ts`).
 | `home:changed`                              | `{ homeDir }`              | from `HomeStore` (home dir resolved/overridden)  |
 | `settings:changed`                          | `{ open }`                 | from `SettingsStore` (overlay opened/closed)     |
 | `modules-ui:changed`                        | `{ open }`                 | from `ModulesStore` (module-manager overlay)     |
-| `file:external-drop`                        | `{ files; dest }`          | Finder drop → `core.drop-import` (subscribable)  |
+| `file:external-drop`                        | `{ files; dest }`          | Finder drop → `core.drop-import` (subscribable; carries file BYTES → requires `fs:read` to receive) |
 | `clipboard:changed`                         | `ClipboardState`           | from `ClipboardStore` / clipboard module         |
 | `navigation:back` / `navigation:forward`    | `undefined`                | toolbar flash animation                          |
 | `navigation:start`                          | `{ path }`                 | folder-open intent (subscribable)                |
@@ -213,6 +213,12 @@ axis is privacy, not secrecy):
   (the whole clipboard, every open tab, every command), so a module that needs the
   data fetches it through a permission-gated capability (e.g. `board.readFiles`
   needs `clipboard:read`). Both hosts strip the payload via `deliverablePayload`.
+
+Some whitelisted events additionally require a **permission to receive**
+(`EVENT_REQUIRED_PERMISSION`): `file:external-drop` carries the BYTES of dropped
+files, so a subscriber must hold `fs:read` (else the subscription is dropped, like a
+non-whitelisted event). This stops a module harvesting dropped-file contents off the
+bus instead of declaring `fs:read`.
 
 `ui:changed` / `statusbar:changed` (would leak OTHER modules' surfaces) and
 `error:action` (arbitrary internals) are on neither list — host-internal and not

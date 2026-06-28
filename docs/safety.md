@@ -206,6 +206,14 @@ event carries a credential — the gate is privacy, not secrecy):
   profiling-grade. A module that needs the data re-fetches it through a
   permission-gated capability (e.g. `board.readFiles` needs `clipboard:read`).
 
+A handful of whitelisted events also require a **permission to receive**
+(`EVENT_REQUIRED_PERMISSION`), because their payload is the data itself rather than a
+signal. `file:external-drop` carries the **bytes** of files the user dragged in from
+Finder, so a subscriber must hold **`fs:read`** — the same gate that reading those
+bytes through `fs.readBytes` would require. Without it the subscription is dropped, so
+a module can't harvest dropped-file contents by listening to the bus instead of asking
+for `fs:read`. (`core.drop-import` holds `fs:read`, so it still receives the drop.)
+
 A subscription to anything else is dropped with a warning. Host-internal events that
 would leak other modules' state (e.g. `ui:changed`) or arbitrary internals
 (`error:action`) are on **neither** list, so a module can't passively snoop on the rest
