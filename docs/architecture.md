@@ -171,8 +171,10 @@ host.fs.deleteItem(path)            (inside a command handler)
 ```
 
 `capabilities.ts` is the **entire** vocabulary of what any module can do. If an
-operation is not listed there, no module can perform it. It is also the only file
-that touches `invoke`, `AppBridge`, or `TabManager`.
+operation is not listed there, no module can perform it. It (and the
+`core/file-system/FileSystemRegistry.ts` it delegates filesystem routing to, reached
+only through the gateway) are the only files that touch `invoke`, `AppBridge`, or
+`TabManager`.
 
 | Capability | Permission | Backed by |
 | --- | --- | --- |
@@ -181,17 +183,28 @@ that touches `invoke`, `AppBridge`, or `TabManager`.
 | `board.readFiles` / `board.writeFiles` | `clipboard:read` / `clipboard:write` | Rust pasteboard commands |
 | `nav.navigate`/`goBack`/`goForward`/`goUp` | `navigation` | AppBridge |
 | `tabs.openTab`/`openTabInBackground`/`isActive` | `navigation` | TabManager |
-| `dialog.prompt`/`confirm` | `dialog` | AppBridge |
+| `dialog.prompt`/`confirm`/`choose` | `dialog` | AppBridge |
+| `net.request` | `network:public` **or** `network:local` | Rust `http_request` (host-proxied HTTP; URL tier-checked) |
 | `app.refresh` (`host.refresh()`) | `fs:read` | AppBridge |
+| `app.activate` | `navigation` | `ModuleRegistry.resolveOpen` |
 | `home.get` / `home.set` | `fs:read` / `view` | HomeStore (app home dir; overridable) |
 | `settings.toggle` | `view` | SettingsStore (settings overlay) |
+| `selection.set` / `view.setSort`/`toggleSort`/`toggleHidden`/`setShowHidden` | `view` | SelectionStore / ListingStore / ViewStore |
+| `config.get`/`set` | `storage` | localStorage, namespaced per module |
+| `secrets.get`/`set`/`delete` | `secrets` | Rust Keychain, namespaced per module |
+| `modules.probe` | `discovery` | `probeManifest` (validate a source) |
 | `sys.homeDir` | `fs:read` | Rust `get_home_dir` (OS home) |
 | `sys.lastDir` | `fs:read` | localStorage (last visited dir) |
 | `sys.writeTempFile` | `fs:temp` | Rust `write_temp_file` (weaker than `fs:write`) |
+| `sys.quickLook`/`previewUpdate`/`appsForFile`/`openWith`/`startDrag` | `fs:read` | Rust Quick Look / Launch Services / drag-out (openWith can launch apps) |
 
 `ModulePermission`: `fs:read`, `fs:write`, `fs:temp`, `clipboard:read`, `clipboard:write`,
-`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `shell` (`shell` reserved —
-unused today). `fs:temp` writes only to the OS temp dir, so it is weaker than `fs:write`.
+`navigation`, `view`, `dialog`, `network:public`, `network:local`, `storage`, `secrets`,
+`ui`, `discovery`, `shell` (`shell` reserved — unused today). `fs:temp` writes only to the
+OS temp dir, so it is weaker than `fs:write`. The two network tiers (`network:public` =
+HTTPS to public domains only, https enforced; `network:local` = IPs/`localhost`) are
+classified and enforced in Rust; modules cannot make native network calls — the app CSP
+routes all egress through `host.net`. See [safety.md](./safety.md).
 
 For the full security picture — worker isolation, per-module secret/config namespacing,
 install-time confinement, and the residual risks — see [safety.md](./safety.md).

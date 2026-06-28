@@ -16,7 +16,8 @@ interface BrowseCatalogProps {
 const FILTER_PERMISSIONS: ModulePermission[] = [
   "fs:read",
   "fs:write",
-  "network",
+  "network:public",
+  "network:local",
   "clipboard:read",
   "navigation",
   "ui",

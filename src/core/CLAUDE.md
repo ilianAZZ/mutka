@@ -20,7 +20,7 @@ privileged. Every `host.*` call is routed through the **permission gateway**.
 module.setup(host) → host.fs.readDir(p)
   → gateway.ts: does the module's manifest declare the required permission?
        no  → throws "Permission denied"
-       yes → capabilities.ts runs it (the ONLY place that calls invoke / AppBridge / TabManager)
+       yes → capabilities.ts runs it (the ONLY place — with its FileSystemRegistry fs-routing helper — that calls invoke / AppBridge / TabManager)
 ```
 
 Two runtimes host modules, **same format, same gateway**:
@@ -109,7 +109,7 @@ The module execution + permission layer. Files:
 | ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `defineModule.ts`   | Author-facing helper. Types only — returns its argument unchanged.                                                                                                                         |
 | `hostProxy.ts`      | Builds the `host` object (`fs`, `board`, `nav`, `tabs`, `dialog`, `ui`, `statusbar`, `net`, `modules`, `sys`, `refresh`, `onCommand`, `onOpen`, `onColumn`, `onUIEvent`, `onDiscover`, `onFetchSource`, `events.on`, `log`). All methods async. |
-| `capabilities.ts`   | THE gateway vocabulary. Maps each capability to its required permission and the operation that fulfils it. The ONLY file that calls `invoke` / `AppBridge` / `TabManager`.                 |
+| `capabilities.ts`   | THE gateway vocabulary. Maps each capability to its required permission and the operation that fulfils it. With `file-system/FileSystemRegistry.ts` (its fs-routing helper, reached only through the gateway), the only files that call `invoke` / `AppBridge` / `TabManager`. |
 | `gateway.ts`        | The permission barrier. Checks the manifest declared the required permission, then runs the capability. No declaration → throws.                                                           |
 | `LocalHost.ts`      | In-process runtime for built-ins.                                                                                                                                                          |
 | `SandboxHost.ts`    | Web-Worker runtime for community modules.                                                                                                                                                  |
@@ -120,9 +120,13 @@ The module execution + permission layer. Files:
 | `eventWhitelist.ts` | The set of events a module may subscribe to via `host.events.on`.                                                                                                                          |
 
 Permissions: `fs:read`, `fs:write`, `fs:temp`, `clipboard:read`, `clipboard:write`,
-`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `ui`, `discovery`,
-`shell`. A module must declare every one it uses. `ui` gates declarative UI surfaces
-(`ui.*`) and status-bar items (`statusbar.*`). `discovery` lets a module contribute a
+`navigation`, `view`, `dialog`, `network:public`, `network:local`, `storage`, `secrets`,
+`ui`, `discovery`, `shell`. A module must declare every one it uses. `ui` gates
+declarative UI surfaces (`ui.*`) and status-bar items (`statusbar.*`). Network is two
+tiers — `network:public` (HTTPS to public domains only, https enforced; IPs/`localhost`
+refused) and `network:local` (http/https to IP addresses or `localhost`) — classified
+and enforced in Rust; modules cannot make native `fetch`/socket calls (the app CSP
+allows egress only via `host.net`). `discovery` lets a module contribute a
 module-discovery source (`discoverySources` + `host.onDiscover`/`onFetchSource`) and
 use `host.modules.probe` to read a fetched source's manifest. There is no SQLite/`db`
 capability — a module reads a `.sqlite` file's bytes via `fs:read` and decodes it itself.
@@ -301,8 +305,11 @@ ThemeManager.getResolved(): "dark" | "light"
 ## Rules for this folder
 
 1. **No React imports** — core is framework-agnostic infrastructure.
-2. **No `invoke()` calls — ONE exception:** `sandbox/capabilities.ts` is the single system
-   gateway and intentionally calls `invoke`. No other core file may.
+2. **No `invoke()` calls — two coupled exceptions:** `sandbox/capabilities.ts` is the
+   single system gateway and intentionally calls `invoke`; it delegates filesystem
+   routing to `file-system/FileSystemRegistry.ts`, which therefore also calls `invoke`
+   but only as the gateway's fulfilment (it's reached only through a gated `fs.*`
+   capability). No other core file may call `invoke`.
 3. **No imports from `src/sandbox-builtins/` or `src/components/`**.
 4. **Singletons** — `ModuleRegistry`, `EventBus`, `ShortcutManager`, `InputManager`,
    `ThemeManager`, `TabManager`, `AppBridge`, and the stores are each instantiated once and

@@ -33,8 +33,9 @@ export const LAST_DIR_KEY = "mutka.lastDir";
  * namespacing).
  */
 export interface CapabilityDef {
-  permission: ModulePermission;
-  run: (args: unknown[], moduleId: string) => Promise<unknown>;
+  /** The permission this capability needs — or, as an array, ANY one of them. */
+  permission: ModulePermission | ModulePermission[];
+  run: (args: unknown[], moduleId: string, permissions: readonly ModulePermission[]) => Promise<unknown>;
 }
 
 export type CapabilityTable = Record<string, Record<string, CapabilityDef>>;
@@ -80,8 +81,13 @@ interface NetResponse {
  * The single network primitive. Pure I/O — it sends a request and returns the
  * response; it NEVER reads or writes the filesystem. Uploads pass bytes obtained
  * via `fs.readBytes` (fs:read); downloads write the response via `fs.*`/`sys.*`.
+ *
+ * The tier flags are derived from the module's AUTHORITATIVE manifest (held
+ * host-side, the worker can't forge them) and tell Rust what the URL may target:
+ * `network:public` → HTTPS to public domains, `network:local` → IPs/localhost.
+ * Rust does the URL classification + enforcement; here we only relay the grant.
  */
-async function netRequest(opts: NetRequestOptions): Promise<NetResponse> {
+async function netRequest(opts: NetRequestOptions, permissions: readonly ModulePermission[]): Promise<NetResponse> {
   let bodyBase64: string | undefined;
   if (opts.body !== undefined && opts.body !== null) {
     const bytes = typeof opts.body === "string" ? new TextEncoder().encode(opts.body) : opts.body;
@@ -89,7 +95,16 @@ async function netRequest(opts: NetRequestOptions): Promise<NetResponse> {
   }
   const res = await invoke<{ status: number; headers: Record<string, string>; bodyBase64: string }>(
     "http_request",
-    { req: { url: opts.url, method: opts.method, headers: opts.headers, bodyBase64 } }
+    {
+      req: {
+        url: opts.url,
+        method: opts.method,
+        headers: opts.headers,
+        bodyBase64,
+        allowPublic: permissions.includes("network:public"),
+        allowLocal: permissions.includes("network:local"),
+      },
+    }
   );
   const bytes = base64ToBytes(res.bodyBase64);
   return { status: res.status, headers: res.headers, body: new TextDecoder().decode(bytes), bytes };
@@ -132,10 +147,11 @@ export function createCapabilityTable(): CapabilityTable {
       choose:  { permission: "dialog", run: ([opts]) => AppBridge.dialog.choose(opts as Parameters<typeof AppBridge.dialog.choose>[0]) },
     },
     net: {
-      // One role per command: `network` sends/receives bytes, it never touches
-      // the filesystem. Uploads pass bytes from fs.readBytes (fs:read); downloads
-      // save the response via fs.*/sys.writeTempFile.
-      request: { permission: "network", run: ([opts]) => netRequest(opts as NetRequestOptions) },
+      // One role per command: a network request sends/receives bytes, it never
+      // touches the filesystem. Uploads pass bytes from fs.readBytes (fs:read);
+      // downloads save the response via fs.*/sys.writeTempFile. Needs either
+      // network tier; which one the module holds bounds the URLs Rust will allow.
+      request: { permission: ["network:public", "network:local"], run: ([opts], _id, perms) => netRequest(opts as NetRequestOptions, perms) },
     },
     // Discovery-source tooling: validate an ESM source in a throwaway worker and
     // read its manifest. A discovery module uses this to turn a fetched index.js

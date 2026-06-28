@@ -49,8 +49,8 @@ unreachable**, because the code that performs it (`invoke`, `AppBridge`,
 nested `Worker`, nor a remote dynamic `import()`. CORS does not make these safe: it
 blocks *reading* a cross-origin reply, not *sending* the request, so a raw `fetch`
 to an attacker's URL would be an **ungated exfiltration channel** that defeats the
-`network` permission. The only sanctioned egress is `host.net.*` (gated by
-`network`, executed in Rust). This is enforced **at the engine level by the app
+network permissions. The only sanctioned egress is `host.net.*` (gated by
+`network:public` / `network:local`, executed in Rust). This is enforced **at the engine level by the app
 Content-Security-Policy** (`src-tauri/tauri.conf.json`), not by deleting JS globals
 (a denylist of API names would be fragile and incomplete): `connect-src` is
 restricted to the Tauri IPC bridge, so no other host is reachable, and `script-src`
@@ -58,6 +58,18 @@ forbids remote origins, so a remote `import()` can't load code. WebKit applies t
 policy below JavaScript — in the worker realm too — so no `eval` / `Function` /
 string trick can get around it. The same CSP also confines the main (trusted)
 realm.
+
+`host.net` itself is split into two permission tiers, enforced in Rust
+(`src-tauri/src/http.rs`, `check_url_allowed`) by classifying the request URL:
+
+- **`network:public`** — HTTPS to a **public domain** only (a host with a dot and a
+  real TLD). **https is enforced**: a public request may never go over plaintext
+  http, so credentials and user data can't be read or tampered with in transit.
+  IP addresses, `localhost`, and bare hostnames are refused, which blocks SSRF to
+  the cloud metadata endpoint (`169.254.169.254`), loopback services, and the LAN.
+- **`network:local`** — http or https to an **IP address or `localhost`** only
+  (e.g. a self-hosted server or NAS). A module that needs both internet and LAN
+  access declares both tiers; the install dialog flags each as sensitive.
 
 > Built-in modules run in-process via `LocalHost` and *do* share the realm, which is
 > exactly why only first-party code is allowed to. The module source is identical
@@ -83,10 +95,11 @@ Three guarantees fall out of this:
 1. **The check is per-call, not per-session.** There is no "unlock once" — every
    single `host.fs.readDir`, `host.net.request`, `host.secrets.get` re-checks the
    manifest. A module can't escalate after load.
-2. **The capability table is the whole vocabulary.** `capabilities.ts` is the *only*
-   file that calls `invoke` / `AppBridge` / `TabManager`. If an operation isn't
-   listed there, **no module can perform it** — there is no escape hatch to add one
-   at runtime.
+2. **The capability table is the whole vocabulary.** `capabilities.ts` (and the
+   `core/file-system/FileSystemRegistry.ts` it delegates fs routing to, reached only
+   through the gateway) are the *only* files that call `invoke` / `AppBridge` /
+   `TabManager`. If an operation isn't listed there, **no module can perform it** —
+   there is no escape hatch to add one at runtime.
 3. **Permissions are declared up front and can't be forged.** A module lists its
    `permissions` in its manifest; the worker reports that manifest *before* `setup`
    runs (so the host knows the permission set before serving any call). The module
@@ -100,7 +113,7 @@ Permissions are declared, so the user sees them **before** the module is enabled
 The install review dialog (`components/ModulesPanel/InstallReviewDialog.tsx`) lists
 every requested permission with a human label, and the **sensitive ones are flagged**
 (`module-manager/permissionInfo.ts` → `dangerous: true`): `fs:write` (can delete),
-`clipboard:write`, `network` (can send data off the machine), `secrets`, `shell`.
+`clipboard:write`, `network:public` / `network:local` (can send data off the machine), `secrets`, `discovery`, `shell`.
 Nothing is granted silently.
 
 ---
@@ -184,10 +197,24 @@ of the app through the event bus.
 
 Be honest about the edges:
 
-- **Granted permissions are real.** If the user approves `network`, the module can
-  send data anywhere; if they approve `fs:write`, it can delete files. The defense is
-  consent + the dangerous-permission flag, not a technical block. Review what you
-  install.
+- **Granted permissions are real.** If the user approves `network:public`, the
+  module can send data to any public website; if they approve `fs:write`, it can
+  delete files. The defense is consent + the dangerous-permission flag, not a
+  technical block. Review what you install.
+- **DNS rebinding against `network:public`.** The public/local tier check
+  classifies the URL by its **hostname**, not the IP it resolves to. A public
+  domain that an attacker points at a private address (`10.x`, `127.0.0.1`, the
+  metadata IP) would pass the `network:public` check and then connect to the
+  internal host. We deliberately do **not** pin the resolved IP (it would mean a
+  custom resolver/connector in `ureq`); a module that truly needs LAN access is
+  expected to hold `network:local` instead. Treat `network:public` as "can reach
+  the internet," not "provably cannot reach your LAN."
+- **`fs:read` can launch applications.** `host.fs.openItem` and `host.sys.openWith`
+  open a path with macOS Launch Services, so a module with `fs:read` can *launch* an
+  app or a `.app` bundle (not just read bytes) — i.e. `fs:read` carries a
+  code-execution edge, not only data access. Paths are passed as process arguments
+  (no shell), so there's no command injection, but treat `fs:read` as "can read files
+  **and** open them with the system" when reviewing a module.
 - **No per-path filesystem scoping (yet).** `fs:read` / `fs:write` apply to any path
   the module is handed or the user navigates to — there's no "this module may only
   touch `~/Downloads`." A future capability could narrow this.
@@ -208,7 +235,7 @@ Be honest about the edges:
 | --- | --- |
 | No direct backend access from community code | `sandbox.worker.ts`, `SandboxHost.ts` (worker boundary) |
 | Permission checked on every call | `gateway.ts` → `dispatchCapability` |
-| Fixed set of possible operations | `capabilities.ts` (only caller of `invoke`/`AppBridge`/`TabManager`) |
+| Fixed set of possible operations | `capabilities.ts` (+ its `FileSystemRegistry` fs-routing helper) — the only callers of `invoke`/`AppBridge`/`TabManager` |
 | Secrets/config scoped per module | `capabilities.ts` (`secretService` / `cfgKey`, id from gateway) |
 | Keychain passthrough trusts the gateway's service name | `src-tauri/src/secrets.rs` |
 | Module code can't load/write outside `~/.mutka/modules` | `src-tauri/src/modules.rs` (`is_safe_id`, path check) |

@@ -89,7 +89,7 @@ export default {
   name: "WebDAV",
   version: "1.0.0",
   description: "Browse and edit WebDAV servers (Nextcloud, ownCloud, …) — multiple accounts.",
-  permissions: ["network", "storage", "secrets", "fs:read", "fs:temp", "ui"],
+  permissions: ["network:public", "network:local", "storage", "secrets", "fs:read", "fs:temp", "ui"],
   fileSystemProviders: [SCHEME],
   settingsSections: [{ id: SETTINGS_SURFACE, title: "WebDAV Accounts" }],
   setup(host) {

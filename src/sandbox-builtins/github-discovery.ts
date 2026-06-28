@@ -88,7 +88,7 @@ export default defineModule({
   version: "1.0.0",
   description: "Discover and install modules from GitHub (mutka-module-* repos).",
   author: { name: "Mutka", github: "ilianAZZ" },
-  permissions: ["network", "discovery"],
+  permissions: ["network:public", "discovery"],
   discoverySources: [{ id: "github", label: "GitHub" }],
 
   setup(host) {

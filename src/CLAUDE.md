@@ -96,7 +96,7 @@ type ThemePreference = "system" | "light" | "dark";
 - Must NEVER contain feature logic
 - Must NEVER import from `src/sandbox-builtins/` or `src/components/`
 - Must NEVER import React (it is framework-agnostic infrastructure)
-- One documented exception: `sandbox/capabilities.ts` calls `invoke()` — it is the single system gateway. See `src/core/CLAUDE.md`.
+- Documented exception: `sandbox/capabilities.ts` calls `invoke()` — it is the single system gateway — as does the `core/file-system/FileSystemRegistry.ts` it delegates fs routing to (reached only through the gateway). See `src/core/CLAUDE.md`.
 
 ### `src/sandbox-builtins/` — built-in modules (one file each)
 

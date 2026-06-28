@@ -2451,6 +2451,7 @@ dependencies = [
  "tauri-plugin-process",
  "tauri-plugin-updater",
  "ureq",
+ "url",
  "window-vibrancy 0.5.3",
 ]
 

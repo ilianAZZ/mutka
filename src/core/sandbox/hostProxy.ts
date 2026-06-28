@@ -139,7 +139,7 @@ export interface SandboxHostApi {
     startDrag(paths: string[], icon?: string): Promise<unknown>;
   };
   /**
-   * Host-proxied HTTP (avoids CORS, gated by the `network` permission). One role:
+   * Host-proxied HTTP (avoids CORS, gated by `network:public` / `network:local`). One role:
    * it sends a request and returns the response — it never touches the filesystem.
    * To upload, read bytes via fs.readBytes (fs:read) and pass them as `body`; to
    * save a response, write `bytes` via fs.* / sys.writeTempFile.
