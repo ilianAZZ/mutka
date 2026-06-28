@@ -7,7 +7,7 @@
 // A built-in module uses the same shapes via LocalHost (no wire, direct calls).
 // =============================================================================
 
-import type { ModulePermission, SidebarItem } from "../module-registry/module-registry.types";
+import type { ModulePermission, SidebarItem } from "../module-registry/public-types";
 import type { FileItem, ClipboardState } from "../types";
 import type { MenuZone } from "../menu/menuZone";
 

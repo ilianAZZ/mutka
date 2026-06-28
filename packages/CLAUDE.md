@@ -26,8 +26,18 @@ worker loader needs.
 - **The d.ts is generated from the app source**, never hand-written: `build.mjs` runs
   `dts-bundle-generator` over `src/index.ts`, which re-exports the author-facing types
   straight from `src/core/sandbox/{defineModule,hostProxy,protocol}.ts`,
-  `src/core/types.ts`, etc. So the published types **cannot drift** from the real host
-  API — regenerating picks up any change automatically.
+  `src/core/types.ts`, `src/core/module-registry/public-types.ts`, etc. So the published
+  types **cannot drift** from the real host API — regenerating picks up any change
+  automatically.
+
+  **The build must stay React-free.** The bundler type-checks every file it transitively
+  loads, so a reachable file that imports `react` (e.g. `module-registry.types.ts`, via
+  `MutkaSidebarPanel`'s `ComponentType`) would force `react` into the SDK's deps. That's
+  why the author-facing `ModulePermission`/`SidebarItem` live in the React-free
+  `module-registry/public-types.ts` and the SDK-reachable files (`defineModule`,
+  `hostProxy`, `protocol`, `discovery/types`) import them from THERE, never from
+  `module-registry.types.ts`. Keep it that way — don't make a SDK-reachable file import a
+  React-coupled module.
 - It is committed as `.gitignore`d output (`index.d.ts`); CI regenerates before publish.
 - `build.mjs` stamps the version from `MUTKA_VERSION` (the release tag) or the root
   `package.json` locally.

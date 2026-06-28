@@ -75,7 +75,7 @@ export type { FileItem, ClipboardState, AppInfo } from "../../../src/core/types"
 export type {
   ModulePermission,
   SidebarItem,
-} from "../../../src/core/module-registry/module-registry.types";
+} from "../../../src/core/module-registry/public-types";
 export type { MenuZone } from "../../../src/core/menu/menuZone";
 export type {
   DiscoveryQuery,
