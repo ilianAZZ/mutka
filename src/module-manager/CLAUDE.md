@@ -118,9 +118,10 @@ authoritative set comes from the manifest probed at install time.
 
 `sandbox-builtins/github-discovery.ts` is the built-in discovery source, written as
 a **module** (public `host` API only — `net` + `modules.probe`). It searches repos
-named `mutka-module-*`. A repo ships **either** a bare `index.js` at its root, **or**
-a `mutka.config.json` listing entry path(s) — one repo may carry several modules,
-each surfaced as its own listing:
+named `mutka-module-*`. A repo ships **either** a `mutka.config.json` listing entry
+path(s) — one repo may carry several modules, each surfaced as its own listing — **or**,
+with no config, a bare `index.js` at its root **or** `dist/index.js` (where a TypeScript
+module's build lands; a repo with both is de-duped by module id):
 
 ```json
 { "projects": ["sql/index.js", "webdav/index.js"] }

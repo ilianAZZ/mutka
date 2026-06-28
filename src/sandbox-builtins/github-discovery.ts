@@ -115,18 +115,25 @@ export default defineModule({
         );
         if (paths.length) return paths;
       }
-      return ["index.js"];
+      // No mutka.config.json: try a bare index.js at the root, then dist/index.js
+      // (where a TypeScript module's build lands). A repo with both is de-duped by
+      // module id below, and a missing candidate just 404s and is skipped.
+      return ["index.js", "dist/index.js"];
     };
 
     const repoToListings = async (repo: GitHubRepo): Promise<ModuleListing[]> => {
       const branch = repo.default_branch;
       const paths = await entryPaths(repo.full_name, branch);
       const listings: ModuleListing[] = [];
+      const seenIds = new Set<string>();
       for (const path of paths) {
         try {
           const ref: GitHubRef = { repo: repo.full_name, branch, path };
           const source = await fetchRaw(ref);
           const manifest = (await host.modules.probe(source)) as ProbedManifest;
+          // Same module reached via two candidate paths (e.g. index.js + dist/index.js).
+          if (seenIds.has(manifest.id)) continue;
+          seenIds.add(manifest.id);
           const refStr = JSON.stringify(ref);
           sourceCache.set(refStr, source);
           listings.push({
