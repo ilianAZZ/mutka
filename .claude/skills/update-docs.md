@@ -39,12 +39,13 @@ shape change), no doc update is needed.
 | An event or the event whitelist                 | `docs/events.md`                                                     |
 | An architectural flow                           | `docs/flows.md` (+ `CLAUDE.md` "Key architectural flows" if shaped) |
 | A Tauri command                                 | `CLAUDE.md` capability table (Backed-by column) + `src-tauri/CLAUDE.md` |
+| The author-facing types (`host`/`defineModule`/`protocol.ts`/re-exported types) | also: `COMMUNITY_MODULES.md` + `packages/CLAUDE.md`; the published `@mutka-explorer/module` d.ts **regenerates from source** (rebuild `packages/module-sdk`), so add a NEW author-facing type to `packages/module-sdk/src/index.ts`'s export list |
 | A new file / moved file / new directory         | `CLAUDE.md` "Project structure" tree + the nearest per-dir `CLAUDE.md` |
 | Anything resolving an "Open question"           | Move it out of `CLAUDE.md` "Open questions for future decisions"     |
 
 The per-directory `CLAUDE.md` files (`src/CLAUDE.md`, `src/core/CLAUDE.md`,
-`src/components/CLAUDE.md`, `src-tauri/CLAUDE.md`) document local rules — update the one
-closest to the file you changed.
+`src/components/CLAUDE.md`, `src-tauri/CLAUDE.md`, `packages/CLAUDE.md`) document local
+rules — update the one closest to the file you changed.
 
 ## Step-by-step
 

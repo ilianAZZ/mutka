@@ -106,3 +106,70 @@ jobs:
           releaseDraft: false # auto-publish (it's signed + notarized in CI)
           prerelease: false
           args: --target universal-apple-darwin
+
+  # Publish @mutka-explorer/module (author-facing TS types) to npm on the same
+  # vX.Y.Z tag, versioned in lockstep with the app. Independent of the macOS
+  # build above. No-ops unless an actual tag was pushed (skips workflow_dispatch).
+  publish-sdk:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Derive version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Install SDK build deps
+        working-directory: packages/module-sdk
+        run: npm install --no-audit --no-fund
+
+      - name: Build types bundle
+        working-directory: packages/module-sdk
+        env:
+          MUTKA_VERSION: ${{ steps.version.outputs.version }}
+        run: npm run build
+
+      - name: Publish to npm
+        working-directory: packages/module-sdk
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          MUTKA_VERSION: ${{ steps.version.outputs.version }}
+        run: npm publish --access public
+
+  # Publish @mutka-explorer/create (the `npm create @mutka-explorer` scaffolder)
+  # on the same vX.Y.Z tag, versioned in lockstep so generated projects pin a
+  # matching @mutka-explorer/module. No build step — it's plain ESM.
+  publish-create:
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Derive version from tag
+        id: version
+        run: echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Stamp version
+        working-directory: packages/create-module
+        run: node -e "const f='package.json',j=require('./'+f);j.version='${{ steps.version.outputs.version }}';require('fs').writeFileSync(f,JSON.stringify(j,null,2)+'\n')"
+
+      - name: Publish to npm
+        working-directory: packages/create-module
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: npm publish --access public
