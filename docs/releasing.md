@@ -43,10 +43,20 @@ continuously accumulates, from the commits since the last release:
 - the matching `CHANGELOG.md` section.
 
 **You cut the release by merging that PR.** On merge, release-please creates the
-`vX.Y.Z` git tag + the GitHub Release (with the changelog as the body), and the
-`build` job builds the **universal** (Apple Silicon + Intel) macOS bundle on a
-`macos-14` runner and uploads the `.dmg`, `.app.tar.gz`, and updater `latest.json`
-+ signature to that release. The npm packages publish too (see below).
+GitHub Release as a **draft** (`"draft": true` in `release-please-config.json`), and
+the `build` job builds the **universal** (Apple Silicon + Intel) macOS bundle on a
+`macos-14` runner, uploads the `.dmg`, `.app.tar.gz`, and updater `latest.json` +
+signature into the draft, and **only then publishes it**. The npm packages publish too
+(see below).
+
+**Why a draft?** A published "Latest" release with no `.dmg` is a real gap: for the
+~10–20 min the bundle builds, anyone hitting the download page or `releases/latest`
+would get a release they can't install, and the updater would see a `latest.json`
+404. So the Release is born hidden (a draft has no "Latest" badge and isn't served by
+the updater) and is flipped public only after the binaries are attached. **Un-drafting
+is the moment GitHub creates the `vX.Y.Z` tag** — which is why a draft has no tag yet,
+so the `build` job checks out the merge **commit SHA** (passed from release-please)
+instead of the tag. The rc path never drafts, so it still builds straight from its tag.
 
 > Choosing a specific version (e.g. forcing the first **1.0.0**): add a
 > `Release-As: 1.0.0` footer to any commit, and release-please will target that
@@ -74,14 +84,18 @@ every change. Cut as many rc's as you need, then merge the release PR for the fi
 ## The two workflows
 
 - **`release-please.yml`** (on push to `main`) — maintains the release PR; on merge,
-  tags + releases, then calls `release.yml` to build & attach the bundle.
+  drafts the release, then calls `release.yml` (passing the merge `sha` and `draft:
+  true`) to build, attach the bundle, and publish the draft.
 - **`release.yml`** — the reusable build-and-publish job. Called by release-please for
-  final releases, **and** triggered directly by a hand-pushed `v*` tag (rc's). A `-`
+  final releases (builds from the `sha`, then un-drafts the release), **and** triggered
+  directly by a hand-pushed `v*` tag (rc's — builds from the tag, never drafts). A `-`
   in the tag ⇒ pre-release (not "latest", npm skipped). One build definition serves
   both paths.
 
 The macOS bundle is signed + notarized in CI, so `releases/latest/download/latest.json`
-resolves for the in-app updater as soon as the final release publishes.
+resolves for the in-app updater the moment the final release is published (un-drafted) —
+and because publish happens only after the binaries upload, it never resolves to a
+release missing its bundle.
 
 ## npm packages for module authors
 

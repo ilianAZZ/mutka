@@ -6,6 +6,7 @@
       "release-type": "node",
       "package-name": "mutka",
       "changelog-path": "CHANGELOG.md",
+      "draft": true,
       "extra-files": [
         { "type": "json", "path": "src-tauri/tauri.conf.json", "jsonpath": "$.version" },
         { "type": "toml", "path": "src-tauri/Cargo.toml", "jsonpath": "$.package.version" },

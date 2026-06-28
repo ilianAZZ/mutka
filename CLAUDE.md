@@ -104,11 +104,15 @@ version, write a changelog, or create a tag. The rules:
    that accumulates the next version + `CHANGELOG.md` from the commits since the last
    release, bumping `package.json`, `src-tauri/tauri.conf.json`, `src-tauri/Cargo.toml`,
    and both `packages/*/package.json` **in lockstep** (`release-please-config.json`).
-3. **Cut a release by merging that PR.** On merge, release-please creates the `vX.Y.Z`
-   tag + GitHub Release (changelog as the body); `release.yml` then builds the universal
-   macOS bundle, uploads `.dmg`/`.app.tar.gz`/`latest.json`+sig, and publishes the npm
-   packages. You never push a final tag yourself. (Force a specific version — e.g. the
-   first `1.0.0` — with a `Release-As: 1.0.0` commit footer.)
+3. **Cut a release by merging that PR.** On merge, release-please creates the GitHub
+   Release as a **draft** (`"draft": true` in `release-please-config.json`); `release.yml`
+   then builds the universal macOS bundle, uploads `.dmg`/`.app.tar.gz`/`latest.json`+sig
+   **into the draft, and only then publishes it** — un-drafting is the moment the `vX.Y.Z`
+   tag + "Latest" badge appear, so a "Latest" release never exists without an installable
+   bundle. Because a draft has no tag yet, the build checks out the merge **commit SHA**
+   (passed from release-please via the `sha` input), not the tag. The npm packages publish
+   too. You never push a final tag yourself. (Force a specific version — e.g. the first
+   `1.0.0` — with a `Release-As: 1.0.0` commit footer.)
 4. **Release candidates**: push an `-rc` tag by hand (`git tag v1.0.0-rc.1 && git push
    origin v1.0.0-rc.1`) to fire `release.yml` directly for a **pre-release** test build
    (not "latest", npm skipped). The release PR keeps accumulating, so the final still
