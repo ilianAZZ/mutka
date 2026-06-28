@@ -5,6 +5,12 @@
 use std::fs;
 use serde::Serialize;
 
+/// Upper bound on a module's `index.js`, on both write (install) and read. A module
+/// is a single ESM file; even one bundling a library is comfortably under this. The
+/// cap stops a hostile/oversized source from bloating disk or the probe worker.
+/// Keep in sync with `MAX_MODULE_SOURCE_BYTES` in `src/core/sandbox/probeManifest.ts`.
+const MAX_MODULE_SOURCE_BYTES: usize = 5 * 1024 * 1024;
+
 fn modules_dir() -> std::path::PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
     std::path::PathBuf::from(home).join(".mutka").join("modules")
@@ -62,6 +68,10 @@ pub fn read_module_file(path: String) -> Result<String, String> {
     if !canonical.starts_with(&allowed) {
         return Err(format!("Access denied: {} is outside ~/.mutka/modules", path));
     }
+    let meta = fs::metadata(&canonical).map_err(|e| format!("Cannot read {}: {}", canonical.display(), e))?;
+    if meta.len() as usize > MAX_MODULE_SOURCE_BYTES {
+        return Err(format!("Module file too large (> {} bytes)", MAX_MODULE_SOURCE_BYTES));
+    }
     fs::read_to_string(&canonical).map_err(|e| format!("Cannot read {}: {}", canonical.display(), e))
 }
 
@@ -89,6 +99,9 @@ fn is_safe_id(id: &str) -> bool {
 pub fn install_module(id: String, source: String) -> Result<String, String> {
     if !is_safe_id(&id) {
         return Err(format!("Invalid module id: {:?}", id));
+    }
+    if source.len() > MAX_MODULE_SOURCE_BYTES {
+        return Err(format!("Module source too large (> {} bytes)", MAX_MODULE_SOURCE_BYTES));
     }
     let dir = modules_dir().join(&id);
     fs::create_dir_all(&dir).map_err(|e| format!("Cannot create {}: {}", dir.display(), e))?;

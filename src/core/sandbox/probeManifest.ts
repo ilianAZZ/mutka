@@ -13,7 +13,15 @@ import type { SandboxManifest, WorkerToHost } from "./protocol";
 
 const PROBE_TIMEOUT_MS = 5000;
 
+/** Upper bound on a module source we'll load into a probe worker. A module is one
+ *  ESM file; this stops an oversized/hostile source from bloating the worker. Keep
+ *  in sync with `MAX_MODULE_SOURCE_BYTES` in `src-tauri/src/modules.rs`. */
+const MAX_MODULE_SOURCE_BYTES = 5 * 1024 * 1024;
+
 export function probeManifest(source: string): Promise<SandboxManifest> {
+  if (source.length > MAX_MODULE_SOURCE_BYTES) {
+    return Promise.reject(new Error(`Module source too large (> ${MAX_MODULE_SOURCE_BYTES} bytes)`));
+  }
   return new Promise<SandboxManifest>((resolve, reject) => {
     const worker = new Worker(new URL("./sandbox.worker.ts", import.meta.url), {
       type: "module",
