@@ -217,6 +217,11 @@
   color: var(--text);
 }
 
+.keybind-btn:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
 .keybind-list {
   display: flex;
   flex-direction: column;

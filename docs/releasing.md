@@ -163,10 +163,18 @@ gh secret set APPLE_CERTIFICATE_PASSWORD     # the export password from step 3
 
 ## Auto-updates
 
-The app ships the Tauri updater (`tauri-plugin-updater`, prompt mode — see
-`src/update.ts`). On launch it polls the release `latest.json`; if a newer **signed**
-build exists it prompts the user, then downloads + installs + relaunches. Updates
-are verified against the public key in `tauri.conf.json`.
+The app ships the Tauri updater (`tauri-plugin-updater`, prompt mode — the lifecycle
+lives in `src/update.ts` as the `UpdateController` store). On launch it polls the
+release `latest.json`; if a newer **signed** build exists, the `UpdateToast`
+(`src/components/UpdateToast/`) surfaces a Liquid Glass "A new version is available"
+notification with an **Update & Restart** button. On accept it downloads (streaming
+progress into the toast) + installs + relaunches. Users can also re-check on demand
+from **Settings → General → Check for Updates** (the startup poll only runs once, so
+this covers an app left open across a release). Updates are verified against the
+public key in `tauri.conf.json`.
+
+GitHub's `releases/latest` redirect resolves to the newest **non-prerelease** release,
+so `-rc` builds are never offered as updates, even while one exists on the Releases page.
 
 The matching private key must be set as the repo secret
 `TAURI_SIGNING_PRIVATE_KEY` (and `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` if the key

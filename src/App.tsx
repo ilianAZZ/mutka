@@ -38,6 +38,7 @@ import { SettingsPanel } from "./components/SettingsPanel/SettingsPanel";
 import { ModulesPanel } from "./components/ModulesPanel/ModulesPanel";
 import { StatusBar } from "./components/StatusBar/StatusBar";
 import { DeclarativeModal } from "./components/Declarative/DeclarativeModal";
+import { UpdateToast } from "./components/UpdateToast/UpdateToast";
 import { useActiveModal } from "./hooks/useActiveModal";
 import { outputPickerResult } from "./core/cli/CliHandler";
 import "./styles/toolbar.css";
@@ -256,6 +257,8 @@ export function App() {
       )}
 
       {activeModal && <DeclarativeModal moduleId={activeModal.moduleId} node={activeModal.node} />}
+
+      <UpdateToast />
     </div>
   );
 }
