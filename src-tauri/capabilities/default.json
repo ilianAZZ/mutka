@@ -14,6 +14,7 @@
     "core:window:allow-start-dragging",
     "drag:default",
     "updater:default",
-    "process:allow-restart"
+    "process:allow-restart",
+    "cli:default"
   ]
 }

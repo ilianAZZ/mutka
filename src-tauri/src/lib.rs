@@ -2,11 +2,13 @@
 #[macro_use]
 extern crate objc;
 
-use tauri::Manager;
+use tauri::{Emitter, Manager};
+use tauri_plugin_cli::CliExt;
 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
 // One module per feature/scope. Each declares its own #[tauri::command]s; this
 // file only wires them into the Tauri builder. See src-tauri/CLAUDE.md.
+mod cli;
 mod clipboard;
 mod fs_ops;
 mod http;
@@ -20,6 +22,7 @@ mod watcher;
 #[cfg(target_os = "macos")]
 mod traffic_lights;
 
+use cli::{cli_exit, cli_output, get_cli_args, CliArgs};
 use clipboard::{clipboard_read_files, clipboard_write_files};
 use fs_ops::{
     cloud_status, copy_files, create_dir_cmd, create_file, delete_item, get_home_dir, move_files,
@@ -35,6 +38,34 @@ use modules::{
 use preview::{preview_update, quick_look};
 use secrets::{secret_delete, secret_get, secret_set};
 
+/// Parse CLI matches into a typed struct for the frontend.
+fn parse_cli_args(matches: &tauri_plugin_cli::Matches) -> CliArgs {
+    let path = matches
+        .args
+        .get("path")
+        .and_then(|v| v.value.as_str().map(String::from));
+    let picker = matches
+        .args
+        .get("picker")
+        .map(|v| v.occurrences > 0)
+        .unwrap_or(false);
+    let run = matches
+        .args
+        .get("run")
+        .and_then(|v| v.value.as_str().map(String::from));
+    let list_actions = matches
+        .args
+        .get("list-actions")
+        .map(|v| v.occurrences > 0)
+        .unwrap_or(false);
+    CliArgs {
+        path,
+        picker,
+        run,
+        list_actions,
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -45,7 +76,30 @@ pub fn run() {
         // newer release on launch and prompts before downloading. See src/update.ts.
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
+        // CLI argument parsing (mutka <path>, --picker, --run <action>).
+        .plugin(tauri_plugin_cli::init())
+        // Forward CLI args to the running instance instead of spawning a second one.
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            // Re-parse the forwarded argv and emit to the frontend.
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_focus();
+                // argv[0] is the binary path; forward the rest as a cli:args event.
+                let _ = window.emit("cli:forwarded-args", &argv[1..]);
+            }
+        }))
         .setup(|app| {
+            // Parse CLI args and store them so the frontend can retrieve them.
+            let cli_args = match app.cli().matches() {
+                Ok(matches) => parse_cli_args(&matches),
+                Err(_) => CliArgs {
+                    path: None,
+                    picker: false,
+                    run: None,
+                    list_actions: false,
+                },
+            };
+            app.manage(cli_args);
+
             let window = app.get_webview_window("main").unwrap();
             #[cfg(target_os = "macos")]
             apply_vibrancy(&window, NSVisualEffectMaterial::Sidebar, None, Some(12.0))
@@ -104,6 +158,9 @@ pub fn run() {
             uninstall_module,
             read_module_config,
             write_module_config,
+            get_cli_args,
+            cli_output,
+            cli_exit,
         ])
         .run(tauri::generate_context!())
         .expect("error while running Mutka");

@@ -117,6 +117,8 @@ export interface DialogPickFileOptions {
   initialDir?: string;
   /** If set, only files whose name is one of these are selectable (e.g. ["index.js"]). */
   fileNames?: string[];
+  /** What can be picked: "file" (default), "folder", or "any". */
+  mode?: "file" | "folder" | "any";
 }
 
 export interface DialogAPI {

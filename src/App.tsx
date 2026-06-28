@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { FileItem, BaseContext } from "./core/types";
 import { ModuleRegistry } from "./core/module-registry/ModuleRegistry";
 import { EventBus } from "./core/event-bus/EventBus";
@@ -39,6 +39,7 @@ import { ModulesPanel } from "./components/ModulesPanel/ModulesPanel";
 import { StatusBar } from "./components/StatusBar/StatusBar";
 import { DeclarativeModal } from "./components/Declarative/DeclarativeModal";
 import { useActiveModal } from "./hooks/useActiveModal";
+import { outputPickerResult } from "./core/cli/CliHandler";
 import "./styles/toolbar.css";
 
 // Resolves once every enabled module is registered, so `app:ready` (the launch
@@ -76,6 +77,15 @@ export function App() {
   // ── Side-effect-only hooks ───────────────────────────────────────────────────
   useNativeThemeSync();
   useExternalDropGuard();
+
+  // CLI event handlers: `mutka <path>` navigates, `mutka --picker` opens the picker.
+  useEffect(() => {
+    const unsubNav = EventBus.on(Events.Cli.navigate, ({ path }) => navigateTo(path));
+    const unsubPicker = EventBus.on(Events.Cli.picker, () => {
+      dialogAPI.pickFile({ title: "Pick a file or folder", mode: "any" }).then(outputPickerResult);
+    });
+    return () => { unsubNav(); unsubPicker(); };
+  }, [navigateTo, dialogAPI]);
   useAppBridge({
     getDirectory: () => currentDir,
     getNavigation: () => ({ navigate: navigateTo, goBack, goForward, goUp, canGoBack, canGoForward }),

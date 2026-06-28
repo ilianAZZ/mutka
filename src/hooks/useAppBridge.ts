@@ -3,6 +3,7 @@ import { AppBridge } from "../core/app-bridge/AppBridge";
 import { ModuleRegistry } from "../core/module-registry/ModuleRegistry";
 import { EventBus } from "../core/event-bus/EventBus";
 import { Events } from "../core/event-bus/events";
+import { handleCliArgs, listenForForwardedArgs } from "../core/cli/CliHandler";
 import type { NavigationAPI, DialogAPI } from "../core/types";
 
 export interface AppServices {
@@ -30,8 +31,12 @@ export function useAppBridge(services: AppServices, modulesReady: Promise<unknow
       getDialog: () => servicesRef.current.dialog,
     });
     ModuleRegistry.init();
+    listenForForwardedArgs();
     // Fire the launch hook once modules are registered AND AppBridge is connected,
     // so `core.home` can resolve the home dir and run the initial navigation.
-    modulesReady.then(() => EventBus.emit(Events.App.ready));
+    modulesReady.then(() => {
+      EventBus.emit(Events.App.ready);
+      handleCliArgs();
+    });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 }

@@ -75,6 +75,10 @@ export interface EventMap {
    * the dropped File objects to base64; a module imports them via host capabilities.
    */
   "file:external-drop": { files: { name: string; base64: string }[]; dest: string };
+  /** CLI: `mutka --picker` — open the file picker (the result goes to stdout). */
+  "cli:picker": undefined;
+  /** CLI: `mutka <path>` — navigate to a path. */
+  "cli:navigate": { path: string };
 }
 
 /** Typed event name constants. Use `Events.Namespace.name` instead of bare strings. */
@@ -156,5 +160,9 @@ export const Events = {
   },
   App: {
     ready: "app:ready",
+  },
+  Cli: {
+    picker: "cli:picker",
+    navigate: "cli:navigate",
   },
 } as const satisfies { [ns: string]: { [name: string]: keyof EventMap } };

@@ -56,6 +56,10 @@ notify = "6"
 # `process` provides the relaunch after an update is applied.
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
+# CLI argument parsing (mutka <path>, --picker, --run <action>).
+tauri-plugin-cli = "2"
+# Forward CLI args to an already-running instance instead of spawning a new one.
+tauri-plugin-single-instance = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 objc = "0.2"

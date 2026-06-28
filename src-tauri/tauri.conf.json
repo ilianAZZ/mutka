@@ -38,6 +38,31 @@
         "https://github.com/ilianAZZ/mutka/releases/latest/download/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDMxQjc4MjNEMDQ3QjFGMQpSV1R4c1VmUUkzZ2JBd3B0UkwwVkUzQlF3K2lWSkV3Kyt0eFFvYkthSnpZL1RqOE9Pb2pqV3JZRwo="
+    },
+    "cli": {
+      "description": "Mutka — community-driven file explorer for macOS",
+      "args": [
+        {
+          "name": "path",
+          "index": 1,
+          "takesValue": true
+        },
+        {
+          "name": "picker",
+          "short": "P",
+          "description": "Open the file picker and output the selected path to stdout"
+        },
+        {
+          "name": "run",
+          "short": "r",
+          "takesValue": true,
+          "description": "Run a module action by ID (e.g. core.clipboard.copy)"
+        },
+        {
+          "name": "list-actions",
+          "description": "List all registered module actions and exit"
+        }
+      ]
     }
   },
   "bundle": {

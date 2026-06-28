@@ -67,25 +67,31 @@ export function FilePickerModal({ options, initialDir, onPick }: FilePickerModal
     return () => document.removeEventListener("keydown", onKey);
   }, [onPick]);
 
+  const mode = options.mode ?? "file";
+
   const pickable = useCallback(
-    (item: FileItem): boolean =>
-      !item.isDir && (!options.fileNames || options.fileNames.includes(item.name)),
-    [options.fileNames]
+    (item: FileItem): boolean => {
+      if (mode === "folder") return item.isDir;
+      if (mode === "any") return !item.isDir ? (!options.fileNames || options.fileNames.includes(item.name)) : true;
+      return !item.isDir && (!options.fileNames || options.fileNames.includes(item.name));
+    },
+    [options.fileNames, mode]
   );
 
-  // Keep only pickable files, so "Select" only enables for a valid choice.
   const handleSelect = useCallback((sel: FileItem[]) => setSelected(sel.filter(pickable)), [pickable]);
 
   const handleOpen = useCallback((item: FileItem) => {
-    if (item.isDir) setDir(item.path);
+    if (item.isDir && mode === "file") setDir(item.path);
+    else if (item.isDir && (mode === "folder" || mode === "any")) setDir(item.path);
     else if (pickable(item)) onPick(item.path);
-  }, [pickable, onPick]);
+  }, [pickable, onPick, mode]);
 
   const handleSort = useCallback((key: SortKey) => {
     setSort((s) => ({ key, dir: s.key === key && s.dir === "asc" ? "desc" : "asc" }));
   }, []);
 
   const chosen = selected[0] ?? null;
+  const canPickFolder = mode === "folder" || mode === "any";
 
   return (
     <div className="filepicker-backdrop" onClick={() => onPick(null)}>
@@ -121,9 +127,16 @@ export function FilePickerModal({ options, initialDir, onPick }: FilePickerModal
 
         <div className="filepicker-actions">
           <button className="filepicker-cancel" onClick={() => onPick(null)}>Cancel</button>
-          <button className="filepicker-select" onClick={() => chosen && onPick(chosen.path)} disabled={!chosen}>
-            Select
-          </button>
+          {canPickFolder && (
+            <button className="filepicker-select" onClick={() => onPick(dir)}>
+              Open Current Folder
+            </button>
+          )}
+          {mode !== "folder" && (
+            <button className="filepicker-select" onClick={() => chosen && onPick(chosen.path)} disabled={!chosen}>
+              {chosen ? `Open "${chosen.name}"` : "Select a file"}
+            </button>
+          )}
         </div>
       </div>
     </div>
