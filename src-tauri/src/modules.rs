@@ -156,3 +156,34 @@ pub fn write_module_config(content: String) -> Result<(), String> {
     }
     fs::write(&path, content).map_err(|e| format!("Cannot write {}: {}", path.display(), e))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::is_safe_id;
+
+    #[test]
+    fn accepts_normal_module_ids() {
+        assert!(is_safe_id("com.dir-stats"));
+        assert!(is_safe_id("com.acme.vault"));
+        assert!(is_safe_id("my_module-1"));
+    }
+
+    #[test]
+    fn rejects_path_traversal_and_separators() {
+        // These are exactly what would let install/uninstall escape ~/.mutka/modules.
+        assert!(!is_safe_id("../etc"));
+        assert!(!is_safe_id("a/b"));
+        assert!(!is_safe_id("a\\b"));
+        assert!(!is_safe_id("a..b")); // contains ".."
+        assert!(!is_safe_id(".hidden")); // leading dot
+        assert!(!is_safe_id("")); // empty
+        assert!(!is_safe_id("with space"));
+        assert!(!is_safe_id("emoji😀"));
+    }
+
+    #[test]
+    fn rejects_overlong_ids() {
+        assert!(!is_safe_id(&"a".repeat(201)));
+        assert!(is_safe_id(&"a".repeat(200)));
+    }
+}

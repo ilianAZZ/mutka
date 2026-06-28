@@ -61,6 +61,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Hard gate: never publish a build whose permission/security tests fail.
+      - name: Frontend tests (gateway permissions)
+        run: pnpm test
+
+      - name: Build frontend
+        run: pnpm build
+
+      - name: Rust tests (URL tiers + id confinement)
+        working-directory: src-tauri
+        run: cargo test
+
       - name: Build release notes from CHANGELOG
         id: notes
         run: |
