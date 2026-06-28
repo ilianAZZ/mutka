@@ -18,12 +18,13 @@ pub fn get_cli_args(args: State<'_, CliArgs>) -> CliArgs {
 
 /// Write a line to stdout (visible when launched from a terminal).
 #[tauri::command]
-pub fn cli_output(text: String) {
+pub fn cli_output(text: String) -> Result<(), String> {
     println!("{}", text);
+    Ok(())
 }
 
 /// Exit the process with a given code (used after --picker completes).
 #[tauri::command]
-pub fn cli_exit(code: i32) {
+pub fn cli_exit(code: i32) -> Result<(), String> {
     std::process::exit(code);
 }

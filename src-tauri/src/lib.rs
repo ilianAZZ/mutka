@@ -2,7 +2,8 @@
 #[macro_use]
 extern crate objc;
 
-use tauri::Manager;
+use tauri::{Emitter, Manager};
+use tauri_plugin_cli::CliExt;
 use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
 // One module per feature/scope. Each declares its own #[tauri::command]s; this
@@ -21,7 +22,7 @@ mod watcher;
 #[cfg(target_os = "macos")]
 mod traffic_lights;
 
-use cli::{cli_exit, cli_output, CliArgs};
+use cli::{cli_exit, cli_output, get_cli_args, CliArgs};
 use clipboard::{clipboard_read_files, clipboard_write_files};
 use fs_ops::{
     cloud_status, copy_files, create_dir_cmd, create_file, delete_item, get_home_dir, move_files,
