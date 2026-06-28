@@ -27,7 +27,7 @@ function clampWidth(width: number | undefined): number {
  */
 export function Sidebar({ side, panels, panelProps }: SidebarProps) {
   const [activeId, setActiveId] = useState<string>(() => panels[0]?.id ?? "");
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
 
   const active = useMemo(
     () => panels.find((p) => p.id === activeId) ?? panels[0],
@@ -35,13 +35,16 @@ export function Sidebar({ side, panels, panelProps }: SidebarProps) {
   );
 
   const handleTabClick = useCallback((panel: MutkaSidebarPanel) => {
-    if (panel.id === activeId) {
+    if (panel.id === active?.id) {
+      // Sync activeId in case it was stale (panels can register after mount),
+      // then toggle the panel that is actually on screen.
+      setActiveId(panel.id);
       setCollapsed((c) => !c);
     } else {
       setActiveId(panel.id);
       setCollapsed(false);
     }
-  }, [activeId]);
+  }, [active]);
 
   if (panels.length === 0 || !active) return null;
 
