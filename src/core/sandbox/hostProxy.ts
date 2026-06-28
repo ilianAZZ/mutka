@@ -55,7 +55,7 @@ export interface ClipboardFiles {
 /** Whether a file's data is materialized locally or still cloud-only. */
 export type CloudStatus = "downloaded" | "cloud";
 
-export interface SandboxHostApi {
+export interface SandboxHostApi<TCommandId extends string = string> {
   fs: {
     /** List a directory's entries (works for local paths and provider schemes). */
     readDir(path: string): Promise<FileItem[]>;
@@ -190,8 +190,10 @@ export interface SandboxHostApi {
   refresh(): Promise<void>;
   /** Run an item through the open-resolution pipeline (keyboard double-click). */
   activate(item: FileItem): Promise<void>;
-  /** Register the function that runs when one of this module's commands fires. */
-  onCommand(commandId: string, handler: CommandHandler): void;
+  /** Register the function that runs when one of this module's commands fires.
+   *  When you use `defineModule`, `commandId` is constrained to the ids you
+   *  declared in `commands[]`, so a typo or stale id is a compile error. */
+  onCommand(commandId: TCommandId, handler: CommandHandler): void;
   /** Register the function that runs when an item matches one of this module's open handlers. */
   onOpen(handlerId: string, handler: OpenHandler): void;
   /** Register the value provider for one of this module's custom columns. */

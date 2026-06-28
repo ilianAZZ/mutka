@@ -21,11 +21,13 @@ Every capability a module uses must be declared in `permissions[]`, or the gatew
 denies the call.
 
 > **Community authors get published npm tooling** (see `packages/CLAUDE.md`). They can
-> scaffold a typed TS project with **`npm create @mutka-explorer`** and write against the
-> types package **`@mutka-explorer/module`** (`import type { SandboxModuleDef }` — erased
-> at compile time, so the built file stays import-free). The `host` is precisely typed
-> there (`host.fs.readDir` → `FileItem[]`, etc.). This skill covers **built-in** modules in
-> this repo; for the author experience point people at `COMMUNITY_MODULES.md`.
+> scaffold a typed TS project with **`npm create @mutka-explorer`** and write against
+> **`@mutka-explorer/module`** — `export default defineModule({…})`, which infers the
+> `commands[].id`s so `host.onCommand` is checked against them (a typo is a compile error)
+> and is inlined by the bundler so the built file stays import-free. The `host` is
+> precisely typed there (`host.fs.readDir` → `FileItem[]`, etc.). This skill covers
+> **built-in** modules in this repo (which use the same `defineModule` from
+> `core/sandbox`); for the author experience point people at `COMMUNITY_MODULES.md`.
 
 ## Step-by-step
 

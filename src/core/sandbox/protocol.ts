@@ -40,8 +40,8 @@ export interface WhenClause {
 
 // ─── A command contributed by a module ───────────────────────────────────────
 
-export interface SandboxCommand {
-  id: string;
+export interface SandboxCommand<Id extends string = string> {
+  id: Id;
   label: string;
   icon?: string;
   shortcut?: string;

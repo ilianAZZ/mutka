@@ -11,17 +11,20 @@ org. See `docs/releasing.md`.
 
 | Package                   | npm name                  | What it is                                                            |
 | ------------------------- | ------------------------- | -------------------------------------------------------------------- |
-| `module-sdk/`             | `@mutka-explorer/module`  | Author-facing TS **types only** (no runtime code).                   |
+| `module-sdk/`             | `@mutka-explorer/module`  | Author-facing TS types + the `defineModule()` helper (one identity fn). |
 | `create-module/`          | `@mutka-explorer/create`  | The `npm create @mutka-explorer` **scaffolder** (plain ESM, no deps). |
 
 ---
 
 ## `module-sdk/` — `@mutka-explorer/module`
 
-Ships a single self-contained `index.d.ts` (zero runtime code). Authors
-`import type { SandboxModuleDef } from "@mutka-explorer/module"` — the import is
-erased at compile time, so the built module file stays import-free, exactly what the
-worker loader needs.
+Ships a generated `index.d.ts` plus a one-line `index.js` whose only export is
+`defineModule` (an identity function, `def => def`). Authors
+`import { defineModule } from "@mutka-explorer/module"` and `export default
+defineModule({…})`: it adds no runtime weight (a bundler inlines it), but lets TS infer
+the `commands[].id`s and type `host.onCommand` to them. Authors who want zero runtime
+import can instead `import type { SandboxModuleDef }` and annotate
+`SandboxModuleDef<"the.command.id">` — same matching, purely in types.
 
 - **The d.ts is generated from the app source**, never hand-written: `build.mjs` runs
   `dts-bundle-generator` over `src/index.ts`, which re-exports the author-facing types

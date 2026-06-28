@@ -148,8 +148,8 @@ mutka/
 │   └── com.sqlite-browser/index.js ← claims .sqlite files → tables/rows (decodes the file format in-worker, fs:read only)
 │
 ├── packages/                    ← published npm tooling for MODULE AUTHORS (see packages/CLAUDE.md)
-│   ├── module-sdk/              ← @mutka-explorer/module — author-facing TS types (types only,
-│   │                             generated from src/core/sandbox; `import type` it for a typed `host`)
+│   ├── module-sdk/              ← @mutka-explorer/module — author-facing TS types + the
+│   │                             defineModule() helper (generated from src/core/sandbox; a typed `host`)
 │   └── create-module/           ← @mutka-explorer/create — `npm create @mutka-explorer` scaffolder
 │                                 (generates a typed TS module project that builds to one ESM file)
 │
@@ -259,10 +259,13 @@ system. Every privileged call (`host.fs.*`, `host.board.*`, `host.nav.*`, `host.
 module's declared `permissions`.
 
 **Authoring in TypeScript (published tooling, see `packages/`).** Authors can write
-modules in typed TS against the npm package **`@mutka-explorer/module`** — it ships the
-author-facing types only (`import type { SandboxModuleDef } from "@mutka-explorer/module"`,
-erased at compile time so the built file stays import-free), generated from
-`src/core/sandbox` so they never drift. `host` methods are **precisely typed**
+modules in typed TS against the npm package **`@mutka-explorer/module`**, generated from
+`src/core/sandbox` so the types never drift. It is types plus one runtime export,
+`defineModule` (an identity function): `export default defineModule({…})` infers the
+`commands[].id`s and types `host.onCommand` to them, so a typo'd/stale command id is a
+compile error — and a bundler inlines the call, so the built file stays import-free.
+(`import type { SandboxModuleDef }` with a `SandboxModuleDef<"cmd.id">` annotation gives the
+same matching with zero runtime import.) `host` methods are **precisely typed**
 (`host.fs.readDir` → `Promise<FileItem[]>`, `host.dialog.confirm` → `Promise<boolean>`,
 etc. — see `hostProxy.ts`), so no casts are needed. The scaffolder
 **`npm create @mutka-explorer`** (`@mutka-explorer/create`) generates a ready project

@@ -1,15 +1,18 @@
 # @mutka-explorer/module
 
-TypeScript types for authoring [Mutka](https://github.com/ilianAZZ/mutka) modules.
+Types + the `defineModule()` helper for authoring [Mutka](https://github.com/ilianAZZ/mutka) modules.
 
 A Mutka module is a single self-contained ESM file that
-`export default`s a module definition. It **imports nothing at runtime** — it
-reaches the system only through the `host` object passed to `setup(host)`, and
-every `host.*` call is checked against the permissions it declares.
+`export default`s a module definition. It reaches the system only through the
+`host` object passed to `setup(host)`, and every `host.*` call is checked against
+the permissions it declares.
 
-This package ships **only type definitions** (`.d.ts`, zero runtime code). You
-`import type` from it, TypeScript erases the import at compile time, and your
-built `index.js` stays self-contained — exactly what Mutka loads.
+This package is **types plus one tiny runtime export**: `defineModule`, an identity
+function (`def => def`). Everything else is types, erased at compile time. The only
+reason `defineModule` exists at runtime is type inference — it captures your
+`commands[].id`s so `host.onCommand` only accepts ids you declared (a typo or stale
+id is a compile error). A bundler inlines the call, so your built `index.js` stays
+import-free — exactly what Mutka loads.
 
 ## Install
 
@@ -20,9 +23,9 @@ npm i -D @mutka-explorer/module
 ## Usage
 
 ```ts
-import type { SandboxModuleDef } from "@mutka-explorer/module";
+import { defineModule } from "@mutka-explorer/module";
 
-const mod: SandboxModuleDef = {
+export default defineModule({
   id: "you.hello",
   name: "Hello",
   version: "1.0.0",
@@ -31,18 +34,21 @@ const mod: SandboxModuleDef = {
     { id: "you.hello.count", label: "Count items", contextMenu: true, when: { selection: "any" } },
   ],
   setup(host) {
-    host.onCommand("you.hello.count", async (snap) => {
+    host.onCommand("you.hello.count", async (snap) => {   // ✓ autocompleted from commands[]
       const items = await host.fs.readDir(snap.currentDirectory);
       host.log(`${items.length} items`);
     });
+    // host.onCommand("you.hello.typo", …)   ← compile error: not a declared command id
   },
-};
-
-export default mod;
+});
 ```
 
 `host` is fully typed (`host.fs`, `host.ui`, `host.net`, `host.dialog`, …), as
 are permissions, `when` clauses, the declarative `UINode` tree, and `FormSchema`.
+
+> Prefer no runtime import at all? `import type { SandboxModuleDef } from
+> "@mutka-explorer/module"` and annotate `const mod: SandboxModuleDef<"you.hello.count">
+> = { … }` — the generic param enforces the same command-id matching, purely in types.
 
 ### Build to a single file
 

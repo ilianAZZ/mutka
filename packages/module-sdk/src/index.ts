@@ -13,7 +13,11 @@
 // straight from the app source, so the types can never drift from the host.
 // =============================================================================
 
-// ─── The module definition shape (what you `export default`) ─────────────────
+// ─── The module definition shape + the defineModule helper ───────────────────
+// `defineModule` is the ONLY runtime export (an identity function, see index.js):
+// it infers your `commands[].id`s and types `host.onCommand` to them. Everything
+// else in this package is types, erased at compile time.
+export { defineModule } from "../../../src/core/sandbox/defineModule";
 export type { SandboxModuleDef } from "../../../src/core/sandbox/defineModule";
 
 // ─── The host object passed to setup(host) + its handler signatures ──────────
