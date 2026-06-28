@@ -6,6 +6,7 @@ import { ModuleRegistry } from "../../core/module-registry/ModuleRegistry";
 import { ViewStore } from "../../core/stores/ViewStore";
 import { ModulesStore } from "../../core/stores/ModulesStore";
 import { DeclarativePanel } from "../Declarative/DeclarativePanel";
+import { UpdateController, type UpdateState } from "../../update";
 import "./SettingsPanel.css";
 
 interface SettingsPanelProps {
@@ -30,6 +31,18 @@ function formatShortcut(raw: string | undefined): string {
     .replace("backspace", "⌫").replace("space", "␣").replace(/\+/g, "");
 }
 
+/** Left-hand label for the "Check for Updates" row, reflecting controller state. */
+function updateStatusLabel(state: UpdateState): string {
+  switch (state.status) {
+    case "available": return `Update available: ${state.version}`;
+    case "downloading": return `Downloading ${state.version}…`;
+    case "ready": return "Restarting…";
+    case "uptodate": return "You're up to date";
+    case "error": return "Update check failed";
+    default: return "Software Update";
+  }
+}
+
 /** A module owns an action when its id is the action id's namespace prefix. */
 function ownsAction(moduleId: string, actionId: string): boolean {
   return actionId === moduleId || actionId.startsWith(`${moduleId}.`);
@@ -39,6 +52,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
   const [page, setPage] = useState<Page>("menu");
   const [theme, setTheme] = useState<ThemePreference>(ThemeManager.get());
   const [showHidden, setShowHidden] = useState<boolean>(ViewStore.showHidden);
+  const [updateState, setUpdateState] = useState<UpdateState>(UpdateController.state);
   const [bindings, setBindings] = useState<KeyBinding[]>(() => ShortcutManager.listBindings());
   const [capturing, setCapturing] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -54,6 +68,8 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
       .map((m) => ({ ...m, sections: sections.filter((s) => s.moduleId === m.id) }))
       .filter((m) => m.sections.length > 0);
   }, []);
+
+  useEffect(() => UpdateController.subscribe(setUpdateState), []);
 
   const refreshBindings = useCallback(() => setBindings(ShortcutManager.listBindings()), []);
 
@@ -183,6 +199,16 @@ export function SettingsPanel({ onClose }: SettingsPanelProps) {
                   <button className={`theme-btn${!showHidden ? " theme-btn--active" : ""}`} onClick={() => handleShowHidden(false)} aria-pressed={!showHidden}>Hide</button>
                   <button className={`theme-btn${showHidden ? " theme-btn--active" : ""}`} onClick={() => handleShowHidden(true)} aria-pressed={showHidden}>Show</button>
                 </div>
+              </div>
+              <div className="settings-row">
+                <span className="settings-label">{updateStatusLabel(updateState)}</span>
+                <button
+                  className="keybind-btn"
+                  onClick={() => void UpdateController.check(false)}
+                  disabled={updateState.status === "checking" || updateState.status === "downloading"}
+                >
+                  {updateState.status === "checking" ? "Checking…" : "Check for Updates"}
+                </button>
               </div>
             </section>
           )}
