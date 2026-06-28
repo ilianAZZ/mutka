@@ -9,31 +9,16 @@ import type { MenuZone } from "../menu/menuZone";
 // directly — they write `defineModule({...})` (see core/sandbox/defineModule.ts),
 // and a runtime (LocalHost / SandboxHost) turns the module into the MutkaModule
 // below via proxyModule.ts. Keep this file about what the registry + UI consume.
+//
+// The framework-free, author-facing subset (`ModulePermission`, `SidebarItem`,
+// `SidebarCategories`, `SidebarItemGroup`) lives in `./public-types` so the
+// author-facing SDK can re-export it without dragging in `react`; it's re-exported
+// below so existing `from "./module-registry.types"` imports keep working.
 // =============================================================================
 
-// ─── Permissions ──────────────────────────────────────────────────────────────
-
-/**
- * Permissions a module may request. A module must declare every capability it
- * uses; the gateway (core/sandbox/gateway.ts) denies any capability whose
- * permission is absent from the module's manifest.
- */
-export type ModulePermission =
-  | "fs:read"        // reads directory contents or file metadata
-  | "fs:write"       // creates, modifies, moves, or deletes files/directories
-  | "fs:temp"        // writes a short-lived file to the OS temp dir (lower-risk than fs:write)
-  | "clipboard:read" // reads clipboard contents
-  | "clipboard:write"// writes to the native clipboard
-  | "navigation"     // changes the active directory / drives tabs
-  | "view"           // controls view state: selection, sort, filters
-  | "dialog"         // shows prompts or confirmation dialogs to the user
-  | "network:public" // outbound HTTPS to public domains only (no IPs/localhost)
-  | "network:local"  // outbound http/https to IP addresses or localhost only
-  | "storage"        // reads/writes its own persisted config (per-module namespace)
-  | "secrets"        // reads/writes its own credentials in the macOS Keychain
-  | "ui"             // renders declarative panels/popups/settings + status-bar items
-  | "discovery"      // contributes a module-discovery source (+ probes module sources)
-  | "shell";         // executes shell or system commands
+export type { ModulePermission, SidebarItem, SidebarItemGroup } from "./public-types";
+export { SidebarCategories } from "./public-types";
+import type { ModulePermission, SidebarItem } from "./public-types";
 
 // ─── Context menu categories ──────────────────────────────────────────────────
 
@@ -60,48 +45,8 @@ export interface ContextMenuGroup {
   actions: MutkaAction[];
 }
 
-// ─── Sidebar items (declarative left-menu entries) ────────────────────────────
-
-/**
- * Suggested categories for sidebar items. A module may use any custom string;
- * items sharing a category are grouped together under that header.
- */
-export const SidebarCategories = {
-  Favorites: "Favorites",
-  Locations: "Locations",
-  Cloud:     "Cloud",
-  Devices:   "Devices",
-  Tags:      "Tags",
-} as const;
-
-/**
- * A declarative entry a module contributes to the left "Places" sidebar.
- * Serializable — crosses the worker boundary. Clicking navigates to `path`
- * or runs `command` (provide one).
- */
-export interface SidebarItem {
-  id: string;
-  label: string;
-  /** Icon registry key (e.g. "cloud", "folder") or an emoji. */
-  icon?: string;
-  /** Group header. Use SidebarCategories or any custom string. */
-  category?: string;
-  /** Navigate here when clicked. */
-  path?: string;
-  /** Or run this command id when clicked. */
-  command?: string;
-  /**
-   * Show a remove (✕) affordance. Clicking it emits "sidebar:item-remove" with
-   * this item's id — the owning module listens and updates its dynamic items.
-   */
-  removable?: boolean;
-}
-
-/** A group of sidebar items rendered under a shared category header. */
-export interface SidebarItemGroup {
-  label?: string;
-  items: SidebarItem[];
-}
+// (Sidebar item types — SidebarCategories / SidebarItem / SidebarItemGroup —
+//  moved to ./public-types and re-exported at the top of this file.)
 
 // ─── Actions ──────────────────────────────────────────────────────────────────
 

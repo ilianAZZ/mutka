@@ -1,6 +1,6 @@
 import type { WorkerToHost, HostSnapshot, ColumnCell, ProviderMethod, DiscoveryMethod, UINode, StatusBarItem, SandboxManifest } from "./protocol";
 import type { FileItem, AppInfo } from "../types";
-import type { SidebarItem } from "../module-registry/module-registry.types";
+import type { SidebarItem } from "../module-registry/public-types";
 import type { DiscoveryQuery, DiscoveryResult } from "../discovery/types";
 
 export type { ProviderMethod } from "./protocol";
