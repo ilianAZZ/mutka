@@ -14,13 +14,15 @@ export const PERMISSIONS = [
 const permsLiteral = (perms) => perms.map((p) => `"${p}"`).join(", ");
 
 export function indexTs(cfg) {
-  return `import type { SandboxModuleDef } from "@mutka-explorer/module";
+  return `import { defineModule } from "@mutka-explorer/module";
 
-// A Mutka module is a single self-contained ESM file. It imports NOTHING at
-// runtime — it reaches the system only through \`host\`, and every host call is
-// checked against the permissions declared below. \`import type\` above is erased
-// at compile time, so the built file stays self-contained.
-const mod: SandboxModuleDef = {
+// A Mutka module is a single self-contained ESM file. It reaches the system only
+// through \`host\`, and every host call is checked against the permissions declared
+// below. \`defineModule\` is an identity function: it adds no runtime weight (the
+// bundler inlines it) but lets TypeScript infer your command ids — so
+// \`host.onCommand\` only accepts an id you declared in \`commands\`, and a typo is a
+// compile error.
+export default defineModule({
   id: "${cfg.id}",
   name: "${cfg.name}",
   version: "0.1.0",
@@ -38,6 +40,7 @@ const mod: SandboxModuleDef = {
     },
   ],
   setup(host) {
+    // "${cfg.id}.hello" is autocompleted + checked against commands[] above.
     host.onCommand("${cfg.id}.hello", async (snap) => {
       // host is fully typed — readDir resolves to FileItem[], no cast needed.
       const items = await host.fs.readDir(snap.currentDirectory);
@@ -47,9 +50,7 @@ const mod: SandboxModuleDef = {
       );
     });
   },
-};
-
-export default mod;
+});
 `;
 }
 

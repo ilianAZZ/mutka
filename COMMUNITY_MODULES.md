@@ -59,17 +59,28 @@ npm i -D @mutka-explorer/module
 ```
 
 ```ts
-import type { SandboxModuleDef } from "@mutka-explorer/module";
+import { defineModule } from "@mutka-explorer/module";
 
-const mod: SandboxModuleDef = { id: "you.hello", /* … */ setup(host) { /* host is typed */ } };
-export default mod;
+export default defineModule({
+  id: "you.hello",
+  permissions: ["fs:read"],
+  commands: [{ id: "you.hello.count", label: "Count", when: { selection: "any" } }],
+  setup(host) {
+    host.onCommand("you.hello.count", async (snap) => { /* host is fully typed */ });
+    // host.onCommand("you.hello.typo", …)   ← compile error: not a declared command id
+  },
+});
 ```
 
-It ships **types only** (no runtime code) — `import type` is erased at compile time,
-so your built file stays self-contained. The package is generated from this app's
-source and versioned in lockstep with the app, so the types always match the host
-API. Then bundle to one ESM file (e.g. `tsup src/index.ts --format esm --bundle`)
-before installing. See `packages/module-sdk/`.
+`defineModule` is the package's **only** runtime export — an identity function
+(`def => def`). It exists purely so TypeScript can infer your `commands[].id`s and type
+`host.onCommand` to them, so a typo'd or stale id fails at compile time. A bundler
+inlines it, so your built file stays self-contained. (Prefer no runtime import? Use
+`import type { SandboxModuleDef }` and annotate `SandboxModuleDef<"you.hello.count">` —
+same matching, purely in types.) The package is generated from this app's source and
+versioned in lockstep with the app, so the types always match the host API. Then bundle
+to one ESM file (e.g. `tsup src/index.ts --format esm`) before installing. See
+`packages/module-sdk/`.
 
 ---
 

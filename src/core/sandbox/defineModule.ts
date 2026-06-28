@@ -8,7 +8,7 @@ import type { SandboxHostApi } from "./hostProxy";
 // receives everything through the `host` given to setup(). Built-in and
 // community modules use this identical shape.
 
-export interface SandboxModuleDef {
+export interface SandboxModuleDef<TCommandId extends string = string> {
   /** Unique module id, "author.name" convention. */
   id: string;
   name?: string;
@@ -29,8 +29,10 @@ export interface SandboxModuleDef {
   tags?: string[];
   /** Every privileged capability this module uses MUST be listed here. */
   permissions?: ModulePermission[];
-  /** Commands surfaced into the app's menus / toolbar. */
-  commands?: SandboxCommand[];
+  /** Commands surfaced into the app's menus / toolbar. The literal `id`s here are
+   *  captured (via `defineModule`) and become the only values `host.onCommand`
+   *  accepts in `setup`. */
+  commands?: SandboxCommand<TCommandId>[];
   /** Open handlers (double-click behavior) by item type. */
   openHandlers?: SandboxOpenHandler[];
   /** Declarative entries in the left "Places" sidebar, grouped by category. */
@@ -85,11 +87,20 @@ export interface SandboxModuleDef {
   /**
    * Runs once after load. Register command/open handlers and event subscriptions
    * here. Reaches the system only through `host.*` (each gated by permissions).
+   * `host.onCommand` is typed to the `commands[].id`s declared above.
    */
-  setup?: (host: SandboxHostApi) => void | Promise<void>;
+  setup?: (host: SandboxHostApi<TCommandId>) => void | Promise<void>;
 }
 
-export function defineModule(def: SandboxModuleDef): SandboxModuleDef {
+/**
+ * Author-facing helper. At runtime it returns its argument unchanged (so the
+ * built file is import-free once bundled); at the type level it infers the union
+ * of `commands[].id` literals and threads it into `host.onCommand`, so a typo'd
+ * or stale command id is a compile error. With no `commands`, ids stay `string`.
+ */
+export function defineModule<const TCommandId extends string = string>(
+  def: SandboxModuleDef<TCommandId>,
+): SandboxModuleDef<TCommandId> {
   return def;
 }
 
