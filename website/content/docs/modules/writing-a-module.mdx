@@ -3,15 +3,39 @@ title: Writing a Module
 description: Create a built-in or community module with defineModule and the host API.
 ---
 
-A module is a plain ESM file that default-exports `defineModule({ ... })`. A
-built-in lives at `src/sandbox-builtins/<name>.ts`; a community module is
-byte-identical but drops the import and lives on disk at
-`~/.mutka/modules/<id>/index.js`.
+A module is a plain ESM file that default-exports `defineModule({ ... })`. The
+same shape runs everywhere: a built-in lives at `src/sandbox-builtins/<name>.ts`
+inside this repo; a community module builds to a single self-contained ESM file
+that lands on disk at `~/.mutka/modules/<id>/index.js`.
+
+## Scaffold a project (recommended)
+
+The fastest way to start a **community** module is the published scaffolder. It
+generates a typed TypeScript project wired to the
+[`@mutka-explorer/module`](https://www.npmjs.com/package/@mutka-explorer/module)
+package, with a `tsup` build that outputs the single ESM file Mutka loads:
+
+```bash
+npm create @mutka-explorer@latest my-module
+```
+
+It prompts for the module id (`author.name`), display name, GitHub username, and
+permissions, then generates `src/index.ts` (a typed skeleton with a working
+command), a `package.json` with the build, and a `mutka.config.json` that points
+[GitHub discovery](/docs/modules/publishing-a-module) at `dist/index.js`.
+
+<Callout title="Why a typed package?">
+  `@mutka-explorer/module` is **types plus one tiny runtime export** —
+  `defineModule`, an identity function. It infers your `commands[].id`s so
+  `host.onCommand` only accepts ids you declared (a typo or stale id is a compile
+  error), and every `host.*` method is precisely typed. A bundler inlines the
+  call, so your built `index.js` stays import-free — exactly what Mutka loads.
+</Callout>
 
 ## A minimal module
 
 ```ts
-import { defineModule } from "../core/sandbox/defineModule";
+import { defineModule } from "@mutka-explorer/module";
 
 export default defineModule({
   id: "author.my-module",
@@ -40,8 +64,17 @@ export default defineModule({
 });
 ```
 
-That's it — built-in modules are auto-discovered by Vite's glob import. No
-registration step required.
+Build it (`npm run build` in a scaffolded project) and the single ESM file in
+`dist/` is what you publish. Prefer no runtime import at all? Use
+`import type { SandboxModuleDef } from "@mutka-explorer/module"` and annotate the
+definition — the same id inference with zero runtime import.
+
+<Callout title="Built-ins differ only by the import">
+  A **built-in** dropped in `src/sandbox-builtins/<name>.ts` is byte-identical
+  except it imports `defineModule` from the in-repo path
+  (`../core/sandbox/defineModule`) instead of the npm package. Built-ins are
+  auto-discovered by Vite's glob import — no registration step required.
+</Callout>
 
 ## The `host` API (all async)
 

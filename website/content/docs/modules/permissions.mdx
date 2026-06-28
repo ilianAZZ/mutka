@@ -30,11 +30,22 @@ This page is the full reference. The narrative pages
 | `navigation`      | Change the active directory / drive tabs                      |
 | `view`            | Control view state: selection, sort, filters, home, settings  |
 | `dialog`          | Show prompts, confirmations, choosers                         |
-| `network`         | Make outbound (host-proxied) HTTP requests                    |
+| `network:public`  | HTTPS to **public** domains only (no IPs/`localhost`)         |
+| `network:local`   | http/https to a **private** IP range or `localhost`           |
 | `storage`         | Read/write its own per-module persisted config                |
 | `secrets`         | Read/write its own credentials in the macOS Keychain          |
 | `ui`              | Render declarative panels/popups/settings + status-bar items  |
+| `discovery`       | Contribute a module-discovery source + probe fetched sources  |
 | `shell`           | *Reserved — declared but no capability backs it yet*          |
+
+<Callout title="Network is two least-privilege tiers">
+  There is no blanket `network` permission. `network:public` enforces HTTPS to
+  public domains (blocking SSRF to cloud metadata and LAN services);
+  `network:local` allows a self-hosted server or NAS on a private IP /
+  `localhost`. A module declares whichever it needs (or both). The URL is
+  classified and enforced in Rust — and a module **cannot** make native
+  `fetch`/`WebSocket` calls at all, so `host.net` is its only egress.
+</Callout>
 
 ## Capability → permission map
 
@@ -83,7 +94,7 @@ unreachable*, since the worker has no `invoke`.
 | --------------------------------------- | ---------- | ------------------------------------------- |
 | `config.get` / `set`                    | `storage`  | `localStorage`, namespaced per module       |
 | `secrets.get` / `set` / `delete`        | `secrets`  | Rust `secret_*` → macOS Keychain (per module) |
-| `net.request` / `download` / `upload`   | `network`  | Rust `http_*` (host-proxied, bypasses CORS) |
+| `net.request` / `download` / `upload`   | `network:public` **or** `network:local` | Rust `http_*` (host-proxied, URL tier-checked) |
 
 ### System
 

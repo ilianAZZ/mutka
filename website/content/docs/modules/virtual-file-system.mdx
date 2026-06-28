@@ -70,7 +70,7 @@ implement what your backend supports.
 export default defineModule({
   id: "author.archive",
   name: "Zip Browser",
-  permissions: ["fs:read", "network"],   // whatever your backend needs
+  permissions: ["fs:read", "network:public"],   // whatever your backend needs
   fileSystemProviders: ["zip"],          // declare the scheme(s) you own
   setup(host) {
     host.onList("zip", async (path) => {

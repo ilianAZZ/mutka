@@ -172,9 +172,15 @@ export default function HomePage() {
               AI-buildable
             </Link>
           </div>
+          <div className="mt-25">
+
+          </div>
           <InstallCommand />
+          <p className="mt-3 text-xs text-fd-muted-foreground">
+            macOS only · <span className="opacity-80">Windows coming soon</span>
+          </p>
           <div
-            className="mt-5 mb-20!"
+            className="mt-5 mb-25!"
           >
             <p className="text-xs text-fd-muted-foreground">
               Prefer to build it yourself or grab the notarized app?

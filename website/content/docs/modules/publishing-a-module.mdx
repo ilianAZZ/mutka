@@ -85,8 +85,9 @@ export default defineModule({
   The install folder (`~/.mutka/modules/<id>/`) is named after it.
 - **Permissions are shown up front.** Before anything is written, the install
   review dialog lists every permission your module declares, with dangerous ones
-  (`fs:write`, `network`, `secrets`, `clipboard:write`, `shell`) flagged. The
-  gateway still enforces those permissions at runtime regardless.
+  (`fs:write`, `network:public`, `network:local`, `secrets`, `clipboard:write`,
+  `discovery`, `shell`) flagged. The gateway still enforces those permissions at
+  runtime regardless.
 
 ## Checklist to get listed
 

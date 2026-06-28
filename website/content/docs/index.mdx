@@ -11,7 +11,52 @@ The design goal: ship a minimal, rock-solid **core** and let the community build
 everything else as **modules**. Even built-in features — copy/paste, file
 creation, navigation — are modules. The core provides infrastructure only.
 
-## Prerequisites
+## Install Mutka
+
+<Callout title="macOS only — Windows coming soon">
+  Mutka currently runs on **macOS only** (Windows support is planned). Releases
+  are signed with a Developer ID and notarized by Apple, so they open with a
+  normal double-click — no right-click or Gatekeeper workaround needed.
+</Callout>
+
+### One-line install (recommended)
+
+Downloads the latest release into `/Applications` and adds the `mutka` CLI to
+your PATH. Re-run it any time to update to the newest release:
+
+```bash
+curl -fsSL https://mutka.app/install/latest.sh | bash
+```
+
+That URL redirects to [`scripts/install.sh`](https://github.com/ilianAZZ/mutka/blob/main/scripts/install.sh)
+in the repo, so you can read exactly what it runs first.
+
+### Manual install (.dmg)
+
+1. Download `Mutka_<version>_universal.dmg` from the
+   [latest release](https://github.com/ilianAZZ/mutka/releases/latest).
+2. Open the `.dmg` and drag **Mutka** into your **Applications** folder.
+3. *(Optional)* add the terminal CLI:
+
+   ```bash
+   bash <(curl -fsSL https://raw.githubusercontent.com/ilianAZZ/mutka/main/scripts/install-cli.sh)
+   ```
+
+### Using the CLI
+
+```bash
+mutka <path>           # open a directory in Mutka
+mutka --picker         # pick a file/folder (path printed to stdout)
+mutka --run <action>   # run a module action
+mutka --list-actions   # list all available actions
+```
+
+## Build from source
+
+Building from source is for **contributors and module authors** who want the
+dev server with hot-reload. End users should use the install options above.
+
+### Prerequisites
 
 | Tool                     | Version          |
 | ------------------------ | ---------------- |
@@ -23,7 +68,7 @@ creation, navigation — are modules. The core provides infrastructure only.
 xcode-select --install   # if not already installed
 ```
 
-## Run it
+### Run it
 
 ```bash
 git clone https://github.com/ilianAZZ/mutka.git
@@ -41,7 +86,7 @@ npm run tauri dev        # opens the app window with hot-reload
 ### Production build
 
 ```bash
-npm run tauri build      # outputs a .app in src-tauri/target/release/bundle/
+npm run tauri build      # outputs a signed .app in src-tauri/target/release/bundle/
 ```
 
 ## The big idea
@@ -60,6 +105,24 @@ declared `permissions`.
 - **Built-in modules** run in-process (trusted).
 - **Community modules** run isolated in a Web Worker — a denied permission is not
   just refused, it is *physically unreachable*.
+
+## Installing modules
+
+Open the **Modules** overlay inside the app to browse the community catalog
+(backed by GitHub — any public repo named `mutka-module-*` is discovered
+automatically), review the permissions a module declares, and install it with one
+click. Modules can be enabled, disabled, and uninstalled live — no restart. See
+[Publishing a module](/docs/modules/publishing-a-module) for how the catalog works.
+
+## Building your own
+
+Authors write modules in **typed TypeScript** against the published npm package
+**`@mutka-explorer/module`**, and scaffold a ready-to-build project with one
+command:
+
+```bash
+npm create @mutka-explorer@latest my-module
+```
 
 Continue with the [Architecture](/docs/architecture) overview, or jump straight to
 [Writing a module](/docs/modules/writing-a-module).
