@@ -4,12 +4,17 @@ name: Release (build & publish)
 # Release, then publishes the npm packages. It runs two ways:
 #
 #   1. Called by release-please.yml when a release PR is merged (final release).
-#      The tag + GitHub Release already exist (release-please made them, with the
-#      changelog as the body); this just attaches the binaries.
+#      release-please created the Release as a DRAFT (no public "Latest", and a
+#      draft has NO git tag yet), so we build from the merge `sha` it passes us,
+#      upload the binaries into the draft, and only THEN publish it (the last
+#      step un-drafts it, which is the moment GitHub creates the tag + Latest
+#      badge). This closes the window where a "Latest" release exists with no
+#      installable .dmg.
 #   2. Triggered directly by pushing a `vX.Y.Z-rc.N` tag by hand (release
 #      candidate). No release exists yet, so tauri-action creates one, flagged as
 #      a pre-release. RC tags do NOT touch the changelog or npm — they're throwaway
-#      test builds.
+#      test builds. No `sha`/`draft` inputs → we build from the tag (it exists) and
+#      never draft.
 #
 # A tag with a `-` suffix is treated as a pre-release (not marked "latest", npm
 # publish skipped).
@@ -20,6 +25,29 @@ on:
       tag:
         description: The vX.Y.Z tag to build and publish.
         required: true
+        type: string
+      sha:
+        description: >-
+          Commit to build from. Required when `draft` is true, because a draft
+          release has no tag ref yet — we cannot `checkout` the tag, so we
+          checkout this SHA instead. Omitted on the rc-tag push path.
+        required: false
+        type: string
+      draft:
+        description: >-
+          When true the Release stays a draft through the build and is published
+          (un-drafted) only after the binaries are attached.
+        required: false
+        type: boolean
+        default: false
+      release_id:
+        description: >-
+          The id of the existing (draft) GitHub Release to upload into. Required on
+          the draft path: tauri-action otherwise locates the release by tag, and the
+          get-release-by-tag API does not return drafts — so it would create a second,
+          duplicate release. Uploading by id targets release-please's draft directly.
+          Omitted on the rc-tag push path (tauri-action creates the release by tag).
+        required: false
         type: string
   push:
     tags:
@@ -35,12 +63,19 @@ jobs:
       tag: ${{ steps.v.outputs.tag }}
       version: ${{ steps.v.outputs.version }}
       prerelease: ${{ steps.v.outputs.prerelease }}
+      ref: ${{ steps.v.outputs.ref }}
+      draft: ${{ inputs.draft || false }}
     steps:
       - id: v
         run: |
           TAG="${{ inputs.tag || github.ref_name }}"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+          # What to checkout: the passed SHA when building a draft (its tag does
+          # not exist yet), otherwise the tag itself (rc push / non-draft call).
+          REF="${{ inputs.sha }}"
+          [ -z "$REF" ] && REF="$TAG"
+          echo "ref=$REF" >> "$GITHUB_OUTPUT"
           # Semver pre-release = a `-` suffix (v1.0.0-rc.1).
           if [[ "$TAG" == *-* ]]; then
             echo "prerelease=true" >> "$GITHUB_OUTPUT"
@@ -55,7 +90,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ needs.setup.outputs.tag }}
+          ref: ${{ needs.setup.outputs.ref }}
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -105,14 +140,33 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          # Uploads to the existing release for this tag (release-please made it
-          # for a final; tauri-action creates one for a hand-pushed RC tag).
+          # Final path: releaseId targets release-please's existing draft directly
+          # (uploading by tag would miss the draft and create a duplicate release).
+          # rc path: releaseId is empty, so tauri-action creates the release by tag.
           # releaseBody is left unset so release-please's changelog is preserved.
+          # releaseDraft mirrors the draft input: a final release stays a draft
+          # here so the binaries land BEFORE it goes public; an rc stays false.
+          releaseId: ${{ inputs.release_id }}
           tagName: ${{ needs.setup.outputs.tag }}
           releaseName: "Mutka ${{ needs.setup.outputs.tag }}"
-          releaseDraft: false
+          releaseDraft: ${{ needs.setup.outputs.draft }}
           prerelease: ${{ needs.setup.outputs.prerelease }}
           args: --target universal-apple-darwin
+
+      # Binaries are attached — NOW make the release public. Un-drafting is the
+      # moment GitHub creates the vX.Y.Z tag and assigns the "Latest" badge, so
+      # the release never appears as "Latest" without an installable .dmg. We patch
+      # by release id (a draft has no tag to address it by). make_latest=true gives
+      # it the "Latest" badge, replacing whichever older release currently holds it.
+      # Only the draft (final) path reaches this; rc builds were never drafts.
+      - name: Publish the release
+        if: needs.setup.outputs.draft == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh api --method PATCH \
+            "repos/${{ github.repository }}/releases/${{ inputs.release_id }}" \
+            -F draft=false -f make_latest=true
 
   # npm packages publish on FINAL releases only. release-please has already bumped
   # their package.json in lockstep, so they publish at the correct version with no
@@ -124,7 +178,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.setup.outputs.tag }}
+          # The SHA, not the tag: on the draft path the tag does not exist yet
+          # (these jobs run in parallel with build, which publishes it at the end).
+          ref: ${{ needs.setup.outputs.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20
@@ -148,7 +204,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.setup.outputs.tag }}
+          # The SHA, not the tag: on the draft path the tag does not exist yet
+          # (these jobs run in parallel with build, which publishes it at the end).
+          ref: ${{ needs.setup.outputs.ref }}
       - uses: actions/setup-node@v4
         with:
           node-version: 20

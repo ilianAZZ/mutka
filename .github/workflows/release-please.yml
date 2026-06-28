@@ -6,8 +6,12 @@ name: Release Please
 # `feat!` / `BREAKING CHANGE` → major). MERGING that PR is what cuts a release:
 # release-please bumps the three manifests in lockstep (package.json,
 # tauri.conf.json, Cargo.toml — see release-please-config.json), writes
-# CHANGELOG.md, and creates the `vX.Y.Z` git tag + GitHub Release. The `build`
-# job then builds the macOS bundle and uploads it to that release.
+# CHANGELOG.md, and creates the GitHub Release as a DRAFT (configured in
+# release-please-config.json). The `build` job builds the macOS bundle, uploads
+# it into the draft, and only then publishes it — un-drafting is what creates the
+# `vX.Y.Z` tag + "Latest" badge, so a "Latest" release never exists without an
+# installable .dmg. Because the draft has no tag ref yet, build checks out the
+# merge `sha` instead of the tag.
 #
 # Release candidates are NOT cut here — push a `vX.Y.Z-rc.N` tag by hand to fire
 # release.yml directly (see that file). The release PR keeps accumulating until
@@ -27,6 +31,12 @@ jobs:
     outputs:
       release_created: ${{ steps.rp.outputs.release_created }}
       tag_name: ${{ steps.rp.outputs.tag_name }}
+      # The merge commit release-please drafted the release from. build checks it
+      # out because a draft release has no tag ref to checkout yet.
+      sha: ${{ steps.rp.outputs.sha }}
+      # The drafted Release's id. build uploads into it by id (a draft can't be
+      # found by tag), then publishes it.
+      id: ${{ steps.rp.outputs.id }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: rp
@@ -35,11 +45,15 @@ jobs:
 
   # Only runs the cycle a release PR was just merged (release_created == true).
   # Reuses the build+publish workflow so RC tags and final releases share ONE
-  # build definition.
+  # build definition. draft: true keeps the release hidden until the binaries are
+  # attached; sha lets the build check out the commit (the tag does not exist yet).
   build:
     needs: release-please
     if: needs.release-please.outputs.release_created == 'true'
     uses: ./.github/workflows/release.yml
     with:
       tag: ${{ needs.release-please.outputs.tag_name }}
+      sha: ${{ needs.release-please.outputs.sha }}
+      release_id: ${{ needs.release-please.outputs.id }}
+      draft: true
     secrets: inherit
