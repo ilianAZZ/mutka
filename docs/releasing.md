@@ -48,6 +48,21 @@ It's a draft so you can sanity-check the build before clicking **Publish**.
 Publishing makes `releases/latest/download/latest.json` resolve, which is the URL
 the in-app updater polls.
 
+## npm packages for module authors (published on the same tag)
+
+The same `v*` tag also runs two **npm publish** jobs (`publish-sdk`, `publish-create`)
+that push the module-author tooling, **versioned in lockstep with the app** (each job
+stamps the version from the tag):
+
+- **`@mutka-explorer/module`** — the author-facing TypeScript types (generated from
+  `src/core/sandbox` at build time, so they can't drift).
+- **`@mutka-explorer/create`** — the `npm create @mutka-explorer` scaffolder.
+
+See `packages/CLAUDE.md`. Both need the **`NPM_TOKEN`** repo secret (an npm automation
+token for the `mutka-explorer` org). Without it those jobs fail, but the macOS GitHub
+Release is unaffected. They run only on a real `v*` tag, not on a manual
+`workflow_dispatch`.
+
 ## Code signing & notarization
 
 The build is **unsigned** unless these repo secrets are set (the workflow already

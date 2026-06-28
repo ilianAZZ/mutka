@@ -41,6 +41,38 @@ to, and it won't resolve.
 
 ---
 
+## TypeScript types (optional but recommended)
+
+The fastest start is the scaffolder — it generates a typed project (a working
+`src/index.ts`, the types dependency, and a one-file `tsup` build) for you:
+
+```bash
+npm create @mutka-explorer@latest my-module
+```
+
+You can also write plain JS, or add the types to an existing project by hand. For
+full IntelliSense and type-checking on `host`, permissions, `when` clauses, and the
+declarative UI tree, install the types package and write TypeScript:
+
+```bash
+npm i -D @mutka-explorer/module
+```
+
+```ts
+import type { SandboxModuleDef } from "@mutka-explorer/module";
+
+const mod: SandboxModuleDef = { id: "you.hello", /* … */ setup(host) { /* host is typed */ } };
+export default mod;
+```
+
+It ships **types only** (no runtime code) — `import type` is erased at compile time,
+so your built file stays self-contained. The package is generated from this app's
+source and versioned in lockstep with the app, so the types always match the host
+API. Then bundle to one ESM file (e.g. `tsup src/index.ts --format esm --bundle`)
+before installing. See `packages/module-sdk/`.
+
+---
+
 ## Writing a module
 
 A module is an object with `id`, `name`, `version`, `permissions`, optional `commands` /

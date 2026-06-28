@@ -146,6 +146,12 @@ mutka/
 │   ├── com.webdav/index.js      ← virtual filesystem (WebDAV) + declarative settings UI
 │   └── com.sqlite-browser/index.js ← claims .sqlite files → tables/rows (decodes the file format in-worker, fs:read only)
 │
+├── packages/                    ← published npm tooling for MODULE AUTHORS (see packages/CLAUDE.md)
+│   ├── module-sdk/              ← @mutka-explorer/module — author-facing TS types (types only,
+│   │                             generated from src/core/sandbox; `import type` it for a typed `host`)
+│   └── create-module/           ← @mutka-explorer/create — `npm create @mutka-explorer` scaffolder
+│                                 (generates a typed TS module project that builds to one ESM file)
+│
 ├── src/                         ← React + TypeScript frontend
 │   ├── CLAUDE.md                ← frontend architecture rules
 │   ├── STYLE_GUIDE.md           ← macOS visual design rules
@@ -250,6 +256,17 @@ Inside `setup(host)` the module receives a `host` object — its ONLY way to rea
 system. Every privileged call (`host.fs.*`, `host.board.*`, `host.nav.*`, `host.tabs.*`,
 `host.dialog.*`, `host.ui.*`, `host.statusbar.*`, `host.refresh()`) is checked against the
 module's declared `permissions`.
+
+**Authoring in TypeScript (published tooling, see `packages/`).** Authors can write
+modules in typed TS against the npm package **`@mutka-explorer/module`** — it ships the
+author-facing types only (`import type { SandboxModuleDef } from "@mutka-explorer/module"`,
+erased at compile time so the built file stays import-free), generated from
+`src/core/sandbox` so they never drift. `host` methods are **precisely typed**
+(`host.fs.readDir` → `Promise<FileItem[]>`, `host.dialog.confirm` → `Promise<boolean>`,
+etc. — see `hostProxy.ts`), so no casts are needed. The scaffolder
+**`npm create @mutka-explorer`** (`@mutka-explorer/create`) generates a ready project
+(typed `src/index.ts`, a `tsup` build to one ESM file, GitHub-discovery layout). Both
+packages publish to npm on each `vX.Y.Z` release tag, versioned in lockstep with the app.
 
 The same format runs in two interchangeable runtimes, differing only in transport:
 

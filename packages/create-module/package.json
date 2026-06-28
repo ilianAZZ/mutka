@@ -1,0 +1,35 @@
+{
+  "name": "@mutka-explorer/create",
+  "version": "0.0.0",
+  "description": "Scaffold a new Mutka module — a typed TypeScript project wired to @mutka-explorer/module that builds to a single ESM file.",
+  "license": "MIT",
+  "author": "Mutka contributors",
+  "homepage": "https://github.com/ilianAZZ/mutka",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ilianAZZ/mutka.git",
+    "directory": "packages/create-module"
+  },
+  "keywords": [
+    "mutka",
+    "module",
+    "create",
+    "scaffold",
+    "file-explorer"
+  ],
+  "type": "module",
+  "bin": {
+    "create-mutka-module": "bin/cli.mjs"
+  },
+  "files": [
+    "bin",
+    "lib",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

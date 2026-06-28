@@ -20,6 +20,13 @@ passed to `setup(host)`. Built-in and community modules use the identical shape.
 Every capability a module uses must be declared in `permissions[]`, or the gateway
 denies the call.
 
+> **Community authors get published npm tooling** (see `packages/CLAUDE.md`). They can
+> scaffold a typed TS project with **`npm create @mutka-explorer`** and write against the
+> types package **`@mutka-explorer/module`** (`import type { SandboxModuleDef }` — erased
+> at compile time, so the built file stays import-free). The `host` is precisely typed
+> there (`host.fs.readDir` → `FileItem[]`, etc.). This skill covers **built-in** modules in
+> this repo; for the author experience point people at `COMMUNITY_MODULES.md`.
+
 ## Step-by-step
 
 ### 1. Choose the module ID

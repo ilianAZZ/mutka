@@ -1,5 +1,5 @@
-import type { WorkerToHost, HostSnapshot, ColumnCell, ProviderMethod, DiscoveryMethod, UINode, StatusBarItem } from "./protocol";
-import type { FileItem } from "../types";
+import type { WorkerToHost, HostSnapshot, ColumnCell, ProviderMethod, DiscoveryMethod, UINode, StatusBarItem, SandboxManifest } from "./protocol";
+import type { FileItem, AppInfo } from "../types";
 import type { SidebarItem } from "../module-registry/module-registry.types";
 import type { DiscoveryQuery, DiscoveryResult } from "../discovery/types";
 
@@ -46,99 +46,115 @@ export interface NetResponse {
   bytes: Uint8Array;
 }
 
+/** What host.board.readFiles resolves to — the pasteboard's pending file list. */
+export interface ClipboardFiles {
+  paths: string[];
+  operation: "copy" | "cut";
+}
+
+/** Whether a file's data is materialized locally or still cloud-only. */
+export type CloudStatus = "downloaded" | "cloud";
+
 export interface SandboxHostApi {
   fs: {
-    readDir(path: string): Promise<unknown>;
-    openItem(path: string): Promise<unknown>;
-    /** Read a file's raw bytes (resolves to a Uint8Array). */
-    readBytes(path: string): Promise<unknown>;
-    /** Whether a file is materialized locally or cloud-only ("downloaded" | "cloud"). */
-    cloudStatus(path: string): Promise<unknown>;
-    copyFiles(paths: string[], dest: string): Promise<unknown>;
-    moveFiles(paths: string[], dest: string): Promise<unknown>;
-    deleteItem(path: string): Promise<unknown>;
-    renameItem(from: string, to: string): Promise<unknown>;
-    createFile(path: string): Promise<unknown>;
-    createFolder(path: string): Promise<unknown>;
+    /** List a directory's entries (works for local paths and provider schemes). */
+    readDir(path: string): Promise<FileItem[]>;
+    /** Open an item with the system default handler. */
+    openItem(path: string): Promise<void>;
+    /** Read a file's raw bytes. */
+    readBytes(path: string): Promise<Uint8Array>;
+    /** Whether a file is materialized locally or cloud-only. */
+    cloudStatus(path: string): Promise<CloudStatus>;
+    copyFiles(paths: string[], dest: string): Promise<void>;
+    moveFiles(paths: string[], dest: string): Promise<void>;
+    deleteItem(path: string): Promise<void>;
+    renameItem(from: string, to: string): Promise<void>;
+    createFile(path: string): Promise<void>;
+    createFolder(path: string): Promise<void>;
   };
   board: {
-    readFiles(): Promise<unknown>;
-    writeFiles(paths: string[], operation: "copy" | "cut"): Promise<unknown>;
+    /** Read the pasteboard's pending file list, or null if it holds no files. */
+    readFiles(): Promise<ClipboardFiles | null>;
+    writeFiles(paths: string[], operation: "copy" | "cut"): Promise<void>;
   };
   nav: {
-    navigate(path: string): Promise<unknown>;
-    goBack(): Promise<unknown>;
-    goForward(): Promise<unknown>;
-    goUp(): Promise<unknown>;
+    navigate(path: string): Promise<void>;
+    goBack(): Promise<void>;
+    goForward(): Promise<void>;
+    goUp(): Promise<void>;
   };
   tabs: {
-    openTab(path: string): Promise<unknown>;
-    openTabInBackground(path: string): Promise<unknown>;
-    isActive(): Promise<unknown>;
+    openTab(path: string): Promise<void>;
+    openTabInBackground(path: string): Promise<void>;
+    /** Whether this module's runtime is bound to the active tab. */
+    isActive(): Promise<boolean>;
   };
   /** Drive view state: the current selection and the active sort. */
   selection: {
-    set(items: FileItem[]): Promise<unknown>;
+    set(items: FileItem[]): Promise<void>;
   };
   view: {
-    setSort(sort: { key: string; dir: "asc" | "desc" }): Promise<unknown>;
-    toggleSort(key: string): Promise<unknown>;
+    setSort(sort: { key: string; dir: "asc" | "desc" }): Promise<void>;
+    toggleSort(key: string): Promise<void>;
     /** Toggle whether hidden/system files (dotfiles) are shown. */
-    toggleHidden(): Promise<unknown>;
+    toggleHidden(): Promise<void>;
     /** Explicitly set whether hidden/system files are shown. */
-    setShowHidden(value: boolean): Promise<unknown>;
+    setShowHidden(value: boolean): Promise<void>;
   };
   dialog: {
-    prompt(options: { message: string; placeholder?: string; defaultValue?: string }): Promise<unknown>;
-    confirm(options: { message: string; detail?: string; destructive?: boolean }): Promise<unknown>;
+    /** Text-input dialog. Resolves with the entered string, or null if cancelled. */
+    prompt(options: { message: string; placeholder?: string; defaultValue?: string }): Promise<string | null>;
+    /** Yes/no dialog. Resolves true (confirm) or false (cancel). */
+    confirm(options: { message: string; detail?: string; destructive?: boolean }): Promise<boolean>;
     /** Show a single-choice list. Resolves with the chosen option's value, or null. */
-    choose(options: { message: string; options: { label: string; value: string; detail?: string; icon?: string }[] }): Promise<unknown>;
+    choose(options: { message: string; options: { label: string; value: string; detail?: string; icon?: string }[] }): Promise<string | null>;
     /** Open a Mutka file browser to pick one file. Resolves with its path, or null. */
-    pickFile(options?: { title?: string; initialDir?: string; fileNames?: string[] }): Promise<unknown>;
+    pickFile(options?: { title?: string; initialDir?: string; fileNames?: string[] }): Promise<string | null>;
   };
   /** The app's home directory store (distinct from the OS home, sys.homeDir). */
   home: {
     /** Read the current app home directory. */
-    get(): Promise<unknown>;
+    get(): Promise<string>;
     /** Set the app home directory (any module may override it). */
-    set(path: string): Promise<unknown>;
+    set(path: string): Promise<void>;
   };
   /** Toggle the settings overlay open/closed. */
   settings: {
-    toggle(): Promise<unknown>;
+    toggle(): Promise<void>;
   };
   /** Render declarative UI (a serializable UINode tree). Gated by `ui`. */
   ui: {
     /** Render/replace the UINode shown in a named surface (panel/settings/popover). */
-    render(surfaceId: string, node: UINode): Promise<unknown>;
+    render(surfaceId: string, node: UINode): Promise<void>;
     /** Clear a surface so it renders empty. */
-    clear(surfaceId: string): Promise<unknown>;
+    clear(surfaceId: string): Promise<void>;
     /** Open a modal with `node`, or pass null to close the current one. */
-    modal(node: UINode | null): Promise<unknown>;
+    modal(node: UINode | null): Promise<void>;
   };
   /** Bottom status-bar items (e.g. a git widget). Gated by `ui`. */
   statusbar: {
     /** Add or replace one status-bar item (keyed by its id). */
-    set(item: StatusBarItem): Promise<unknown>;
+    set(item: StatusBarItem): Promise<void>;
     /** Remove a status-bar item by id. */
-    remove(itemId: string): Promise<unknown>;
+    remove(itemId: string): Promise<void>;
   };
   sys: {
-    homeDir(): Promise<unknown>;
-    /** The last visited local directory (for restoring navigation at launch). */
-    lastDir(): Promise<unknown>;
+    /** The OS home directory. */
+    homeDir(): Promise<string>;
+    /** The last visited local directory, or null on first run. */
+    lastDir(): Promise<string | null>;
     /** Write bytes to a temp file and return its path (Uint8Array, or a base64
      * string for a Finder-dropped file). Gated by `fs:temp`. */
-    writeTempFile(filename: string, data: string | Uint8Array): Promise<unknown>;
-    quickLook(path: string): Promise<unknown>;
+    writeTempFile(filename: string, data: string | Uint8Array): Promise<string>;
+    quickLook(path: string): Promise<void>;
     /** Refresh an already-open Quick Look panel to preview `path` (else no-op). */
-    previewUpdate(path: string): Promise<unknown>;
+    previewUpdate(path: string): Promise<void>;
     /** Apps that can open a file (Launch Services), default flagged + first. */
-    appsForFile(path: string): Promise<unknown>;
+    appsForFile(path: string): Promise<AppInfo[]>;
     /** Open a file with a specific application bundle path. */
-    openWith(path: string, appPath: string): Promise<unknown>;
+    openWith(path: string, appPath: string): Promise<void>;
     /** Start a native OS file drag of `paths`, previewed by `icon` (data-URI/path). */
-    startDrag(paths: string[], icon?: string): Promise<unknown>;
+    startDrag(paths: string[], icon?: string): Promise<void>;
   };
   /**
    * Host-proxied HTTP (avoids CORS, gated by `network:public` / `network:local`). One role:
@@ -147,31 +163,33 @@ export interface SandboxHostApi {
    * save a response, write `bytes` via fs.* / sys.writeTempFile.
    */
   net: {
-    request(options: NetRequestOptions): Promise<unknown>;
+    request(options: NetRequestOptions): Promise<NetResponse>;
   };
   /** Module tooling (gated by the `discovery` permission). */
   modules: {
     /** Validate an ESM source in a throwaway worker and return its manifest. */
-    probe(source: string): Promise<unknown>;
+    probe(source: string): Promise<SandboxManifest>;
     /** Propose a module source for install — opens the permission-review dialog so
      *  the user approves before anything is written. */
-    install(source: string): Promise<unknown>;
+    install(source: string): Promise<void>;
   };
   /** Per-module persisted config (gated by the `storage` permission). */
   config: {
-    get(key: string): Promise<unknown>;
-    set(key: string, value: string): Promise<unknown>;
+    /** Read a stored value, or null if the key was never set. */
+    get(key: string): Promise<string | null>;
+    set(key: string, value: string): Promise<void>;
   };
   /** Per-module credentials in the macOS Keychain (gated by `secrets`). */
   secrets: {
-    get(key: string): Promise<unknown>;
-    set(key: string, value: string): Promise<unknown>;
-    delete(key: string): Promise<unknown>;
+    /** Read a stored credential, or null if absent. */
+    get(key: string): Promise<string | null>;
+    set(key: string, value: string): Promise<void>;
+    delete(key: string): Promise<void>;
   };
   /** Re-read the current directory after a mutation. */
-  refresh(): Promise<unknown>;
+  refresh(): Promise<void>;
   /** Run an item through the open-resolution pipeline (keyboard double-click). */
-  activate(item: FileItem): Promise<unknown>;
+  activate(item: FileItem): Promise<void>;
   /** Register the function that runs when one of this module's commands fires. */
   onCommand(commandId: string, handler: CommandHandler): void;
   /** Register the function that runs when an item matches one of this module's open handlers. */
@@ -223,93 +241,98 @@ interface Transport {
 
 export function createHostProxy(t: Transport): SandboxHostApi {
   const { callHost } = t;
+  // The wire result is always `unknown` (it crossed postMessage / the gateway);
+  // `call<T>` asserts the concrete shape each capability is documented to return,
+  // so the SandboxHostApi above gives authors precise types without ad-hoc casts.
+  const call = <T>(cap: string, method: string, args: unknown[]): Promise<T> =>
+    callHost(cap, method, args) as Promise<T>;
   return {
     fs: {
-      readDir:      (path) => callHost("fs", "readDir", [path]),
-      openItem:     (path) => callHost("fs", "openItem", [path]),
-      readBytes:    (path) => callHost("fs", "readBytes", [path]),
-      cloudStatus:  (path) => callHost("fs", "cloudStatus", [path]),
-      copyFiles:    (paths, dest) => callHost("fs", "copyFiles", [paths, dest]),
-      moveFiles:    (paths, dest) => callHost("fs", "moveFiles", [paths, dest]),
-      deleteItem:   (path) => callHost("fs", "deleteItem", [path]),
-      renameItem:   (from, to) => callHost("fs", "renameItem", [from, to]),
-      createFile:   (path) => callHost("fs", "createFile", [path]),
-      createFolder: (path) => callHost("fs", "createFolder", [path]),
+      readDir:      (path) => call<FileItem[]>("fs", "readDir", [path]),
+      openItem:     (path) => call<void>("fs", "openItem", [path]),
+      readBytes:    (path) => call<Uint8Array>("fs", "readBytes", [path]),
+      cloudStatus:  (path) => call<CloudStatus>("fs", "cloudStatus", [path]),
+      copyFiles:    (paths, dest) => call<void>("fs", "copyFiles", [paths, dest]),
+      moveFiles:    (paths, dest) => call<void>("fs", "moveFiles", [paths, dest]),
+      deleteItem:   (path) => call<void>("fs", "deleteItem", [path]),
+      renameItem:   (from, to) => call<void>("fs", "renameItem", [from, to]),
+      createFile:   (path) => call<void>("fs", "createFile", [path]),
+      createFolder: (path) => call<void>("fs", "createFolder", [path]),
     },
     board: {
-      readFiles:  () => callHost("board", "readFiles", []),
-      writeFiles: (paths, operation) => callHost("board", "writeFiles", [paths, operation]),
+      readFiles:  () => call<ClipboardFiles | null>("board", "readFiles", []),
+      writeFiles: (paths, operation) => call<void>("board", "writeFiles", [paths, operation]),
     },
     nav: {
-      navigate:  (path) => callHost("nav", "navigate", [path]),
-      goBack:    () => callHost("nav", "goBack", []),
-      goForward: () => callHost("nav", "goForward", []),
-      goUp:      () => callHost("nav", "goUp", []),
+      navigate:  (path) => call<void>("nav", "navigate", [path]),
+      goBack:    () => call<void>("nav", "goBack", []),
+      goForward: () => call<void>("nav", "goForward", []),
+      goUp:      () => call<void>("nav", "goUp", []),
     },
     tabs: {
-      openTab:             (path) => callHost("tabs", "openTab", [path]),
-      openTabInBackground: (path) => callHost("tabs", "openTabInBackground", [path]),
-      isActive:            () => callHost("tabs", "isActive", []),
+      openTab:             (path) => call<void>("tabs", "openTab", [path]),
+      openTabInBackground: (path) => call<void>("tabs", "openTabInBackground", [path]),
+      isActive:            () => call<boolean>("tabs", "isActive", []),
     },
     selection: {
-      set: (items) => callHost("selection", "set", [items]),
+      set: (items) => call<void>("selection", "set", [items]),
     },
     view: {
-      setSort:       (sort) => callHost("view", "setSort", [sort]),
-      toggleSort:    (key) => callHost("view", "toggleSort", [key]),
-      toggleHidden:  () => callHost("view", "toggleHidden", []),
-      setShowHidden: (value) => callHost("view", "setShowHidden", [value]),
+      setSort:       (sort) => call<void>("view", "setSort", [sort]),
+      toggleSort:    (key) => call<void>("view", "toggleSort", [key]),
+      toggleHidden:  () => call<void>("view", "toggleHidden", []),
+      setShowHidden: (value) => call<void>("view", "setShowHidden", [value]),
     },
     dialog: {
-      prompt:  (options) => callHost("dialog", "prompt", [options]),
-      confirm: (options) => callHost("dialog", "confirm", [options]),
-      choose:  (options) => callHost("dialog", "choose", [options]),
-      pickFile: (options) => callHost("dialog", "pickFile", [options]),
+      prompt:  (options) => call<string | null>("dialog", "prompt", [options]),
+      confirm: (options) => call<boolean>("dialog", "confirm", [options]),
+      choose:  (options) => call<string | null>("dialog", "choose", [options]),
+      pickFile: (options) => call<string | null>("dialog", "pickFile", [options]),
     },
     home: {
-      get: () => callHost("home", "get", []),
-      set: (path) => callHost("home", "set", [path]),
+      get: () => call<string>("home", "get", []),
+      set: (path) => call<void>("home", "set", [path]),
     },
     settings: {
-      toggle: () => callHost("settings", "toggle", []),
+      toggle: () => call<void>("settings", "toggle", []),
     },
     ui: {
-      render: (surfaceId, node) => callHost("ui", "render", [surfaceId, node]),
-      clear:  (surfaceId) => callHost("ui", "clear", [surfaceId]),
-      modal:  (node) => callHost("ui", "modal", [node]),
+      render: (surfaceId, node) => call<void>("ui", "render", [surfaceId, node]),
+      clear:  (surfaceId) => call<void>("ui", "clear", [surfaceId]),
+      modal:  (node) => call<void>("ui", "modal", [node]),
     },
     statusbar: {
-      set:    (item) => callHost("statusbar", "set", [item]),
-      remove: (itemId) => callHost("statusbar", "remove", [itemId]),
+      set:    (item) => call<void>("statusbar", "set", [item]),
+      remove: (itemId) => call<void>("statusbar", "remove", [itemId]),
     },
     sys: {
-      homeDir: () => callHost("sys", "homeDir", []),
-      lastDir: () => callHost("sys", "lastDir", []),
-      writeTempFile: (filename, data) => callHost("sys", "writeTempFile", [filename, data]),
-      quickLook: (path) => callHost("sys", "quickLook", [path]),
-      previewUpdate: (path) => callHost("sys", "previewUpdate", [path]),
-      appsForFile: (path) => callHost("sys", "appsForFile", [path]),
-      openWith: (path, appPath) => callHost("sys", "openWith", [path, appPath]),
-      startDrag: (paths, icon) => callHost("sys", "startDrag", [paths, icon]),
+      homeDir: () => call<string>("sys", "homeDir", []),
+      lastDir: () => call<string | null>("sys", "lastDir", []),
+      writeTempFile: (filename, data) => call<string>("sys", "writeTempFile", [filename, data]),
+      quickLook: (path) => call<void>("sys", "quickLook", [path]),
+      previewUpdate: (path) => call<void>("sys", "previewUpdate", [path]),
+      appsForFile: (path) => call<AppInfo[]>("sys", "appsForFile", [path]),
+      openWith: (path, appPath) => call<void>("sys", "openWith", [path, appPath]),
+      startDrag: (paths, icon) => call<void>("sys", "startDrag", [paths, icon]),
     },
     net: {
-      request: (options) => callHost("net", "request", [options]),
+      request: (options) => call<NetResponse>("net", "request", [options]),
     },
     modules: {
-      probe: (source) => callHost("modules", "probe", [source]),
-      install: (source) => callHost("modules", "install", [source]),
+      probe: (source) => call<SandboxManifest>("modules", "probe", [source]),
+      install: (source) => call<void>("modules", "install", [source]),
     },
     config: {
-      get: (key) => callHost("config", "get", [key]),
-      set: (key, value) => callHost("config", "set", [key, value]),
+      get: (key) => call<string | null>("config", "get", [key]),
+      set: (key, value) => call<void>("config", "set", [key, value]),
     },
     secrets: {
-      get: (key) => callHost("secrets", "get", [key]),
-      set: (key, value) => callHost("secrets", "set", [key, value]),
-      delete: (key) => callHost("secrets", "delete", [key]),
+      get: (key) => call<string | null>("secrets", "get", [key]),
+      set: (key, value) => call<void>("secrets", "set", [key, value]),
+      delete: (key) => call<void>("secrets", "delete", [key]),
     },
-    refresh: () => callHost("app", "refresh", []),
-    activate: (item) => callHost("app", "activate", [item]),
+    refresh: () => call<void>("app", "refresh", []),
+    activate: (item) => call<void>("app", "activate", [item]),
     onCommand: (commandId, handler) => t.registerCommand(commandId, handler),
     onOpen: (handlerId, handler) => t.registerOpen(handlerId, handler),
     onColumn: (columnId, provider) => t.registerColumn(columnId, provider),

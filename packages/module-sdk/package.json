@@ -1,0 +1,42 @@
+{
+  "name": "@mutka-explorer/module",
+  "version": "0.2.0",
+  "description": "TypeScript types for authoring Mutka modules — the SandboxModuleDef shape plus the full host API. Types only, no runtime code.",
+  "license": "MIT",
+  "author": "Mutka contributors",
+  "homepage": "https://github.com/ilianAZZ/mutka",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ilianAZZ/mutka.git",
+    "directory": "packages/module-sdk"
+  },
+  "keywords": [
+    "mutka",
+    "module",
+    "types",
+    "sdk",
+    "file-explorer"
+  ],
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts"
+    }
+  },
+  "files": [
+    "index.d.ts",
+    "README.md"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "node build.mjs",
+    "prepublishOnly": "node build.mjs"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.1",
+    "dts-bundle-generator": "^9.5.1",
+    "typescript": "^5.5.3"
+  }
+}

@@ -1,0 +1,4 @@
+node_modules/
+package-lock.json
+# Generated at build time (CI regenerates from source before publishing).
+index.d.ts
