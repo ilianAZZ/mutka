@@ -1,4 +1,4 @@
-import type { ModulePermission } from "../module-registry/module-registry.types";
+import type { ModulePermission } from "../module-registry/public-types";
 import type { SandboxManifest } from "../sandbox/protocol";
 
 // =============================================================================

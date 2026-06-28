@@ -1,5 +1,5 @@
 import type { SandboxCommand, SandboxOpenHandler, FileIconContribution, ColumnContribution, PanelContribution, SettingsSectionContribution, ModuleAuthor, DiscoverySourceDecl, ModuleManagerButton } from "./protocol";
-import type { ModulePermission, SidebarItem } from "../module-registry/module-registry.types";
+import type { ModulePermission, SidebarItem } from "../module-registry/public-types";
 import type { SandboxHostApi } from "./hostProxy";
 
 // Author-facing helper for writing a module. It only adds types — at runtime it

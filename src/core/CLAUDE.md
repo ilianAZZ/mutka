@@ -48,7 +48,11 @@ through it).
 Types that belong to a single subsystem live next to their owner:
 
 - `MutkaModule`, `MutkaAction`, `MutkaOpenHandler`, `MutkaSidebarPanel`,
-  `ModulePermission`, `ContextMenuCategories` → `module-registry/module-registry.types.ts`
+  `ContextMenuCategories` → `module-registry/module-registry.types.ts`
+- `ModulePermission`, `SidebarItem`, `SidebarItemGroup`, `SidebarCategories` →
+  `module-registry/public-types.ts` — the framework-free, author-facing subset (no
+  `react` import), re-exported by `module-registry.types.ts`. Kept apart so the
+  author-facing SDK (`@mutka-explorer/module`) generates without pulling in React.
 - `ThemePreference` → `theme-manager/theme-manager.types.ts`
 - `TabBarTab`, `TabsSnapshot` → `tab-manager/tab-manager.types.ts`
 
