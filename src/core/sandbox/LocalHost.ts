@@ -54,6 +54,7 @@ export class LocalHost {
       panels: def.panels ?? [],
       settingsSections: def.settingsSections ?? [],
       discoverySources: def.discoverySources ?? [],
+      moduleManagerButtons: def.moduleManagerButtons ?? [],
     };
   }
 

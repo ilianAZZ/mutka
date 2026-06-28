@@ -1,0 +1,111 @@
+.filepicker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, black 32%, transparent);
+}
+
+.filepicker {
+  width: 520px;
+  max-width: 90vw;
+  max-height: 78vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--panel-bg, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg, 12px);
+  box-shadow: 0 24px 60px color-mix(in srgb, black 40%, transparent);
+  overflow: hidden;
+}
+
+.filepicker-header {
+  padding: 14px 16px 10px;
+  font-weight: 600;
+  font-size: 14px;
+  color: var(--text);
+}
+
+.filepicker-path {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px 10px;
+}
+
+.filepicker-up {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--r-sm, 6px);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+.filepicker-up:disabled { opacity: 0.4; cursor: default; }
+
+.filepicker-dir {
+  flex: 1 1 auto;
+  font-size: 12px;
+  color: var(--text-secondary, var(--text));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  direction: rtl; /* keep the tail (filename) visible when truncating */
+  text-align: left;
+}
+
+.filepicker-list {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  min-height: 180px;
+}
+
+.filepicker-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 14px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+.filepicker-row:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+.filepicker-row--selected { background: var(--accent-sel, color-mix(in srgb, var(--accent) 22%, transparent)); }
+.filepicker-row--disabled { color: var(--text-tertiary, color-mix(in srgb, var(--text) 45%, transparent)); cursor: default; }
+.filepicker-row--disabled:hover { background: transparent; }
+
+.filepicker-row-icon { flex: 0 0 auto; }
+.filepicker-row-name { flex: 1 1 auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.filepicker-empty,
+.filepicker-error {
+  padding: 18px 14px;
+  font-size: 12px;
+  color: var(--text-secondary, var(--text));
+}
+.filepicker-error { color: color-mix(in srgb, crimson 70%, var(--text)); }
+
+.filepicker-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px;
+}
+
+.filepicker-cancel,
+.filepicker-select {
+  padding: 6px 14px;
+  border-radius: var(--r-sm, 6px);
+  border: 1px solid var(--border);
+  font-size: 13px;
+  cursor: pointer;
+}
+.filepicker-cancel { background: var(--bg); color: var(--text); }
+.filepicker-select { background: var(--accent); color: var(--accent-text, white); border-color: transparent; }
+.filepicker-select:disabled { opacity: 0.45; cursor: default; }

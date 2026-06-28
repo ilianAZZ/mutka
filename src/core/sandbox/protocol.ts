@@ -298,6 +298,17 @@ export interface SandboxManifest {
   settingsSections: SettingsSectionContribution[];
   /** Module-discovery sources this module contributes (served over host RPC). */
   discoverySources: DiscoverySourceDecl[];
+  /** Buttons this module adds to the Modules overlay (Browse tab). */
+  moduleManagerButtons: ModuleManagerButton[];
+}
+
+/** A button a module contributes to the Modules overlay. Clicking it runs the
+ *  module's host.onUIEvent(id, …) handler (no payload). */
+export interface ModuleManagerButton {
+  id: string;
+  label: string;
+  /** Optional icon key from the icon registry (unknown keys render as nothing). */
+  icon?: string;
 }
 
 /** A discovery source a module declares (and serves via host.onDiscover/onFetchSource). */

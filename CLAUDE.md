@@ -301,6 +301,7 @@ The same format runs in two interchangeable runtimes, differing only in transpor
 | `nav.navigate`/`goBack`/`goForward`/`goUp`                                       | `navigation`        | AppBridge                                           |
 | `tabs.openTab`/`openTabInBackground`/`isActive`                                  | `navigation`        | TabManager                                          |
 | `dialog.prompt`/`confirm`/`choose`                                               | `dialog`            | AppBridge                                           |
+| `dialog.pickFile`                                                                | `dialog`            | AppBridge → Mutka file-picker modal (returns a path) |
 | `net.request`                                                                    | `network:public` **or** `network:local` | Rust `http_request` (host-proxied HTTP; URL tier-checked) |
 | `app.refresh`                                                                    | `fs:read`           | AppBridge                                           |
 | `app.activate`                                                                   | `navigation`        | `ModuleRegistry.resolveOpen` (run an item's open handlers) |
@@ -313,6 +314,7 @@ The same format runs in two interchangeable runtimes, differing only in transpor
 | `sys.lastDir`                                                                    | `fs:read`           | localStorage (last visited dir, for launch restore) |
 | `sys.writeTempFile`                                                              | `fs:temp`           | Rust `write_temp_file` (lower-risk than `fs:write`) |
 | `modules.probe`                                                                  | `discovery`         | `probeManifest` (validate a source → manifest, for discovery sources) |
+| `modules.install`                                                                | `discovery`         | `ModulesStore.requestInstall` → install-review dialog (user consent) |
 | `config.get`/`set`                                                               | `storage`           | localStorage, namespaced `mutka.modcfg.<id>.<key>`  |
 | `secrets.get`/`set`/`delete`                                                     | `secrets`           | Rust Keychain, namespaced `mutka.<id>`              |
 | `selection.set`                                                                  | `view`              | SelectionStore                                      |

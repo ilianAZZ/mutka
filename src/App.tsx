@@ -34,6 +34,7 @@ import { Toolbar } from "./components/Toolbar/Toolbar";
 import type { SidebarPanelProps } from "./core/module-registry/module-registry.types";
 import { ContextMenu } from "./components/ContextMenu/ContextMenu";
 import { Dialog } from "./components/Dialog/Dialog";
+import { FilePickerModal } from "./components/FilePicker/FilePickerModal";
 import { SettingsPanel } from "./components/SettingsPanel/SettingsPanel";
 import { ModulesPanel } from "./components/ModulesPanel/ModulesPanel";
 import { StatusBar } from "./components/StatusBar/StatusBar";
@@ -69,7 +70,7 @@ export function App() {
   const { currentDir, canGoBack, canGoForward, navigateTo, goBack, goForward, goUp } = useNavigation();
   const { refresh, loadError } = useDirectoryListing(currentDir);
   const { rightPanels, sidebarItemGroups } = useSidebarContributions();
-  const { dialogAPI, dialogState, closeDialog } = useDialog();
+  const { dialogAPI, dialogState, closeDialog, pickerState } = useDialog();
   const flashedBtn = useToolbarFlash();
   const activeModal = useActiveModal();
 
@@ -237,6 +238,14 @@ export function App() {
       {showModules && <ModulesPanel onClose={() => ModulesStore.setOpen(false)} />}
 
       {dialogState && <Dialog state={dialogState} onClose={closeDialog} />}
+
+      {pickerState && (
+        <FilePickerModal
+          options={pickerState.options}
+          initialDir={pickerState.options.initialDir ?? currentDir}
+          onPick={pickerState.resolve}
+        />
+      )}
 
       {activeModal && <DeclarativeModal moduleId={activeModal.moduleId} node={activeModal.node} />}
     </div>

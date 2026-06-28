@@ -1,4 +1,4 @@
-import type { SandboxCommand, SandboxOpenHandler, FileIconContribution, ColumnContribution, PanelContribution, SettingsSectionContribution, ModuleAuthor, DiscoverySourceDecl } from "./protocol";
+import type { SandboxCommand, SandboxOpenHandler, FileIconContribution, ColumnContribution, PanelContribution, SettingsSectionContribution, ModuleAuthor, DiscoverySourceDecl, ModuleManagerButton } from "./protocol";
 import type { ModulePermission, SidebarItem } from "../module-registry/module-registry.types";
 import type { SandboxHostApi } from "./hostProxy";
 
@@ -76,6 +76,12 @@ export interface SandboxModuleDef {
    * the `discovery` permission (plus whatever the fetch needs, e.g. `network:public`).
    */
   discoverySources?: DiscoverySourceDecl[];
+  /**
+   * Buttons to add to the Modules overlay (Browse tab). Declare `{ id, label, icon? }`
+   * and register the click handler with `host.onUIEvent(id, …)`. Lets a module
+   * surface an action there (e.g. an "Import local file" installer button).
+   */
+  moduleManagerButtons?: ModuleManagerButton[];
   /**
    * Runs once after load. Register command/open handlers and event subscriptions
    * here. Reaches the system only through `host.*` (each gated by permissions).

@@ -151,6 +151,7 @@ export function createCapabilityTable(): CapabilityTable {
       prompt:  { permission: "dialog", run: ([opts]) => AppBridge.dialog.prompt(opts as Parameters<typeof AppBridge.dialog.prompt>[0]) },
       confirm: { permission: "dialog", run: ([opts]) => AppBridge.dialog.confirm(opts as Parameters<typeof AppBridge.dialog.confirm>[0]) },
       choose:  { permission: "dialog", run: ([opts]) => AppBridge.dialog.choose(opts as Parameters<typeof AppBridge.dialog.choose>[0]) },
+      pickFile:{ permission: "dialog", run: ([opts]) => AppBridge.dialog.pickFile(opts as Parameters<typeof AppBridge.dialog.pickFile>[0]) },
     },
     net: {
       // One role per command: a network request sends/receives bytes, it never

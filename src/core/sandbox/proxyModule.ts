@@ -75,6 +75,7 @@ export function registerProxyModule(manifest: SandboxManifest, runtime: ProxyRun
   // renders into the matching UIStore surface. Tag each with its owning module.
   const declarativePanels = manifest.panels.map((p) => ({ ...p, moduleId: manifest.id }));
   const settingsSections = manifest.settingsSections.map((s) => ({ ...s, moduleId: manifest.id }));
+  const moduleManagerButtons = manifest.moduleManagerButtons.map((b) => ({ ...b, moduleId: manifest.id }));
 
   ModuleRegistry.register({
     id: manifest.id,
@@ -87,6 +88,7 @@ export function registerProxyModule(manifest: SandboxManifest, runtime: ProxyRun
     sidebarItems: manifest.sidebarItems,
     declarativePanels,
     settingsSections,
+    moduleManagerButtons,
     runUIEvent: (handlerId, value) => runtime.runUIEvent(handlerId, value),
     onUnmount: () => {
       FileIconRegistry.unregister(manifest.id);

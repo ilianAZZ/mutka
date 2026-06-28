@@ -93,6 +93,8 @@ export interface SandboxHostApi {
     confirm(options: { message: string; detail?: string; destructive?: boolean }): Promise<unknown>;
     /** Show a single-choice list. Resolves with the chosen option's value, or null. */
     choose(options: { message: string; options: { label: string; value: string; detail?: string; icon?: string }[] }): Promise<unknown>;
+    /** Open a Mutka file browser to pick one file. Resolves with its path, or null. */
+    pickFile(options?: { title?: string; initialDir?: string; fileNames?: string[] }): Promise<unknown>;
   };
   /** The app's home directory store (distinct from the OS home, sys.homeDir). */
   home: {
@@ -262,6 +264,7 @@ export function createHostProxy(t: Transport): SandboxHostApi {
       prompt:  (options) => callHost("dialog", "prompt", [options]),
       confirm: (options) => callHost("dialog", "confirm", [options]),
       choose:  (options) => callHost("dialog", "choose", [options]),
+      pickFile: (options) => callHost("dialog", "pickFile", [options]),
     },
     home: {
       get: () => callHost("home", "get", []),

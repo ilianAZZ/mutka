@@ -17,8 +17,8 @@ export default defineModule({
   id: "core.local-installer",
   name: "Local Installer",
   version: "1.0.0",
-  description: "Install a module from a local index.js (right-click → Install as Mutka module).",
-  permissions: ["fs:read", "discovery"],
+  description: "Install a module from a local index.js — right-click a file, or the Browse-tab button.",
+  permissions: ["fs:read", "discovery", "dialog"],
   commands: [
     {
       id: "core.local-installer.install",
@@ -30,13 +30,29 @@ export default defineModule({
       when: { selection: "singleFile", fileNames: ["index.js"] },
     },
   ],
+  // A button in the Modules overlay (Browse tab) → opens the Mutka file picker.
+  moduleManagerButtons: [
+    { id: "core.local-installer.import", label: "Import local file", icon: "download" },
+  ],
   setup(host) {
+    // Read a local index.js (fs:read) and hand it to the install flow (discovery),
+    // which opens the permission-review dialog before anything is written.
+    const installFromPath = async (path: string): Promise<void> => {
+      const bytes = (await host.fs.readBytes(path)) as Uint8Array;
+      await host.modules.install(new TextDecoder().decode(bytes));
+    };
+
     host.onCommand("core.local-installer.install", async (snapshot) => {
       const item = (snapshot as { selectedItems: SelectedFile[] }).selectedItems[0];
-      if (!item || item.isDir) return;
-      const bytes = (await host.fs.readBytes(item.path)) as Uint8Array;
-      const source = new TextDecoder().decode(bytes);
-      await host.modules.install(source); // → permission-review dialog → install
+      if (item && !item.isDir) await installFromPath(item.path);
+    });
+
+    host.onUIEvent("core.local-installer.import", async () => {
+      const path = (await host.dialog.pickFile({
+        title: "Select a module's index.js",
+        fileNames: ["index.js"],
+      })) as string | null;
+      if (path) await installFromPath(path);
     });
   },
 });

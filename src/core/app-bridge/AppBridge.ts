@@ -25,6 +25,7 @@ const emptyDialog: DialogAPI = {
   prompt: () => Promise.resolve(null),
   confirm: () => Promise.resolve(false),
   choose: () => Promise.resolve(null),
+  pickFile: () => Promise.resolve(null),
 };
 
 class AppBridgeClass {

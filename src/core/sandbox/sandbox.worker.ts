@@ -151,6 +151,7 @@ interface RawModule {
   panels?: SandboxManifest["panels"];
   settingsSections?: SandboxManifest["settingsSections"];
   discoverySources?: SandboxManifest["discoverySources"];
+  moduleManagerButtons?: SandboxManifest["moduleManagerButtons"];
   setup?: (host: ReturnType<typeof createHostProxy>) => void | Promise<void>;
 }
 
@@ -183,6 +184,7 @@ async function loadModule(source: string): Promise<void> {
       panels: def.panels ?? [],
       settingsSections: def.settingsSections ?? [],
       discoverySources: def.discoverySources ?? [],
+      moduleManagerButtons: def.moduleManagerButtons ?? [],
     };
     // Report BEFORE setup runs, so the host knows this module's permissions
     // before any host-call can be served.

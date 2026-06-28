@@ -39,6 +39,7 @@ function minimalManifest(id: string): SandboxManifest {
     panels: [],
     settingsSections: [],
     discoverySources: [],
+    moduleManagerButtons: [],
   };
 }
 

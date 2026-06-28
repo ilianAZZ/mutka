@@ -109,6 +109,16 @@ export interface DialogChooseOptions {
   options: DialogChooseOption[];
 }
 
+/** Options for a Mutka file picker (a modal file browser). */
+export interface DialogPickFileOptions {
+  /** Title shown on the picker. */
+  title?: string;
+  /** Directory to open at. Defaults to the current directory. */
+  initialDir?: string;
+  /** If set, only files whose name is one of these are selectable (e.g. ["index.js"]). */
+  fileNames?: string[];
+}
+
 export interface DialogAPI {
   /** Show a text-input dialog. Resolves with the entered string or null if cancelled. */
   prompt(options: DialogPromptOptions): Promise<string | null>;
@@ -116,6 +126,8 @@ export interface DialogAPI {
   confirm(options: DialogConfirmOptions): Promise<boolean>;
   /** Show a single-choice list. Resolves with the chosen option's value, or null if cancelled. */
   choose(options: DialogChooseOptions): Promise<string | null>;
+  /** Open a Mutka file browser to pick one file. Resolves with its path, or null if cancelled. */
+  pickFile(options?: DialogPickFileOptions): Promise<string | null>;
 }
 
 /** An application able to open a file — returned by the `sys.appsForFile` capability. */

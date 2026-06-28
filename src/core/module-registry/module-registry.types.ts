@@ -216,6 +216,15 @@ export interface SettingsSectionContribution {
   title: string;
 }
 
+/** A button a module adds to the Modules overlay (Browse tab). Click → the owning
+ *  module's onUIEvent handler. Mirrors protocol.ModuleManagerButton + moduleId. */
+export interface ModuleManagerButtonContribution {
+  moduleId: string;
+  id: string;
+  label: string;
+  icon?: string;
+}
+
 // ─── Module contract (built by proxyModule.ts from a defineModule) ────────────
 
 export interface MutkaModule {
@@ -241,6 +250,8 @@ export interface MutkaModule {
   declarativePanels?: DeclarativePanelContribution[];
   /** Declarative settings sections filled from a UINode tree (sandbox-friendly). */
   settingsSections?: SettingsSectionContribution[];
+  /** Buttons this module adds to the Modules overlay (Browse tab). */
+  moduleManagerButtons?: ModuleManagerButtonContribution[];
   /** Dispatch a UI-event (button/list/form interaction) into this module's runtime. */
   runUIEvent?: (handlerId: string, value: unknown) => void;
   /** Called once after registration. Return unsub fn(s) to run on unregister. */

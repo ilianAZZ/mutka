@@ -5,8 +5,10 @@ import { probeManifest } from "../../module-manager/probeManifest";
 import type { ModuleListing, ResolvedModule } from "../../module-manager/types";
 import type { SandboxManifest } from "../../core/sandbox/protocol";
 import { ModulesStore } from "../../core/stores/ModulesStore";
+import { ModuleRegistry } from "../../core/module-registry/ModuleRegistry";
 import { EventBus } from "../../core/event-bus/EventBus";
 import { Events } from "../../core/event-bus/events";
+import { ICON_REGISTRY } from "../ContextMenu/icon-registry";
 import { useModules } from "../../hooks/useModules";
 import { InstalledList } from "./InstalledList";
 import { BrowseCatalog } from "./BrowseCatalog";
@@ -53,6 +55,16 @@ export function ModulesPanel({ onClose }: ModulesPanelProps) {
   const [reviewError, setReviewError] = useState<string | null>(null);
 
   const installedIds = useMemo(() => new Set(modules.map((m) => m.id)), [modules]);
+
+  // Buttons modules contribute to this overlay (e.g. "Import local file"). Refresh
+  // when modules register/unregister.
+  const [mmButtons, setMmButtons] = useState(() => ModuleRegistry.getModuleManagerButtons());
+  useEffect(() => {
+    const refresh = () => setMmButtons(ModuleRegistry.getModuleManagerButtons());
+    const u1 = EventBus.on(Events.Module.registered, refresh);
+    const u2 = EventBus.on(Events.Module.unregistered, refresh);
+    return () => { u1(); u2(); };
+  }, []);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -172,11 +184,30 @@ export function ModulesPanel({ onClose }: ModulesPanelProps) {
               onDelete={handleDelete}
             />
           ) : (
-            <BrowseCatalog
-              installedIds={installedIds}
-              busyRef={busyRef}
-              onInstall={handleInstallClick}
-            />
+            <>
+              {mmButtons.length > 0 && (
+                <div className="modules-mm-buttons">
+                  {mmButtons.map((b) => {
+                    const Icon = b.icon ? ICON_REGISTRY[b.icon] : undefined;
+                    return (
+                      <button
+                        key={`${b.moduleId}:${b.id}`}
+                        className="modules-mm-button"
+                        onClick={() => ModuleRegistry.dispatchUIEvent(b.moduleId, b.id, null)}
+                      >
+                        {Icon && <Icon size={14} strokeWidth={1.8} />}
+                        {b.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+              <BrowseCatalog
+                installedIds={installedIds}
+                busyRef={busyRef}
+                onInstall={handleInstallClick}
+              />
+            </>
           )}
         </div>
       </div>

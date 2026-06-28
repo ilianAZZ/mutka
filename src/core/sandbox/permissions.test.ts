@@ -32,6 +32,7 @@ function manifest(permissions: ModulePermission[], id = "test.module"): SandboxM
     panels: [],
     settingsSections: [],
     discoverySources: [],
+    moduleManagerButtons: [],
   };
 }
 
@@ -102,6 +103,21 @@ describe("network permissions", () => {
       { url: "https://example.com" },
     ]);
     expect(lastHttpReq()).toMatchObject({ allowPublic: true, allowLocal: true });
+  });
+});
+
+// ─── dialog.pickFile is gated by the dialog permission ───────────────────────
+describe("dialog.pickFile permission", () => {
+  it("denies dialog.pickFile without the dialog permission", async () => {
+    await expect(
+      dispatchCapability(manifest([]), "dialog", "pickFile", [{ fileNames: ["index.js"] }])
+    ).rejects.toThrow(/Permission denied/);
+  });
+
+  it("allows it with the dialog permission (resolves via the AppBridge stub)", async () => {
+    // No App connected in the test → AppBridge's empty provider resolves null.
+    const result = await dispatchCapability(manifest(["dialog"]), "dialog", "pickFile", [{}]);
+    expect(result).toBeNull();
   });
 });
 

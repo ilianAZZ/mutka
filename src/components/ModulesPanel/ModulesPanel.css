@@ -109,6 +109,28 @@
   padding: 14px;
 }
 
+/* Module-contributed buttons at the top of the Browse tab (extension point). */
+.modules-mm-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.modules-mm-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  font-size: 13px;
+  border-radius: var(--r-md, 8px);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  cursor: pointer;
+}
+.modules-mm-button:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+
 .modules-empty,
 .browse-status {
   color: var(--text-subtle);

@@ -5,6 +5,7 @@ import type {
   MutkaSidebarPanel,
   DeclarativePanelContribution,
   SettingsSectionContribution,
+  ModuleManagerButtonContribution,
   ContextMenuGroup,
   SidebarItem,
   SidebarItemGroup,
@@ -37,6 +38,7 @@ class ModuleRegistryClass {
   private sidebarPanels: MutkaSidebarPanel[] = [];
   private declarativePanels: DeclarativePanelContribution[] = [];
   private settingsSections: SettingsSectionContribution[] = [];
+  private moduleManagerButtons: ModuleManagerButtonContribution[] = [];
   private sidebarItems: SidebarItem[] = [];
   private dynamicSidebarItems = new Map<string, SidebarItem[]>(); // moduleId → items set at runtime
   private cleanups = new Map<string, (() => void)[]>();
@@ -78,6 +80,10 @@ class ModuleRegistryClass {
       this.settingsSections.push(section);
     }
 
+    for (const button of module.moduleManagerButtons ?? []) {
+      this.moduleManagerButtons.push(button);
+    }
+
     for (const item of module.sidebarItems ?? []) {
       this.sidebarItems.push(item);
     }
@@ -106,6 +112,7 @@ class ModuleRegistryClass {
     );
     this.declarativePanels = this.declarativePanels.filter((p) => p.moduleId !== moduleId);
     this.settingsSections = this.settingsSections.filter((s) => s.moduleId !== moduleId);
+    this.moduleManagerButtons = this.moduleManagerButtons.filter((b) => b.moduleId !== moduleId);
     this.sidebarItems = this.sidebarItems.filter(
       (i) => !module.sidebarItems?.some((mi) => mi.id === i.id)
     );
@@ -188,6 +195,11 @@ class ModuleRegistryClass {
   /** Declarative settings sections contributed by modules. */
   getSettingsSections(): SettingsSectionContribution[] {
     return [...this.settingsSections];
+  }
+
+  /** Buttons modules contribute to the Modules overlay (Browse tab). */
+  getModuleManagerButtons(): ModuleManagerButtonContribution[] {
+    return [...this.moduleManagerButtons];
   }
 
   /**
