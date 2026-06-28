@@ -184,6 +184,7 @@ export function ModulesPanel({ onClose }: ModulesPanelProps) {
       {review && (
         <InstallReviewDialog
           resolved={review}
+          installedVersion={modules.find((m) => m.id === review.manifest.id)?.version ?? null}
           installing={installing}
           error={reviewError}
           onConfirm={handleConfirmInstall}

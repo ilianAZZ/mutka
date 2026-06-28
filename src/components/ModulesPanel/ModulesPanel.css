@@ -528,6 +528,18 @@ a.author-badge:hover .author-badge-name { text-decoration: underline; }
 
 .install-review-warning strong { color: color-mix(in srgb, crimson 70%, var(--text)); }
 
+/* Neutral/info note (e.g. "already installed — this is an update"). */
+.install-review-note {
+  font-size: 12px;
+  color: var(--text-secondary, var(--text));
+  line-height: 1.45;
+  padding: 10px 12px;
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+  margin-bottom: 14px;
+}
+
 .install-review-module-head { display: flex; align-items: center; gap: 10px; }
 .install-review-module-ident { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .install-review-module-title { display: flex; align-items: baseline; gap: 8px; }
