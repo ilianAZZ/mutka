@@ -73,7 +73,7 @@ export interface SandboxModuleDef {
    * source). Declare `{ id, label }` here, then in setup serve them with
    * host.onDiscover(id, …) and host.onFetchSource(id, …). The id appears in the
    * Modules "Browse" tab; results are validated + installed by the core. Gated by
-   * the `discovery` permission (plus whatever the fetch needs, e.g. `network`).
+   * the `discovery` permission (plus whatever the fetch needs, e.g. `network:public`).
    */
   discoverySources?: DiscoverySourceDecl[];
   /**

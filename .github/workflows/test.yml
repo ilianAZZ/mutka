@@ -1,0 +1,62 @@
+name: Tests
+
+# Runs the automated test suite on every PR and push to main/dev. Two jobs:
+#  - frontend: the gateway PERMISSION tests (fs:read / fs:write gates, the
+#    network:public / network:local tier flags, per-module config isolation,
+#    the event whitelist) + a typecheck, via Vitest on Linux.
+#  - rust: the URL-tier classifier (public https vs private IP / localhost, SSRF
+#    refusals) and the module-id confinement, via `cargo test` on macOS (the crate
+#    pulls in macOS-only deps, so it can't compile on Linux).
+# The release workflow runs the same suites as a hard gate before publishing.
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: Frontend (gateway permission tests + typecheck)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm exec tsc --noEmit
+      - name: Unit tests (Vitest)
+        run: pnpm test
+
+  rust:
+    name: Rust (URL tier classifier + id confinement)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      # tauri::generate_context! embeds the frontend at compile time, so the lib
+      # (and its tests) won't build without dist/.
+      - name: Build frontend (for tauri generate_context!)
+        run: pnpm build
+      - name: Cargo test
+        working-directory: src-tauri
+        run: cargo test

@@ -27,7 +27,8 @@ export type ModulePermission =
   | "navigation"     // changes the active directory / drives tabs
   | "view"           // controls view state: selection, sort, filters
   | "dialog"         // shows prompts or confirmation dialogs to the user
-  | "network"        // makes outbound network requests (host-proxied HTTP)
+  | "network:public" // outbound HTTPS to public domains only (no IPs/localhost)
+  | "network:local"  // outbound http/https to IP addresses or localhost only
   | "storage"        // reads/writes its own persisted config (per-module namespace)
   | "secrets"        // reads/writes its own credentials in the macOS Keychain
   | "ui"             // renders declarative panels/popups/settings + status-bar items

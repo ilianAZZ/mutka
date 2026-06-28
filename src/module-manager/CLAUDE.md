@@ -81,7 +81,7 @@ declares sources and serves them through `host` (the `fileSystemProviders` patte
 
 ```ts
 defineModule({
-  permissions: ["network", "discovery"],
+  permissions: ["network:public", "discovery"],
   discoverySources: [{ id: "github", label: "GitHub" }],
   setup(host) {
     host.onDiscover("github", async (query) => ({ listings, nextPage })); // metadata page
@@ -138,8 +138,9 @@ GitHub discovery — discovery genuinely *is* a module.
 
 Community code is untrusted. Before an install is written, the **install review
 dialog** (`components/ModulesPanel/InstallReviewDialog.tsx`) shows every permission
-the module requests, with dangerous ones (`fs:write`, `network`, `secrets`,
-`clipboard:write`, `shell`) explicitly flagged (`permissionInfo.ts`). Permissions
+the module requests, with dangerous ones (`fs:write`, `network:public`,
+`network:local`, `secrets`, `clipboard:write`, `discovery`, `shell`) explicitly
+flagged (`permissionInfo.ts`). Permissions
 are still enforced at runtime by the gateway regardless — the dialog is informed
 consent, not the enforcement boundary.
 

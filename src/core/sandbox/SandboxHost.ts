@@ -3,7 +3,7 @@ import type { EventMap } from "../event-bus/events";
 import { dispatchCapability } from "./gateway";
 import { registerProxyModule } from "./proxyModule";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
-import { isSubscribable, deliverablePayload } from "./eventWhitelist";
+import { isSubscribable, deliverablePayload, requiredPermissionFor } from "./eventWhitelist";
 import { FileSystemRegistry } from "../file-system/FileSystemRegistry";
 import { DiscoveryRegistry } from "../discovery/DiscoveryRegistry";
 import type { DiscoveryResult } from "../discovery/types";
@@ -189,6 +189,11 @@ export class SandboxHost {
   private subscribe(event: string): void {
     if (!isSubscribable(event)) {
       console.warn(`[sandbox:${this.manifest?.id ?? "?"}] event "${event}" is not subscribable — ignored`);
+      return;
+    }
+    const need = requiredPermissionFor(event);
+    if (need && !this.manifest?.permissions.includes(need)) {
+      console.warn(`[sandbox:${this.manifest?.id ?? "?"}] event "${event}" requires the "${need}" permission — ignored`);
       return;
     }
     const unsub = EventBus.on(event as keyof EventMap, (payload: unknown) =>

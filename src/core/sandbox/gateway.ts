@@ -21,11 +21,15 @@ export async function dispatchCapability(
   if (!def) {
     throw new Error(`Unknown capability "${cap}.${method}"`);
   }
-  if (!manifest.permissions.includes(def.permission)) {
+  // A capability requires one permission, or — when it lists an array — ANY one of
+  // them (e.g. net.request accepts network:public OR network:local; which the
+  // module holds then bounds what the operation may do, enforced downstream).
+  const required = Array.isArray(def.permission) ? def.permission : [def.permission];
+  if (!required.some((p) => manifest.permissions.includes(p))) {
     throw new Error(
-      `Permission denied: "${cap}.${method}" requires "${def.permission}", ` +
+      `Permission denied: "${cap}.${method}" requires ${required.map((p) => `"${p}"`).join(" or ")}, ` +
       `which "${manifest.id}" did not declare.`
     );
   }
-  return def.run(args, manifest.id);
+  return def.run(args, manifest.id, manifest.permissions);
 }

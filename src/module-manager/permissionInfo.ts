@@ -56,9 +56,14 @@ export const PERMISSION_INFO: Record<ModulePermission, PermissionInfo> = {
     description: "Show prompts and confirmation dialogs.",
     dangerous: false,
   },
-  network: {
-    label: "Network access",
-    description: "Make outbound network requests (can send data off your machine).",
+  "network:public": {
+    label: "Internet access (HTTPS)",
+    description: "Make outbound HTTPS requests to public websites (can send data off your machine). HTTPS is enforced, so traffic can't be read in transit.",
+    dangerous: true,
+  },
+  "network:local": {
+    label: "Local network access",
+    description: "Make requests to private IP addresses or localhost — your machine and local network (a self-hosted server or NAS, but also routers, admin panels, internal services, and any local proxy that can forward traffic onward). Broader trust than internet access; public IPs must use a domain.",
     dangerous: true,
   },
   storage: {

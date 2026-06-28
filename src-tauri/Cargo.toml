@@ -41,6 +41,9 @@ native-tls = "0.2"
 keyring = "2"
 # Decode dropped-file bytes (Finder → app) passed from the WebView as base64.
 base64 = "0.22"
+# Parse + classify request URLs for the network:public / network:local tiers
+# (public domain + https vs. IP/localhost). See classify_host in http.rs.
+url = "2"
 # Native OS drag-out (NSDraggingSession with file URLs) so rows dragged to Finder
 # or another app carry the real files, not just their text paths.
 tauri-plugin-drag = "2"

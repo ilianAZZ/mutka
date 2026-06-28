@@ -4,7 +4,7 @@ import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandl
 import { dispatchCapability } from "./gateway";
 import { registerProxyModule } from "./proxyModule";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
-import { isSubscribable, deliverablePayload } from "./eventWhitelist";
+import { isSubscribable, deliverablePayload, requiredPermissionFor } from "./eventWhitelist";
 import { FileSystemRegistry } from "../file-system/FileSystemRegistry";
 import { DiscoveryRegistry } from "../discovery/DiscoveryRegistry";
 import type { DiscoveryResult } from "../discovery/types";
@@ -127,6 +127,11 @@ export class LocalHost {
   private subscribe(event: string, handler: EventHandler): void {
     if (!isSubscribable(event)) {
       console.warn(`[builtin:${this.manifest.id}] event "${event}" is not subscribable — ignored`);
+      return;
+    }
+    const need = requiredPermissionFor(event);
+    if (need && !this.manifest.permissions.includes(need)) {
+      console.warn(`[builtin:${this.manifest.id}] event "${event}" requires the "${need}" permission — ignored`);
       return;
     }
     this.eventUnsubs.push(

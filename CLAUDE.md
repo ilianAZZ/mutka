@@ -300,8 +300,10 @@ The same format runs in two interchangeable runtimes, differing only in transpor
 | `board.writeFiles`                                                               | `clipboard:write`   | Rust `clipboard_write_files`                        |
 | `nav.navigate`/`goBack`/`goForward`/`goUp`                                       | `navigation`        | AppBridge                                           |
 | `tabs.openTab`/`openTabInBackground`/`isActive`                                  | `navigation`        | TabManager                                          |
-| `dialog.prompt`/`confirm`                                                        | `dialog`            | AppBridge                                           |
+| `dialog.prompt`/`confirm`/`choose`                                               | `dialog`            | AppBridge                                           |
+| `net.request`                                                                    | `network:public` **or** `network:local` | Rust `http_request` (host-proxied HTTP; URL tier-checked) |
 | `app.refresh`                                                                    | `fs:read`           | AppBridge                                           |
+| `app.activate`                                                                   | `navigation`        | `ModuleRegistry.resolveOpen` (run an item's open handlers) |
 | `home.get`                                                                       | `fs:read`           | HomeStore (the app home dir, not the OS home)       |
 | `home.set`                                                                       | `view`              | HomeStore (any module may override the home dir)    |
 | `settings.toggle`                                                                | `view`              | SettingsStore (open/close the settings overlay)     |
@@ -311,10 +313,17 @@ The same format runs in two interchangeable runtimes, differing only in transpor
 | `sys.lastDir`                                                                    | `fs:read`           | localStorage (last visited dir, for launch restore) |
 | `sys.writeTempFile`                                                              | `fs:temp`           | Rust `write_temp_file` (lower-risk than `fs:write`) |
 | `modules.probe`                                                                  | `discovery`         | `probeManifest` (validate a source → manifest, for discovery sources) |
+| `config.get`/`set`                                                               | `storage`           | localStorage, namespaced `mutka.modcfg.<id>.<key>`  |
+| `secrets.get`/`set`/`delete`                                                     | `secrets`           | Rust Keychain, namespaced `mutka.<id>`              |
+| `selection.set`                                                                  | `view`              | SelectionStore                                      |
+| `view.setSort`/`toggleSort`/`toggleHidden`/`setShowHidden`                       | `view`              | ListingStore / ViewStore                            |
+| `sys.quickLook`/`previewUpdate`                                                  | `fs:read`           | Rust Quick Look panel                              |
+| `sys.appsForFile`/`openWith`                                                     | `fs:read`           | Rust Launch Services ("Open With") — **can launch apps** |
+| `sys.startDrag`                                                                  | `fs:read`           | DragService (native OS file drag-out)              |
 
 `ModulePermission`: `fs:read`, `fs:write`, `fs:temp`, `clipboard:read`, `clipboard:write`,
-`navigation`, `view`, `dialog`, `network`, `storage`, `secrets`, `ui`, `discovery`, `shell`
-(`shell` is reserved — no capability uses it yet). `discovery` lets a module contribute a
+`navigation`, `view`, `dialog`, `network:public`, `network:local`, `storage`, `secrets`,
+`ui`, `discovery`, `shell` (`shell` is reserved — no capability uses it yet). `discovery` lets a module contribute a
 module-discovery source (`discoverySources` + `host.onDiscover`/`onFetchSource`) and probe
 fetched sources (`host.modules.probe`); GitHub discovery ships as exactly such a built-in
 module (`sandbox-builtins/github-discovery.ts`). `fs:temp` writes only to the OS temp dir,
@@ -322,6 +331,18 @@ so it is deliberately weaker than `fs:write`. `ui` gates declarative UI + status
 contributions. There is deliberately no SQLite/`db` capability: a `.sqlite` file IS the
 database, so a module reads its bytes with `fs:read` and decodes the format in its own
 worker (see `com.sqlite-browser`) — the core stays format-agnostic.
+
+**Network is two least-privilege tiers.** There is no blanket `network` permission.
+A module declares whichever it needs (or both):
+`network:public` allows **HTTPS to public domains only** — https is enforced so data
+can't be read in transit, and IPs/`localhost` are refused, which blocks SSRF to the
+cloud metadata endpoint and LAN services; `network:local` allows **http/https to a
+private IP range or `localhost`** (a self-hosted server or NAS — public IPs refused). The URL is classified and
+enforced in Rust (`http.rs` → `check_url_allowed`). Crucially, a module **cannot make
+native network calls at all** (`fetch`, `XMLHttpRequest`, `WebSocket`, a remote
+`import()`, …): the app Content-Security-Policy (`tauri.conf.json`) restricts
+`connect-src` to the Tauri IPC bridge and forbids remote scripts, so the only egress
+from the WebView is `host.net` → Rust → the permission gateway. See `docs/safety.md`.
 
 ### Declarative UI — how a sandboxed module renders (no React, no JSX)
 
@@ -451,7 +472,10 @@ capabilities.ts: await invoke<ReturnType>("command_name", { arg: value })
   → Result<T, String>: Ok(value) resolves the Promise, Err(msg) rejects it
 ```
 
-Note: only `capabilities.ts` (and a few App-level reads) call `invoke()`. Modules never do.
+Note: only `capabilities.ts` and the `core/file-system/FileSystemRegistry.ts` it
+delegates fs routing to (plus a few App-level reads) call `invoke()`. FileSystemRegistry
+is reached only *through* the gateway, so it is part of the gateway's fulfilment, not a
+second entry point. Modules never call `invoke()`.
 
 ---
 
@@ -462,8 +486,9 @@ Note: only `capabilities.ts` (and a few App-level reads) call `invoke()`. Module
 - **Module registry URL**: Where is the community module registry hosted, and how does
   `~/.mutka/modules/` get populated? (npm tag? Custom JSON endpoint? GitHub topic?)
 - **`shell` permission**: declared in the enum but no capability backs it yet. What
-  operations should it unlock, and through which Rust commands? (`network` is now backed
-  by the `net.*` capabilities.)
+  operations should it unlock, and through which Rust commands? (Network is now backed
+  by the `net.request` capability, split into the `network:public` / `network:local`
+  permission tiers.)
 - **Sandbox module UI** — RESOLVED: worker modules now render via a declarative `UINode`
   tree (`host.ui.*`, `host.statusbar.*`, the `ui` permission). See "Declarative UI" above.
   Open follow-ups: the node vocabulary is intentionally small (no custom layout/animation),

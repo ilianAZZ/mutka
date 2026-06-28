@@ -32,21 +32,18 @@ export interface NetRequestOptions {
   url: string;
   method?: string;
   headers?: Record<string, string>;
-  body?: string;
+  /** Text (UTF-8) or raw bytes (e.g. from host.fs.readBytes for an upload). */
+  body?: string | Uint8Array;
 }
 
-/** Options for host.net.download — saves a URL to a temp file, returns its path. */
-export interface NetDownloadOptions {
-  url: string;
-  filename: string;
-  headers?: Record<string, string>;
-}
-
-/** Options for host.net.upload — PUTs a local file's bytes to a URL. */
-export interface NetUploadOptions {
-  localPath: string;
-  url: string;
-  headers?: Record<string, string>;
+/** What host.net.request resolves to. */
+export interface NetResponse {
+  status: number;
+  headers: Record<string, string>;
+  /** Body decoded as UTF-8 text (JSON/XML/text APIs). */
+  body: string;
+  /** Body as raw bytes (binary downloads). */
+  bytes: Uint8Array;
 }
 
 export interface SandboxHostApi {
@@ -128,8 +125,9 @@ export interface SandboxHostApi {
     homeDir(): Promise<unknown>;
     /** The last visited local directory (for restoring navigation at launch). */
     lastDir(): Promise<unknown>;
-    /** Write bytes (base64) to a temp file and return its path. Gated by `fs:temp`. */
-    writeTempFile(filename: string, base64: string): Promise<unknown>;
+    /** Write bytes to a temp file and return its path (Uint8Array, or a base64
+     * string for a Finder-dropped file). Gated by `fs:temp`. */
+    writeTempFile(filename: string, data: string | Uint8Array): Promise<unknown>;
     quickLook(path: string): Promise<unknown>;
     /** Refresh an already-open Quick Look panel to preview `path` (else no-op). */
     previewUpdate(path: string): Promise<unknown>;
@@ -140,11 +138,14 @@ export interface SandboxHostApi {
     /** Start a native OS file drag of `paths`, previewed by `icon` (data-URI/path). */
     startDrag(paths: string[], icon?: string): Promise<unknown>;
   };
-  /** Host-proxied HTTP (avoids CORS, gated by the `network` permission). */
+  /**
+   * Host-proxied HTTP (avoids CORS, gated by `network:public` / `network:local`). One role:
+   * it sends a request and returns the response — it never touches the filesystem.
+   * To upload, read bytes via fs.readBytes (fs:read) and pass them as `body`; to
+   * save a response, write `bytes` via fs.* / sys.writeTempFile.
+   */
   net: {
     request(options: NetRequestOptions): Promise<unknown>;
-    download(options: NetDownloadOptions): Promise<unknown>;
-    upload(options: NetUploadOptions): Promise<unknown>;
   };
   /** Module tooling for discovery sources (gated by the `discovery` permission). */
   modules: {
@@ -278,7 +279,7 @@ export function createHostProxy(t: Transport): SandboxHostApi {
     sys: {
       homeDir: () => callHost("sys", "homeDir", []),
       lastDir: () => callHost("sys", "lastDir", []),
-      writeTempFile: (filename, base64) => callHost("sys", "writeTempFile", [filename, base64]),
+      writeTempFile: (filename, data) => callHost("sys", "writeTempFile", [filename, data]),
       quickLook: (path) => callHost("sys", "quickLook", [path]),
       previewUpdate: (path) => callHost("sys", "previewUpdate", [path]),
       appsForFile: (path) => callHost("sys", "appsForFile", [path]),
@@ -287,8 +288,6 @@ export function createHostProxy(t: Transport): SandboxHostApi {
     },
     net: {
       request: (options) => callHost("net", "request", [options]),
-      download: (options) => callHost("net", "download", [options]),
-      upload: (options) => callHost("net", "upload", [options]),
     },
     modules: {
       probe: (source) => callHost("modules", "probe", [source]),

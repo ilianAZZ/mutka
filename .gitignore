@@ -1,6 +1,7 @@
 node_modules
 dist/
 
-# Local-only dev module: macOS File Provider cloud status (not a WebDAV feature).
-# Kept locally for experimentation, excluded from the repo.
-dev-modules
+# Reference/example dev modules ARE tracked (they exercise the worker runtime and
+# document the module API; they're DEV-only and tree-shaken out of release builds).
+# Keep only the experimental, not-for-publication one local:
+dev-modules/com.cloud-status

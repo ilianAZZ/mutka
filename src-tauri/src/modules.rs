@@ -5,6 +5,12 @@
 use std::fs;
 use serde::Serialize;
 
+/// Upper bound on a module's `index.js`, on both write (install) and read. A module
+/// is a single ESM file; even one bundling a library is comfortably under this. The
+/// cap stops a hostile/oversized source from bloating disk or the probe worker.
+/// Keep in sync with `MAX_MODULE_SOURCE_BYTES` in `src/core/sandbox/probeManifest.ts`.
+const MAX_MODULE_SOURCE_BYTES: usize = 5 * 1024 * 1024;
+
 fn modules_dir() -> std::path::PathBuf {
     let home = std::env::var("HOME").unwrap_or_else(|_| "/".to_string());
     std::path::PathBuf::from(home).join(".mutka").join("modules")
@@ -52,11 +58,21 @@ pub fn list_user_modules() -> Result<Vec<UserModuleEntry>, String> {
 /// Restricted to ~/.mutka/modules/ — returns an error for any other path.
 #[tauri::command]
 pub fn read_module_file(path: String) -> Result<String, String> {
-    let allowed = modules_dir().to_string_lossy().to_string();
-    if !path.starts_with(&allowed) {
+    // Confine to ~/.mutka/modules/ with a CANONICALIZED, component-wise check. A
+    // raw string prefix would accept ".../modules-evil/…" (shared prefix) and would
+    // not collapse ".." — canonicalize resolves symlinks + ".." to a real path, and
+    // Path::starts_with compares whole path components.
+    let allowed = fs::canonicalize(modules_dir())
+        .map_err(|_| "Modules directory does not exist".to_string())?;
+    let canonical = fs::canonicalize(&path).map_err(|e| format!("Cannot read {}: {}", path, e))?;
+    if !canonical.starts_with(&allowed) {
         return Err(format!("Access denied: {} is outside ~/.mutka/modules", path));
     }
-    fs::read_to_string(&path).map_err(|e| format!("Cannot read {}: {}", path, e))
+    let meta = fs::metadata(&canonical).map_err(|e| format!("Cannot read {}: {}", canonical.display(), e))?;
+    if meta.len() as usize > MAX_MODULE_SOURCE_BYTES {
+        return Err(format!("Module file too large (> {} bytes)", MAX_MODULE_SOURCE_BYTES));
+    }
+    fs::read_to_string(&canonical).map_err(|e| format!("Cannot read {}: {}", canonical.display(), e))
 }
 
 // ─── Install / uninstall ──────────────────────────────────────────────────────
@@ -83,6 +99,9 @@ fn is_safe_id(id: &str) -> bool {
 pub fn install_module(id: String, source: String) -> Result<String, String> {
     if !is_safe_id(&id) {
         return Err(format!("Invalid module id: {:?}", id));
+    }
+    if source.len() > MAX_MODULE_SOURCE_BYTES {
+        return Err(format!("Module source too large (> {} bytes)", MAX_MODULE_SOURCE_BYTES));
     }
     let dir = modules_dir().join(&id);
     fs::create_dir_all(&dir).map_err(|e| format!("Cannot create {}: {}", dir.display(), e))?;
@@ -136,4 +155,35 @@ pub fn write_module_config(content: String) -> Result<(), String> {
         fs::create_dir_all(parent).map_err(|e| format!("Cannot create {}: {}", parent.display(), e))?;
     }
     fs::write(&path, content).map_err(|e| format!("Cannot write {}: {}", path.display(), e))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_safe_id;
+
+    #[test]
+    fn accepts_normal_module_ids() {
+        assert!(is_safe_id("com.dir-stats"));
+        assert!(is_safe_id("com.acme.vault"));
+        assert!(is_safe_id("my_module-1"));
+    }
+
+    #[test]
+    fn rejects_path_traversal_and_separators() {
+        // These are exactly what would let install/uninstall escape ~/.mutka/modules.
+        assert!(!is_safe_id("../etc"));
+        assert!(!is_safe_id("a/b"));
+        assert!(!is_safe_id("a\\b"));
+        assert!(!is_safe_id("a..b")); // contains ".."
+        assert!(!is_safe_id(".hidden")); // leading dot
+        assert!(!is_safe_id("")); // empty
+        assert!(!is_safe_id("with space"));
+        assert!(!is_safe_id("emoji😀"));
+    }
+
+    #[test]
+    fn rejects_overlong_ids() {
+        assert!(!is_safe_id(&"a".repeat(201)));
+        assert!(is_safe_id(&"a".repeat(200)));
+    }
 }

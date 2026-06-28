@@ -27,9 +27,10 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; img-src 'self' data: blob: https: asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self' blob:; connect-src 'self' ipc: http://ipc.localhost; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-src 'none'",
+      "devCsp": "default-src 'self'; img-src 'self' data: blob: https: asset: http://asset.localhost; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval' blob:; connect-src 'self' ipc: http://ipc.localhost ws://localhost:1420 http://localhost:1420; worker-src 'self' blob:; object-src 'none'; base-uri 'self'; frame-src 'none'"
     },
-    "withGlobalTauri": true
+    "withGlobalTauri": false
   },
   "plugins": {
     "updater": {

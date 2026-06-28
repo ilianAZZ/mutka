@@ -1,3 +1,5 @@
+import type { ModulePermission } from "../module-registry/module-registry.types";
+
 // What a sandboxed module is allowed to learn from the bus via host.events.on().
 //
 // No event carries a credential — the only things that cross the bus are file
@@ -55,6 +57,21 @@ export const NOTIFY_ONLY_EVENTS = new Set<string>([
   "tabs:changed",      // every open tab's path
   "action:dispatch",   // every command the user runs
 ]);
+
+// A few whitelisted events carry data sensitive enough that RECEIVING them needs a
+// permission — subscribing is otherwise unpermissioned. `file:external-drop` delivers
+// the actual BYTES of files the user dragged in from Finder, so a module must hold
+// `fs:read` to receive it (the same gate that reading those bytes any other way would
+// require). Without the permission the subscription is dropped, like a non-whitelisted
+// event. Keyed by event → the permission the subscriber must declare.
+export const EVENT_REQUIRED_PERMISSION: Record<string, ModulePermission> = {
+  "file:external-drop": "fs:read",
+};
+
+/** The permission a module must declare to RECEIVE this event, if any. */
+export function requiredPermissionFor(event: string): ModulePermission | undefined {
+  return EVENT_REQUIRED_PERMISSION[event];
+}
 
 /** Whether a module may subscribe to this event at all (either tier). */
 export function isSubscribable(event: string): boolean {
