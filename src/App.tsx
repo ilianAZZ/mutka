@@ -82,7 +82,7 @@ export function App() {
   useEffect(() => {
     const unsubNav = EventBus.on(Events.Cli.navigate, ({ path }) => navigateTo(path));
     const unsubPicker = EventBus.on(Events.Cli.picker, () => {
-      dialogAPI.pickFile({ title: "Pick a file or folder" }).then(outputPickerResult);
+      dialogAPI.pickFile({ title: "Pick a file or folder", mode: "any" }).then(outputPickerResult);
     });
     return () => { unsubNav(); unsubPicker(); };
   }, [navigateTo, dialogAPI]);
