@@ -292,6 +292,10 @@ and modules drive them through capabilities (never by importing the store):
   `"ui:changed"`. Written by the `ui` capability; read by `components/Declarative/`.
 - `StatusBarStore.ts` — bottom status-bar items per module, emits `"statusbar:changed"`.
   Written by the `statusbar` capability; read by `components/StatusBar/`.
+- `NotificationStore.ts` — transient in-app toasts (own `subscribe`, not the bus), so a
+  user sees module errors/successes without the dev console. `init()` (called once from
+  `App.tsx`) mirrors `error:action` into an error toast; `SandboxHost` pushes worker
+  handler errors (incl. denied permissions) directly. Read by `components/Notifications/`.
 
 `SelectionStore` + `ClipboardStore` are also the read source the registry uses to build a
 `BaseContext` for visibility checks.

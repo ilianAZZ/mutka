@@ -3,6 +3,7 @@ import type { EventMap } from "../event-bus/events";
 import { dispatchCapability } from "./gateway";
 import { registerProxyModule } from "./proxyModule";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
+import { NotificationStore } from "../stores/NotificationStore";
 import { isSubscribable, deliverablePayload, requiredPermissionFor } from "./eventWhitelist";
 import { FileSystemRegistry } from "../file-system/FileSystemRegistry";
 import { DiscoveryRegistry } from "../discovery/DiscoveryRegistry";
@@ -150,10 +151,19 @@ export class SandboxHost {
       case "sidebar":
         if (this.manifest) ModuleRegistry.setDynamicSidebarItems(this.manifest.id, msg.items);
         break;
-      case "log":
-        console[msg.level](`[sandbox:${this.manifest?.id ?? "?"}]`, ...msg.args);
+      case "log": {
+        const id = this.manifest?.id ?? "?";
+        console[msg.level](`[sandbox:${id}]`, ...msg.args);
+        // A worker handler that throws (incl. a denied permission) is caught in
+        // the worker and surfaced here as an error log — give the user a visible
+        // toast, not just a console line they may never open.
+        if (msg.level === "error") {
+          NotificationStore.error(this.manifest?.name ?? id, msg.args.map(String).join(" "));
+        }
         break;
+      }
       case "fatal":
+        NotificationStore.error(this.manifest?.name ?? this.manifest?.id ?? "Module", msg.message);
         rejectReady(new Error(msg.message));
         break;
       case "host-call":

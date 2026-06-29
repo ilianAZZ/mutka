@@ -152,6 +152,7 @@ class ModuleRegistryClass {
       await handler.handle(item);
     } catch (err) {
       console.error(`[ModuleRegistry] Open handler "${handler.id}" failed:`, err);
+      EventBus.emit(Events.Error.action, { actionId: handler.id, error: err });
     }
   }
 
