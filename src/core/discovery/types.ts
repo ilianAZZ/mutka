@@ -38,6 +38,12 @@ export interface ModuleListing {
   tags?: string[];
   /** External page for the module (repo URL, etc.). */
   homepageUrl?: string;
+  /**
+   * Short human-readable provenance for display (e.g. "owner/repo"). The SOURCE
+   * fills this — it alone knows its address format — so the generic install/UI
+   * layer never has to parse a source-specific URL. Falls back to homepageUrl.
+   */
+  provenance?: string;
 }
 
 /** Filters + pagination passed to a discovery source. */
