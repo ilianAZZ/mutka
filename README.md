@@ -40,14 +40,14 @@ Every module — built-in or community — is the same shape: `export default de
 
 Full documentation lives on the website: **[mutka.app/docs](https://mutka.app/docs)**
 
-| Page | What it covers |
-| --- | --- |
-| [Architecture](https://mutka.app/docs/architecture) | Layer diagram, gateway, how commands flow |
-| [Writing a Module](https://mutka.app/docs/modules/writing-a-module) | `defineModule`, the host API, module ID convention |
-| [Permissions](https://mutka.app/docs/modules/permissions) | Full capability → permission map |
+| Page                                                                    | What it covers                                       |
+| ----------------------------------------------------------------------- | ---------------------------------------------------- |
+| [Architecture](https://mutka.app/docs/architecture)                     | Layer diagram, gateway, how commands flow            |
+| [Writing a Module](https://mutka.app/docs/modules/writing-a-module)     | `defineModule`, the host API, module ID convention   |
+| [Permissions](https://mutka.app/docs/modules/permissions)               | Full capability → permission map                     |
 | [Events & Watching](https://mutka.app/docs/modules/events-and-watching) | Subscribable events, notify-only, directory watching |
-| [Security Model](https://mutka.app/docs/modules/security) | Six-layer threat model, residual risks |
-| [API Reference](https://mutka.app/docs/api) | Auto-generated TypeDoc reference |
+| [Security Model](https://mutka.app/docs/modules/security)               | Six-layer threat model, residual risks               |
+| [API Reference](https://mutka.app/docs/api)                             | Auto-generated TypeDoc reference                     |
 
 ---
 
@@ -94,6 +94,7 @@ read exactly what it runs first.)
 ### Using the CLI
 
 ```bash
+mutka --help           # List all commands
 mutka <path>           # open a directory in Mutka
 mutka --picker         # pick a file/folder (path printed to stdout)
 mutka --run <action>   # run a module action

@@ -38,6 +38,8 @@ export async function handleCliArgs(): Promise<void> {
 
   if (args.run) {
     await ModuleRegistry.executeAction(args.run);
+    await invoke("cli_output", { text: `✓ ran ${args.run}` });
+    await invoke("cli_exit", { code: 0 });
     return;
   }
 

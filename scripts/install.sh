@@ -57,6 +57,7 @@ echo "  Launch it from Spotlight or: open -a Mutka"
 if [ "$CLI_OK" = "1" ]; then
   echo ""
   echo "CLI usage:"
+  echo "  mutka --help           List all commands"
   echo "  mutka <path>           Open a directory"
   echo "  mutka --picker         Pick a file/folder (path → stdout)"
   echo "  mutka --run <action>   Run a module action"

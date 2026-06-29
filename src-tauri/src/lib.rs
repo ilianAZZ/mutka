@@ -73,9 +73,38 @@ fn parse_cli_args(matches: &tauri_plugin_cli::Matches) -> CliArgs {
     }
 }
 
+/// Usage text printed by `mutka --help` / `mutka -h`.
+const HELP: &str = "\
+Mutka — community-driven file explorer for macOS
+
+USAGE:
+    mutka [PATH]
+    mutka [OPTIONS]
+
+ARGS:
+    <PATH>              Directory to open
+
+OPTIONS:
+    -P, --picker        Open the file picker and print the selected path to stdout
+    -r, --run <ACTION>  Run a module action by ID (e.g. core.clipboard.copy)
+        --list-actions  List all registered module actions and exit
+    -h, --help          Show this help and exit
+";
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    // `--help` is static text — print it and exit before touching Tauri or the webview.
+    if std::env::args().any(|a| a == "--help" || a == "-h") {
+        print!("{HELP}");
+        return;
+    }
+
+    // `--list-actions` / `--run` are one-shot CLI commands: they must print to the
+    // terminal that launched them and exit. Skip single-instance so they run as their
+    // own short-lived (hidden) process instead of forwarding to a GUI on a dead stdout.
+    let cli_mode = std::env::args().any(|a| a == "--list-actions" || a == "--run" || a == "-r");
+
+    let mut builder = tauri::Builder::default()
         // Native OS file drag-out: dragging rows to Finder/another app moves the
         // real files (NSDraggingSession with file URLs), not just their paths.
         .plugin(tauri_plugin_drag::init())
@@ -84,9 +113,11 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         // CLI argument parsing (mutka <path>, --picker, --run <action>).
-        .plugin(tauri_plugin_cli::init())
+        .plugin(tauri_plugin_cli::init());
+
+    if !cli_mode {
         // Forward CLI args to the running instance instead of spawning a second one.
-        .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
             // Re-parse the forwarded argv and emit to the frontend.
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_focus();
@@ -120,7 +151,10 @@ pub fn run() {
                 }
                 let _ = window.emit("cli:forwarded-args", &resolved);
             }
-        }))
+        }));
+    }
+
+    builder
         .setup(|app| {
             // Parse CLI args and store them so the frontend can retrieve them.
             let cli_args = match app.cli().matches() {
@@ -132,9 +166,15 @@ pub fn run() {
                     list_actions: false,
                 },
             };
+            // `--list-actions` / `--run` do their work in the webview (the action
+            // registry lives in JS) then exit — keep the window hidden so no GUI flashes.
+            let headless = cli_args.list_actions || cli_args.run.is_some();
             app.manage(cli_args);
 
             let window = app.get_webview_window("main").unwrap();
+            if headless {
+                let _ = window.hide();
+            }
             #[cfg(target_os = "macos")]
             apply_vibrancy(&window, NSVisualEffectMaterial::Sidebar, None, Some(12.0))
                 .expect("Failed to apply macOS vibrancy");
