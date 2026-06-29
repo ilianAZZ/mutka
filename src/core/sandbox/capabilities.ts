@@ -6,6 +6,7 @@ import { AppBridge } from "../app-bridge/AppBridge";
 import { TabManager } from "../tab-manager/TabManager";
 import { FileSystemRegistry } from "../file-system/FileSystemRegistry";
 import { SelectionStore } from "../stores/SelectionStore";
+import { ClipboardStore } from "../stores/ClipboardStore";
 import { ListingStore } from "../stores/ListingStore";
 import { ViewStore } from "../stores/ViewStore";
 import { HomeStore } from "../stores/HomeStore";
@@ -146,7 +147,20 @@ export function createCapabilityTable(): CapabilityTable {
     },
     board: {
       readFiles:  { permission: "clipboard:read",  run: () => invoke("clipboard_read_files") },
-      writeFiles: { permission: "clipboard:write", run: ([paths, operation]) => invoke("clipboard_write_files", { paths, operation }) },
+      writeFiles: {
+        permission: "clipboard:write",
+        run: async ([paths, operation]) => {
+          const p = paths as string[];
+          const op = operation as "copy" | "cut";
+          if (p.length > 0) {
+            await invoke("clipboard_write_files", { paths: p, operation: op });
+            ClipboardStore.set({ items: p, operation: op });
+          } else {
+            ClipboardStore.set({ items: [], operation: null });
+          }
+          return null;
+        },
+      },
     },
     nav: {
       navigate:  { permission: "navigation", run: async ([p]) => AppBridge.nav.navigate(p as string) },

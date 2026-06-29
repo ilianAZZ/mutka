@@ -16,7 +16,7 @@ interface FilePickerModalProps {
   onPick: (path: string | null) => void;
 }
 
-const EMPTY: FileItem[] = [];
+const EMPTY: string[] = [];
 const DEFAULT_SORT: SortState = { key: "name", dir: "asc" };
 
 /** Dirs first, then by the active sort key (mirrors the main list). */

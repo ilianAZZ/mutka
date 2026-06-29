@@ -143,14 +143,42 @@ pub async fn copy_files(paths: Vec<String>, dest: String) -> Result<(), String> 
         .map_err(|e| e.to_string())?
 }
 
+/// Generate a unique destination path using macOS Finder naming convention:
+/// "file.txt" → "file copy.txt" → "file copy 2.txt" → "file copy 3.txt" …
+/// Works for both files and directories.
+fn make_unique_dest_path(dest_dir: &str, file_name: &str) -> String {
+    let candidate = format!("{}/{}", dest_dir, file_name);
+    if !std::path::Path::new(&candidate).exists() {
+        return candidate;
+    }
+    let path = std::path::Path::new(file_name);
+    let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
+    let ext = path.extension()
+        .map(|e| format!(".{}", e.to_string_lossy()))
+        .unwrap_or_default();
+    let copy_path = format!("{}/{} copy{}", dest_dir, stem, ext);
+    if !std::path::Path::new(&copy_path).exists() {
+        return copy_path;
+    }
+    let mut n = 2u32;
+    loop {
+        let n_path = format!("{}/{} copy {}{}", dest_dir, stem, n, ext);
+        if !std::path::Path::new(&n_path).exists() {
+            return n_path;
+        }
+        n += 1;
+    }
+}
+
 fn copy_files_blocking(paths: Vec<String>, dest: String) -> Result<(), String> {
     for src in &paths {
         let src_path = std::path::Path::new(src);
         let file_name = src_path
             .file_name()
             .ok_or("Invalid source path")?
-            .to_string_lossy();
-        let dest_path = format!("{}/{}", dest, file_name);
+            .to_string_lossy()
+            .into_owned();
+        let dest_path = make_unique_dest_path(&dest, &file_name);
 
         if src_path.is_dir() {
             copy_dir_all(src_path, &dest_path).map_err(|e| e.to_string())?;

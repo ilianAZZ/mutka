@@ -12,7 +12,7 @@ import "./FileList.css";
 interface Props {
   files: FileItem[];
   selected: FileItem[];
-  cutItems: FileItem[];
+  cutItems: string[];
   sort: SortState;
   currentDir: string;
   extraColumns?: ColumnDescriptor[];
@@ -66,7 +66,7 @@ export function FileList({
 
   // ── Memoized Sets — selecting one file no longer rebuilds every row ──────
   const selectedPaths = useMemo(() => new Set(selected.map((f) => f.path)), [selected]);
-  const cutPaths = useMemo(() => new Set(cutItems.map((f) => f.path)), [cutItems]);
+  const cutPaths = useMemo(() => new Set(cutItems), [cutItems]);
 
   // ── Column grid template ────────────────────────────────────────────────
   const ew = useCallback(
