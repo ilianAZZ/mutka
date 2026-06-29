@@ -47,8 +47,8 @@ export interface FileItem {
 // ─── Clipboard ────────────────────────────────────────────────────────────────
 
 export interface ClipboardState {
-  /** Items currently held in the clipboard */
-  items: FileItem[];
+  /** Paths of items currently held in the clipboard */
+  items: string[];
   /** Whether items were copied or cut. Null when clipboard is empty. */
   operation: "copy" | "cut" | null;
 }
