@@ -5,8 +5,11 @@
 //
 // HARD RULE: watching must NEVER slow down or block directory listing — rendering
 // folder content is what matters; watching is a best-effort extra. Two safeguards:
-//   1. arm() runs on a detached thread, so read_dir returns the files immediately
-//      and never waits on FSEvents setup.
+//   1. arm() sends to a channel and returns immediately; one long-lived worker
+//      thread processes the re-arm, so read_dir never waits on FSEvents setup.
+//      (Previously arm() spawned a fresh thread per navigation; rapid navigation
+//      with held arrow keys created a burst of short-lived threads contending on
+//      one lock — now they are coalesced into a single worker queue.)
 //   2. ONE persistent watcher is reused (unwatch old path + watch new path) rather
 //      than dropped and recreated each navigation — dropping a macOS FSEvents
 //      watcher joins its run-loop thread, which is exactly what caused listings to
@@ -17,7 +20,10 @@
 // State lives here (a process-global), mirroring the mouse_nav pattern.
 
 use std::path::Path;
-use std::sync::{Mutex, OnceLock};
+use std::sync::{
+    mpsc::{self, Sender},
+    Mutex, OnceLock,
+};
 
 use notify::{Config, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use tauri::{AppHandle, Emitter};
@@ -33,13 +39,24 @@ fn state() -> &'static Mutex<WatchState> {
     STATE.get_or_init(|| Mutex::new(WatchState { watcher: None, path: None }))
 }
 
+/// The single worker thread's sender. Initialised once; the worker lives for the
+/// process lifetime and sequentially processes re-arm requests.
+static WORKER_TX: OnceLock<Sender<(AppHandle, String)>> = OnceLock::new();
+
 /// Best-effort: watch `path`, replacing the previous watch. Returns immediately —
-/// the actual work happens on a detached thread so the directory listing is never
-/// blocked. A no-op (on that thread) if we are already watching `path`.
+/// the actual work is queued to a single long-lived worker thread so the directory
+/// listing is never blocked. A no-op (on that thread) if we are already watching `path`.
 pub fn arm(app: &AppHandle, path: &str) {
-    let app = app.clone();
-    let path = path.to_string();
-    std::thread::spawn(move || rearm(app, path));
+    let tx = WORKER_TX.get_or_init(|| {
+        let (tx, rx) = mpsc::channel::<(AppHandle, String)>();
+        std::thread::spawn(move || {
+            for (app, path) in rx {
+                rearm(app, path);
+            }
+        });
+        tx
+    });
+    let _ = tx.send((app.clone(), path.to_string()));
 }
 
 fn rearm(app: AppHandle, path: String) {
