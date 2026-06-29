@@ -3,6 +3,7 @@ import type { EventMap } from "../event-bus/events";
 import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandler, type ColumnProvider, type UIEventHandler, type ProviderHandler, type ProviderMethod, type DiscoverHandler, type FetchSourceHandler } from "./hostProxy";
 import { dispatchCapability } from "./gateway";
 import { registerProxyModule } from "./proxyModule";
+import { manifestFromDef } from "./manifestFromDef";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
 import { isSubscribable, deliverablePayload, requiredPermissionFor } from "./eventWhitelist";
 import { FileSystemRegistry } from "../file-system/FileSystemRegistry";
@@ -36,26 +37,7 @@ export class LocalHost {
   private readonly registeredSources: string[] = [];
 
   constructor(private readonly def: SandboxModuleDef) {
-    this.manifest = {
-      id: def.id,
-      name: def.name ?? def.id,
-      version: def.version ?? "0.0.0",
-      description: def.description,
-      icon: def.icon,
-      author: def.author,
-      tags: def.tags,
-      permissions: def.permissions ?? [],
-      commands: def.commands ?? [],
-      openHandlers: def.openHandlers ?? [],
-      sidebarItems: def.sidebarItems ?? [],
-      fileSystemProviders: def.fileSystemProviders ?? [],
-      fileIcons: def.fileIcons ?? [],
-      columns: def.columns ?? [],
-      panels: def.panels ?? [],
-      settingsSections: def.settingsSections ?? [],
-      discoverySources: def.discoverySources ?? [],
-      moduleManagerButtons: def.moduleManagerButtons ?? [],
-    };
+    this.manifest = manifestFromDef(def);
   }
 
   async register(): Promise<SandboxManifest> {
