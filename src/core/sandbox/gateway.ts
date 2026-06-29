@@ -1,4 +1,5 @@
 import { createCapabilityTable } from "./capabilities";
+import type { CapabilityDef } from "./capabilities";
 import type { SandboxManifest } from "./protocol";
 
 const capabilities = createCapabilityTable();
@@ -10,6 +11,11 @@ const capabilities = createCapabilityTable();
  * and that the module DECLARED the permission it requires, then runs it. No
  * declaration → it throws and the operation never happens. Built-in and
  * community modules are gated identically; only how they call this differs.
+ *
+ * `cap` and `method` are `string` because SandboxHost receives them from the
+ * wire (postMessage). The runtime check below validates they exist in the
+ * table. Compile-time safety lives in `hostProxy.ts`, where `call()` is typed
+ * against `CapabilityMethodMap`.
  */
 export async function dispatchCapability(
   manifest: SandboxManifest,
@@ -17,7 +23,8 @@ export async function dispatchCapability(
   method: string,
   args: unknown[]
 ): Promise<unknown> {
-  const def = capabilities[cap]?.[method];
+  const group = (capabilities as Record<string, Record<string, CapabilityDef>>)[cap];
+  const def = group?.[method];
   if (!def) {
     throw new Error(`Unknown capability "${cap}.${method}"`);
   }
