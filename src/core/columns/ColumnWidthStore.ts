@@ -12,7 +12,17 @@ const MAX_WIDTH = 800;
 function load(): Record<string, number> {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? (JSON.parse(raw) as Record<string, number>) : {};
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    const out: Record<string, number> = {};
+    // Keep only finite numbers, clamped — a stored "wide"/-1/NaN must never reach
+    // a column width.
+    for (const [k, v] of Object.entries(parsed)) {
+      if (typeof v === "number" && Number.isFinite(v)) {
+        out[k] = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, v));
+      }
+    }
+    return out;
   } catch {
     return {};
   }

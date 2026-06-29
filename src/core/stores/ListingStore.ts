@@ -5,13 +5,25 @@ import type { SortKey, SortState } from "./listing.types";
 
 const SORT_STORAGE_KEY = "mutka.sort";
 
+const SORT_KEYS: readonly SortKey[] = ["name", "date", "size", "type"];
+function isSortKey(k: unknown): k is SortKey {
+  return typeof k === "string" && (SORT_KEYS as readonly string[]).includes(k);
+}
+
 function loadSort(): SortState {
   try {
     const raw = localStorage.getItem(SORT_STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as SortState;
+    if (raw) {
+      // Validate: a syntactically-valid but wrong-shaped value (e.g. {"key":"color"})
+      // would otherwise leave the list silently unsorted.
+      const p = JSON.parse(raw) as Partial<SortState>;
+      if (isSortKey(p.key) && (p.dir === "asc" || p.dir === "desc")) {
+        return { key: p.key, dir: p.dir };
+      }
+    }
   } catch { /* ignore */ }
   return { key: "name", dir: "asc" };
-}""
+}
 
 function sortItems(items: FileItem[], sort: SortState): FileItem[] {
   const mul = sort.dir === "asc" ? 1 : -1;
