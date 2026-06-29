@@ -82,8 +82,6 @@ export const metadata: Metadata = {
     card: "summary_large_image",
     title: TITLE,
     description: SHORT_DESCRIPTION,
-    creator: "@mutka",
-    site: "@mutka",
     images: [{ url: TWITTER_IMAGE, alt: OG_IMAGE_ALT }],
   },
   robots: {
