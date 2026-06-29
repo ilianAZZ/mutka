@@ -15,14 +15,16 @@ export interface SandboxModuleDef<TCommandId extends string = string> {
   version?: string;
   description?: string;
   /**
-   * Display image for the Modules UI: a `data:image/...` URI (self-contained) or
-   * an `https://` URL. Rendered via <img src> only, so it is injection-safe.
+   * Card image for the Modules UI: an `https://`/`http://` URL OR a
+   * `data:image/...` URI (base64, e.g. `data:image/png;base64,…`, or URL-encoded
+   * SVG). Rendered via <img src> only and scheme-checked, so it is
+   * injection-safe; any other value is ignored.
    */
   icon?: string;
   /**
-   * Who made this module — shown in the Modules UI as an avatar + profile link.
-   * `author.github` (a user or org login) drives the avatar; when omitted and the
-   * module is installed from a GitHub repo, it defaults to the repo owner.
+   * Who made this module — shown in the Modules UI. Source-agnostic: clicking the
+   * name opens `author.link` (any http(s) URL — a personal site or a profile
+   * page), and `author.avatar` is an http(s) URL or `data:image/...` avatar.
    */
   author?: ModuleAuthor;
   /** Free-form tags for discovery filtering, e.g. ["files", "git", "viewer"]. */

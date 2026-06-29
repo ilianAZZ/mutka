@@ -78,6 +78,7 @@ export async function main(argv) {
     description,
     authorName: authorGithub || "",
     authorGithub,
+    authorLink: authorGithub ? `https://github.com/${authorGithub}` : "",
     permissions,
     pkgName: slug(dirName) || "mutka-module",
     typesVersion: typesVersion(),

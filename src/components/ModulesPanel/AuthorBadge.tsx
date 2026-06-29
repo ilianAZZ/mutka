@@ -1,34 +1,41 @@
 import type { CatalogAuthor } from "../../module-manager/types";
+import { openExternal } from "../../module-manager/openExternal";
+import { safeImageSrc, safeHttpUrl } from "../../module-manager/imageSrc";
 
 interface AuthorBadgeProps {
   author: CatalogAuthor | null;
 }
 
-/** Avatar + name linking to the author's GitHub profile/org. Pure presentation. */
+/** Avatar + name. Clicking the name opens the author's link (personal site or
+ *  profile) via the OS — a plain <a> does nothing inside the Tauri webview, so
+ *  it routes through openExternal. The link + avatar are scheme-checked here (the
+ *  last boundary before the DOM), so a crafted value can't inject. Avatar loads
+ *  lazily and decodes async. Pure presentation otherwise. */
 export function AuthorBadge({ author }: AuthorBadgeProps) {
   if (!author) return null;
 
-  const label = author.name ?? (author.github ? `@${author.github}` : "");
+  const avatar = safeImageSrc(author.avatarUrl);
+  const link = safeHttpUrl(author.link);
+  const label = author.name ?? "";
   const inner = (
     <>
-      {author.avatarUrl && (
-        <img className="author-badge-avatar" src={author.avatarUrl} alt="" loading="lazy" />
+      {avatar && (
+        <img className="author-badge-avatar" src={avatar} alt="" loading="lazy" decoding="async" />
       )}
       <span className="author-badge-name">{label}</span>
     </>
   );
 
-  if (author.profileUrl) {
+  if (link) {
     return (
-      <a
-        className="author-badge"
-        href={author.profileUrl}
-        target="_blank"
-        rel="noreferrer"
-        title={author.github ? `@${author.github}` : label}
+      <button
+        type="button"
+        className="author-badge author-badge--link"
+        onClick={() => void openExternal(link)}
+        title={link}
       >
         {inner}
-      </a>
+      </button>
     );
   }
   return <span className="author-badge">{inner}</span>;

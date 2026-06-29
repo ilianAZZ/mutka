@@ -14,6 +14,9 @@ export default {
   id: "com.folder-inspector",
   name: "Folder Inspector",
   version: "1.0.0",
+  icon: "data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Crect%20width%3D'24'%20height%3D'24'%20rx%3D'6'%20fill%3D'%235b6ee1'%2F%3E%3Ccircle%20cx%3D'11'%20cy%3D'11'%20r%3D'4'%20stroke%3D'%23fff'%20stroke-width%3D'1.6'%20fill%3D'none'%2F%3E%3Cpath%20d%3D'M14%2014l3%203'%20stroke%3D'%23fff'%20stroke-width%3D'1.6'%20stroke-linecap%3D'round'%2F%3E%3C%2Fsvg%3E",
+  author: { name: "Ilian", github: "ilianAZZ" },
+  tags: ["ui","inspector","declarative"],
   description: "A declarative right-pane inspector, status widget and form — no React.",
   permissions: ["ui"],
   panels: [

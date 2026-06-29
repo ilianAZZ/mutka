@@ -215,6 +215,31 @@ pub fn open_item(path: String) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn open_url(url: String) -> Result<(), String> {
+    // Open an external link in the user's default browser. A plain
+    // <a target="_blank"> does nothing inside a Tauri webview, so the frontend
+    // routes external links here. Only http(s) is allowed — never let an
+    // arbitrary string reach `open`, which would happily launch file:// paths,
+    // app schemes, or local apps.
+    let url = url.trim();
+    if !(url.starts_with("https://") || url.starts_with("http://")) {
+        return Err("Only http(s) URLs can be opened".into());
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(url)
+            .spawn()
+            .map_err(|e| e.to_string())?;
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = url;
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub fn get_home_dir() -> String {
     std::env::var("HOME").unwrap_or_else(|_| "/".to_string())
 }

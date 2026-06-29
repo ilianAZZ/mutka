@@ -20,8 +20,7 @@ const SOURCE_LABEL: Record<ModuleSource, string> = {
 
 /** One row in the installed list: icon, identity, author, permissions, enable/delete. */
 export function ModuleCard({ module, busy, onToggle, onDelete }: ModuleCardProps) {
-  // The author login defaults to the repo owner ("owner/repo") for installs.
-  const author = resolveAuthor(module.author, module.installed?.origin?.split("/")[0]);
+  const author = resolveAuthor(module.author);
 
   return (
     <div className={`module-card${module.status === "error" ? " module-card--error" : ""}`}>

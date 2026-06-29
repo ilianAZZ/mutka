@@ -13,6 +13,10 @@ export default {
   id: "com.image-dimensions",
   name: "Image Dimensions",
   version: "1.0.0",
+  description: "Add a column reporting each image's pixel size, read from its header bytes.",
+  icon: "data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Crect%20width%3D'24'%20height%3D'24'%20rx%3D'6'%20fill%3D'%232bb673'%2F%3E%3Crect%20x%3D'5'%20y%3D'6'%20width%3D'14'%20height%3D'12'%20rx%3D'1.6'%20stroke%3D'%23fff'%20stroke-width%3D'1.5'%20fill%3D'none'%2F%3E%3Ccircle%20cx%3D'9'%20cy%3D'10'%20r%3D'1.3'%20fill%3D'%23fff'%2F%3E%3Cpath%20d%3D'M6%2016l3.5-3.5L12%2015l2.5-2.5L18%2016'%20stroke%3D'%23fff'%20stroke-width%3D'1.4'%20fill%3D'none'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%2F%3E%3C%2Fsvg%3E",
+  author: { name: "Ilian", github: "ilianAZZ" },
+  tags: ["images","media","column"],
   permissions: ["fs:read"],
   columns: [
     {
