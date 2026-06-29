@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from "react";
 import { ModuleManager } from "../../module-manager/ModuleManager";
 import { DiscoveryRegistry } from "../../module-manager/DiscoveryRegistry";
 import { probeManifest } from "../../module-manager/probeManifest";
+import { resolveAuthor } from "../../module-manager/authorInfo";
 import type { ModuleListing, ResolvedModule } from "../../module-manager/types";
 import type { SandboxManifest } from "../../core/sandbox/protocol";
 import { ModulesStore } from "../../core/stores/ModulesStore";
@@ -25,7 +26,7 @@ function localListing(manifest: SandboxManifest): ModuleListing {
     version: manifest.version,
     description: manifest.description,
     icon: manifest.icon,
-    author: (manifest.author ?? null) as ModuleListing["author"],
+    author: resolveAuthor(manifest.author),
     permissions: manifest.permissions,
     tags: manifest.tags,
   };

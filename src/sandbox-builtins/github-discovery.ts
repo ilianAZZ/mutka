@@ -1,5 +1,6 @@
 import { defineModule } from "../core/sandbox/defineModule";
-import type { ModuleListing, DiscoveryResult } from "../core/discovery/types";
+import type { ModuleListing, DiscoveryResult, MutkaRepoConfig } from "../core/discovery/types";
+import type { SandboxManifest } from "../core/sandbox/protocol";
 
 // =============================================================================
 // GITHUB DISCOVERY — the built-in module-discovery source, shipped AS A MODULE.
@@ -32,23 +33,6 @@ interface GitHubRepo {
   html_url: string;
 }
 
-interface MutkaRepoConfig {
-  projects?: string[];
-  modules?: (string | { id?: string; entry?: string; path?: string })[];
-}
-
-/** What host.modules.probe gives back (the relevant manifest subset). */
-interface ProbedManifest {
-  id: string;
-  name: string;
-  version: string;
-  description?: string;
-  icon?: string;
-  author?: { name?: string; github?: string };
-  permissions: ModuleListing["permissions"];
-  tags?: string[];
-}
-
 /** Source locator we encode into a listing's opaque `ref`. */
 interface GitHubRef {
   repo: string;
@@ -69,17 +53,12 @@ function decodeRef(ref: string): GitHubRef {
   throw new Error("Malformed GitHub module reference.");
 }
 
-/** Author with avatar/profile derived from the login (defaults to the repo owner). */
-function authorFor(author: ProbedManifest["author"], ownerFallback: string): ModuleListing["author"] {
-  const github = author?.github ?? ownerFallback;
-  if (!github && !author?.name) return null;
-  if (!github) return { name: author?.name };
-  return {
-    name: author?.name,
-    github,
-    avatarUrl: `https://github.com/${github}.png?size=80`,
-    profileUrl: `https://github.com/${github}`,
-  };
+/** Map a manifest author to listing display info. Source-agnostic: it passes the
+ *  raw `link`/`avatar` through (the UI scheme-checks them before rendering) — no
+ *  GitHub-specific profile or avatar is derived here. */
+function authorFor(author: SandboxManifest["author"]): ModuleListing["author"] {
+  if (!author?.name && !author?.link && !author?.avatar) return null;
+  return { name: author.name, link: author.link, avatarUrl: author.avatar };
 }
 
 export default defineModule({
@@ -87,7 +66,7 @@ export default defineModule({
   name: "GitHub Discovery",
   version: "1.0.0",
   description: "Discover and install modules from GitHub (mutka-module-* repos).",
-  author: { name: "Mutka", github: "ilianAZZ" },
+  author: { name: "Mutka", link: "https://github.com/ilianAZZ" },
   permissions: ["network:public", "discovery"],
   discoverySources: [{ id: "github", label: "GitHub" }],
 
@@ -130,7 +109,7 @@ export default defineModule({
         try {
           const ref: GitHubRef = { repo: repo.full_name, branch, path };
           const source = await fetchRaw(ref);
-          const manifest = (await host.modules.probe(source)) as ProbedManifest;
+          const manifest = await host.modules.probe(source);
           // Same module reached via two candidate paths (e.g. index.js + dist/index.js).
           if (seenIds.has(manifest.id)) continue;
           seenIds.add(manifest.id);
@@ -144,7 +123,7 @@ export default defineModule({
             version: manifest.version,
             description: manifest.description,
             icon: manifest.icon,
-            author: authorFor(manifest.author, repo.owner.login),
+            author: authorFor(manifest.author),
             permissions: manifest.permissions,
             tags: manifest.tags,
             homepageUrl: repo.html_url,

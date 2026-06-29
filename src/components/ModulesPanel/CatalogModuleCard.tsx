@@ -1,4 +1,5 @@
 import type { ModuleListing } from "../../module-manager/types";
+import { openExternal } from "../../module-manager/openExternal";
 import { ModuleIcon } from "./ModuleIcon";
 import { AuthorBadge } from "./AuthorBadge";
 import { PermissionBadges } from "./PermissionBadges";
@@ -20,15 +21,14 @@ export function CatalogModuleCard({ listing, sourceLabel, installed, busy, onIns
       <div className="catalog-card-main">
         <div className="catalog-card-title-row">
           {listing.homepageUrl ? (
-            <a
-              className="catalog-card-name"
-              href={listing.homepageUrl}
-              target="_blank"
-              rel="noreferrer"
+            <button
+              type="button"
+              className="catalog-card-name catalog-card-name--link"
+              onClick={() => void openExternal(listing.homepageUrl)}
               title={`Open ${listing.name} source`}
             >
               {listing.name}
-            </a>
+            </button>
           ) : (
             <span className="catalog-card-name">{listing.name}</span>
           )}

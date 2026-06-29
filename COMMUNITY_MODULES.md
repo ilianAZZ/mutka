@@ -127,6 +127,36 @@ export default {
 > `index.js` must be bundled to a self-contained file with no remaining imports. The plain
 > object above is exactly what that bundle looks like.
 
+### Display metadata (how your card looks)
+
+These optional fields decide how the module appears in the **Modules** panel. They are
+**source-agnostic** — nothing is specific to GitHub or any other host:
+
+| Field           | Type      | Notes                                                                                               |
+| --------------- | --------- | --------------------------------------------------------------------------------------------------- |
+| `icon`          | `string?` | Card image. Either an **`https://`/`http://` URL** or a **`data:image/...` URI** (base64 or URL-encoded SVG). |
+| `author.name`   | `string?` | Display name on the card. Clicking it opens `author.link`.                                           |
+| `author.link`   | `string?` | Where the name points — **any http(s) URL** (a personal site, a profile page, anything).            |
+| `author.avatar` | `string?` | Avatar image — same rule as `icon`: an http(s) URL **or** a `data:image/...` URI.                    |
+| `tags`          | `string[]?` | Free-form, for discovery filtering (e.g. `["files", "viewer"]`).                                   |
+
+```javascript
+// Two equivalent ways to give an image — a hosted URL or an inline base64 data URI:
+icon: "https://example.com/my-module.png",
+// icon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA…",
+
+author: {
+  name: "Ada Lovelace",
+  link: "https://ada.example.com",                 // clicking the name opens this
+  avatar: "https://example.com/ada.png",           // or a data:image/... URI
+},
+```
+
+Images are rendered via `<img src>` **only** and the source is scheme-checked to an
+http(s) URL or a `data:image/...` URI — any other value (e.g. `javascript:`) is dropped,
+so there is no injection vector. They load lazily and decode asynchronously, so a long
+list of cards never blocks on images, and the browser caches hosted URLs by address.
+
 ### Contributions
 
 **`commands`** — entries surfaced into menus / shortcuts. You register the handler in

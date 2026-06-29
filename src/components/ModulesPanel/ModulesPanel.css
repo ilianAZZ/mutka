@@ -419,10 +419,12 @@
 .catalog-card-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .catalog-card-title-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .catalog-card-name { font-size: 14px; font-weight: 600; color: var(--text); text-decoration: none; }
-a.catalog-card-name:hover { color: var(--accent); text-decoration: underline; }
+/* Clickable name is a <button> (links can't open via <a> in the webview). */
+.catalog-card-name--link { margin: 0; padding: 0; border: none; background: none; font: inherit; font-weight: 600; cursor: pointer; }
+.catalog-card-name--link:hover { color: var(--accent); text-decoration: underline; }
 .catalog-card-version { font-size: 11px; color: var(--text-subtle); }
 .catalog-card-desc { font-size: 12px; color: var(--text-mid); margin: 0; line-height: 1.4; }
-.catalog-card-link { font-size: 11px; color: var(--accent); text-decoration: none; font-family: ui-monospace, monospace; }
+.catalog-card-link { display: inline-block; margin: 0; padding: 0; border: none; background: none; font-size: 11px; color: var(--accent); text-decoration: none; font-family: ui-monospace, monospace; cursor: pointer; text-align: left; }
 .catalog-card-link:hover { text-decoration: underline; }
 
 .catalog-install {
@@ -484,7 +486,7 @@ a.catalog-card-name:hover { color: var(--accent); text-decoration: underline; }
   color: var(--accent);
 }
 
-/* ─── Author badge (avatar + name → GitHub profile) ───────────────────────── */
+/* ─── Author badge (avatar + name → author link / profile) ────────────────── */
 .author-badge {
   display: inline-flex;
   align-items: center;
@@ -495,8 +497,18 @@ a.catalog-card-name:hover { color: var(--accent); text-decoration: underline; }
   text-decoration: none;
 }
 
-a.author-badge:hover { color: var(--accent); }
-a.author-badge:hover .author-badge-name { text-decoration: underline; }
+/* The clickable variant is a <button> (a plain <a target="_blank"> can't open a
+   link inside the webview), so strip the native button chrome to read as text. */
+.author-badge--link {
+  margin: 0;
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+}
+
+.author-badge--link:hover { color: var(--accent); }
+.author-badge--link:hover .author-badge-name { text-decoration: underline; }
 
 .author-badge-avatar {
   width: 18px;

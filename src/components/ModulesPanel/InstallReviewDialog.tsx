@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { dangerousPermissions } from "../../module-manager/permissionInfo";
+import { openExternal } from "../../module-manager/openExternal";
 import type { ResolvedModule } from "../../module-manager/types";
 import { ModuleIcon } from "./ModuleIcon";
 import { AuthorBadge } from "./AuthorBadge";
@@ -96,9 +97,13 @@ export function InstallReviewDialog({
           )}
 
           {listing.homepageUrl && (
-            <a className="catalog-card-link" href={listing.homepageUrl} target="_blank" rel="noreferrer">
+            <button
+              type="button"
+              className="catalog-card-link"
+              onClick={() => void openExternal(listing.homepageUrl)}
+            >
               {listing.homepageUrl}
-            </a>
+            </button>
           )}
         </div>
 

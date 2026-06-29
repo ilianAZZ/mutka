@@ -259,14 +259,17 @@ export interface StatusBarItem {
 
 // ─── What a module reports about itself after loading ────────────────────────
 
-/** Who made a module, for display in the Modules UI. All fields optional. */
+/** Who made a module, for display in the Modules UI. All fields optional and
+ *  source-agnostic — no field is specific to GitHub or any other host. */
 export interface ModuleAuthor {
-  /** Display name shown on the card. */
+  /** Display name shown on the card. Clicking it opens `link`. */
   name?: string;
-  /** GitHub login (user or org). Drives the avatar + profile link. When the
-   *  module is installed from a GitHub repo and this is omitted, the catalog
-   *  defaults it to the repo owner. */
-  github?: string;
+  /** Where clicking the name goes — any http(s) URL: a personal site, a profile
+   *  page (GitHub/GitLab/Mastodon/…), anything. Non-http(s) values are ignored. */
+  link?: string;
+  /** Avatar image: an http(s) URL OR a `data:image/...` URI (base64 or
+   *  URL-encoded). Rendered via <img src> only; any other value is ignored. */
+  avatar?: string;
 }
 
 export interface SandboxManifest {
@@ -274,8 +277,9 @@ export interface SandboxManifest {
   name: string;
   version: string;
   description?: string;
-  /** Display image: a `data:image/...` URI or an `https://` URL. Rendered via
-   *  <img src> only, so it is injection-safe. */
+  /** Card image: an http(s) URL OR a `data:image/...` URI (base64 or
+   *  URL-encoded). Rendered via <img src> only and scheme-checked, so it is
+   *  injection-safe; any other value is ignored. */
   icon?: string;
   /** Author shown in the Modules UI (avatar + profile link). */
   author?: ModuleAuthor;

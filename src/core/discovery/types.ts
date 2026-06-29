@@ -7,13 +7,27 @@ import type { SandboxManifest } from "../sandbox/protocol";
 // (LocalHost/SandboxHost) type their discovery handlers against them.
 // =============================================================================
 
-/** Author display info, resolved to concrete avatar/profile URLs by a source. */
+/**
+ * The shape of a repo's `mutka.config.json` — the Mutka-wide convention for a
+ * multi-module repository, listing each module's built entry path. It is NOT
+ * specific to GitHub: any repo-based discovery source (GitHub today, a future
+ * GitLab / self-hosted-git source) reads this same format to locate entries.
+ * `modules` is the legacy form (`{ entry|path }`), still accepted; `projects`
+ * is the current one.
+ */
+export interface MutkaRepoConfig {
+  projects?: string[];
+  modules?: (string | { id?: string; entry?: string; path?: string })[];
+}
+
+/** Author display info, resolved for rendering (source-agnostic — no host-specific
+ *  fields). `link` is where the name points; `avatarUrl` is a sanitized image src. */
 export interface CatalogAuthor {
   name?: string;
-  /** GitHub login (user or org). */
-  github?: string;
+  /** Where clicking the name goes (an http(s) URL), or undefined. */
+  link?: string;
+  /** A sanitized image src (http(s) or data:image), or undefined. */
   avatarUrl?: string;
-  profileUrl?: string;
 }
 
 /**
