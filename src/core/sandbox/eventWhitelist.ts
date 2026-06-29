@@ -58,7 +58,7 @@ const SUBSCRIBABLE_LIST: readonly (keyof EventMap)[] = [
   // event was already observable, so delivering the id only adds "which feature";
   // it lets a usage/analytics module report command popularity.
   "action:dispatch",
-]);
+];
 
 export const SUBSCRIBABLE_EVENTS: ReadonlySet<string> = new Set(SUBSCRIBABLE_LIST);
 
