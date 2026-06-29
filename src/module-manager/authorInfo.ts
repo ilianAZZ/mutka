@@ -1,27 +1,20 @@
 import type { ModuleAuthor } from "../core/sandbox/protocol";
 import type { CatalogAuthor } from "./types";
+import { safeImageSrc, safeHttpUrl } from "./imageSrc";
 
 // =============================================================================
-// AUTHOR INFO — turn a module's manifest `author` into concrete avatar/profile
-// URLs for the Modules UI. The GitHub login drives the avatar; when the module
-// declares no login but was installed from a GitHub repo, the caller passes the
-// repo owner as a fallback so credit still shows. Returns null when there's
-// nothing to display.
+// AUTHOR INFO — turn a module's manifest `author` into the resolved render shape
+// for the Modules UI. Source-agnostic: the name links to `author.link` (any
+// http(s) URL — a personal site or profile page) and the avatar is sanitized
+// from `author.avatar` (http(s) or data:image). No GitHub-specific derivation.
+// Returns null when there's nothing to display.
 // =============================================================================
 
-/** Resolve a manifest author (+ optional repo-owner fallback) into display URLs. */
-export function resolveAuthor(
-  author: ModuleAuthor | undefined,
-  ownerFallback?: string
-): CatalogAuthor | null {
-  const github = author?.github ?? ownerFallback;
+/** Resolve a manifest author into the render shape. */
+export function resolveAuthor(author: ModuleAuthor | undefined): CatalogAuthor | null {
   const name = author?.name;
-  if (!github && !name) return null;
-  if (!github) return { name };
-  return {
-    name,
-    github,
-    avatarUrl: `https://github.com/${github}.png?size=80`,
-    profileUrl: `https://github.com/${github}`,
-  };
+  const link = safeHttpUrl(author?.link);
+  const avatarUrl = safeImageSrc(author?.avatar);
+  if (!name && !link && !avatarUrl) return null;
+  return { name, link, avatarUrl };
 }

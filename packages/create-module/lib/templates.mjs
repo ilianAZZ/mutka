@@ -13,6 +13,16 @@ export const PERMISSIONS = [
 
 const permsLiteral = (perms) => perms.map((p) => `"${p}"`).join(", ");
 
+// The `author` object literal for the generated module. Source-agnostic: `link`
+// is where clicking the name goes (any http(s) URL — here defaulted to a GitHub
+// profile, but a personal site works too); add an `avatar` (http(s) or
+// data:image URI) for a picture.
+function authorLiteral(cfg) {
+  const parts = [`name: "${cfg.authorName}"`];
+  if (cfg.authorLink) parts.push(`link: "${cfg.authorLink}"`);
+  return `{ ${parts.join(", ")} }`;
+}
+
 export function indexTs(cfg) {
   return `import { defineModule } from "@mutka-explorer/module";
 
@@ -27,7 +37,10 @@ export default defineModule({
   name: "${cfg.name}",
   version: "0.1.0",
   description: "${cfg.description}",
-  author: { name: "${cfg.authorName}", github: "${cfg.authorGithub}" },
+  // Clicking your name in the Modules UI opens \`link\` (any http(s) URL — a
+  // personal site or a profile). Add \`avatar\` (an http(s) or data:image URI) for
+  // a picture.
+  author: ${authorLiteral(cfg)},
   tags: [],
   permissions: [${permsLiteral(cfg.permissions)}],
   commands: [

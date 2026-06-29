@@ -26,7 +26,7 @@ use cli::{cli_exit, cli_output, get_cli_args, CliArgs};
 use clipboard::{clipboard_read_files, clipboard_write_files};
 use fs_ops::{
     cloud_status, copy_files, create_dir_cmd, create_file, delete_item, get_home_dir, move_files,
-    open_item, read_dir, read_file_base64, rename_item, write_temp_file,
+    open_item, open_url, read_dir, read_file_base64, rename_item, write_temp_file,
 };
 use http::http_request;
 use icons::{icons_for_types, preload_icon_cache};
@@ -136,6 +136,7 @@ pub fn run() {
             rename_item,
             delete_item,
             open_item,
+            open_url,
             icons_for_types,
             preload_icon_cache,
             apps_for_file,

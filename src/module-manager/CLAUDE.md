@@ -32,7 +32,8 @@ restart. That tracker is `ModuleManager`.
 | `probeManifest.ts`   | Re-export of `core/sandbox/probeManifest` (it now also backs the `modules.probe` capability).                  |
 | `DiscoveryRegistry.ts` | Re-export of `core/discovery/DiscoveryRegistry` (sources are contributed by module runtimes, so it lives in core). |
 | `installModule.ts`   | Writes a validated module to disk via the Rust `install_module` command; returns its `InstalledMeta`.          |
-| `authorInfo.ts`      | Turns a manifest `author` (+ repo-owner fallback) into avatar/profile URLs for the Modules UI.                  |
+| `authorInfo.ts`      | Resolves a manifest `author` into the render shape (`name`/`link`/`avatarUrl`) for the Modules UI.              |
+| `imageSrc.ts`        | `safeImageSrc` / `safeHttpUrl` — scheme-gate a module-supplied image/link (http(s) or data:image) before render. |
 | `permissionInfo.ts`  | Human labels + **danger classification** for the install consent screen.                                        |
 
 ---
@@ -130,8 +131,9 @@ module's build lands; a repo with both is de-duped by module id):
 (The legacy `{ "modules": [{ "entry": "…" }] }` form is still accepted.) It probes
 each entry (via `host.modules.probe`) to read its manifest metadata (`name` /
 `icon` / `author` / `tags`), caching the source so `fetchSource` is instant at
-install. `author.github` defaults to the repo owner. Disabling this module disables
-GitHub discovery — discovery genuinely *is* a module.
+install. The `author` it reports is source-agnostic — `{ name, link, avatar }`,
+the same shape every source uses (no GitHub-specific avatar/profile derivation).
+Disabling this module disables GitHub discovery — discovery genuinely *is* a module.
 
 ---
 
