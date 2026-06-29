@@ -63,8 +63,9 @@ class ModuleRegistryClass {
       if (action.shortcut) ShortcutManager.bind(action.id, action.shortcut);
     }
 
-    for (const handler of module.openHandlers ?? []) {
-      this.openHandlers.push(handler);
+    if (module.openHandlers?.length) {
+      this.openHandlers.push(...module.openHandlers);
+      // Sort once after inserting all of this module's handlers (not per push).
       this.openHandlers.sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0));
     }
 
