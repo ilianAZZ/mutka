@@ -737,6 +737,23 @@
   100% { box-shadow: 0 0 0 0 transparent; }
 }
 
+/* ---- trusted-by logo wall -------------------------------------- *
+ *  A row of partner logos in their real brand colours on a fully    *
+ *  transparent background. They sit at 85% opacity at rest and lift  *
+ *  to full opacity on hover.                                        */
+.trust-logo {
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.85;
+  transition: opacity 0.25s ease;
+  filter: grayscale(1);
+}
+
+.trust-logo:hover {
+  opacity: 1;
+  filter: grayscale(0);
+}
+
 /* ---- responsive ------------------------------------------------ */
 @media (max-width: 820px) {
   .bench-grid { grid-template-columns: 1fr; gap: 1.25rem; }
