@@ -76,6 +76,44 @@ definition — the same id inference with zero runtime import.
   auto-discovered by Vite's glob import — no registration step required.
 </Callout>
 
+## Display metadata
+
+These optional fields control how your module appears in the **Modules** panel.
+They are source-agnostic — nothing here is specific to GitHub or any other host:
+
+| Field           | Type       | Notes                                                                                                  |
+| --------------- | ---------- | ------------------------------------------------------------------------------------------------------ |
+| `icon`          | `string?`  | Card image. Either an **`https://`** URL or a **`data:image/...`** URI (base64 or URL-encoded SVG).    |
+| `author.name`   | `string?`  | Display name on the card. Clicking it opens `author.link`.                                             |
+| `author.link`   | `string?`  | Where the name points — any `http(s)` URL (a personal site, a profile page, anything).                 |
+| `author.avatar` | `string?`  | Avatar image — same rule as `icon`: an `http(s)` URL or a `data:image/...` URI.                        |
+| `tags`          | `string[]?`| Free-form, for discovery filtering (e.g. `["files", "viewer"]`).                                       |
+
+```ts
+export default defineModule({
+  id: "author.my-module",
+  name: "My Module",
+  version: "1.0.0",
+
+  // Two equivalent ways to set an image — a hosted URL or an inline data URI:
+  icon: "https://example.com/my-module.png",
+  // icon: "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAA…",
+
+  author: {
+    name: "Ada Lovelace",
+    link: "https://ada.example.com",          // clicking the name opens this
+    avatar: "https://example.com/ada.png",    // or a data:image/... URI
+  },
+
+  tags: ["files", "viewer"],
+  // ...
+});
+```
+
+Images are rendered via `<img src>` only and the source is scheme-checked — any
+value that isn't an `http(s)` URL or a `data:image/...` URI is dropped, so there
+is no injection vector.
+
 ## The `host` API (all async)
 
 | Group              | What it gives you                                                                                         | Permission                           |
@@ -116,6 +154,39 @@ its own declarative entry plus an optional `setup` hook:
 - Custom list [**columns and file icons**](/docs/modules/columns-and-icons)
   (`columns`, `fileIcons`).
 - Left-sidebar "Places" entries (`sidebarItems` / `host.sidebar.set`).
+
+## Installing manually
+
+After building your module (`npm run build` in a scaffolded project), copy the
+output file to the Mutka modules directory:
+
+```bash
+mkdir -p ~/.mutka/modules/author.my-module
+cp dist/index.js ~/.mutka/modules/author.my-module/index.js
+```
+
+The module loads on next launch into its own isolated worker. During development
+you can also place modules in this repo's `dev-modules/<id>/index.js` — they are
+loaded through the same isolated worker path without a manual install step.
+
+<Callout title="Prefer the Modules panel for published modules">
+  If a module is published to GitHub with the `mutka-module` topic, users can
+  browse and install it directly from the **Modules** overlay — no terminal
+  needed. Manual install is mainly useful during development.
+</Callout>
+
+## Module ID convention
+
+| Origin              | Format                      | Example              |
+| ------------------- | --------------------------- | -------------------- |
+| Community           | `author.module-name`        | `acme.git-status`    |
+| Fork of existing    | `author.original-name-fork` | `bob.clipboard-fork` |
+| Built-in (reserved) | `core.*`                    | `core.navigation`    |
+
+<Callout type="warn" title="IDs are permanent">
+  Never rename a module ID after users install it — it breaks their
+  `~/.mutka/config.json` references and any other modules that depend on the id.
+</Callout>
 
 ## What's next
 
