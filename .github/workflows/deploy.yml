@@ -60,10 +60,14 @@ jobs:
           node-version: 20
           cache: pnpm
 
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install website dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: website
       - name: Generate API reference (TypeDoc)
-        run: |
-          pnpm install --frozen-lockfile
-          cd website && pnpm run docs:api
+        working-directory: website
+        run: pnpm run docs:api
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
