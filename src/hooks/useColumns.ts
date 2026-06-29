@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from "react";
+import { useEffect, useMemo, useReducer } from "react";
 import { ColumnsRegistry } from "../core/columns/ColumnsRegistry";
 import { EventBus } from "../core/event-bus/EventBus";
 import { Events } from "../core/event-bus/events";
@@ -21,7 +21,7 @@ export interface UseColumnsResult {
  * (purely presentational) FileList only ever receives plain data via props.
  */
 export function useColumns(files: FileItem[], currentDir: string, homeDir: string): UseColumnsResult {
-  const [, force] = useReducer((n: number) => n + 1, 0);
+  const [version, force] = useReducer((n: number) => n + 1, 0);
 
   useEffect(() => {
     const unsubs = [
@@ -32,16 +32,19 @@ export function useColumns(files: FileItem[], currentDir: string, homeDir: strin
     return () => unsubs.forEach((u) => u());
   }, []);
 
-  const columns = ColumnsRegistry.columnsForDir(currentDir, homeDir);
-
-  const cellData: ColumnCellData = {};
-  if (columns.length) {
-    for (const item of files) {
-      const row: Record<string, ColumnCellState> = {};
-      for (const col of columns) row[col.id] = ColumnsRegistry.getCell(col.id, item);
-      cellData[item.path] = row;
+  // Recompute only when the inputs actually change (files/dir/home) or a forced
+  // event fires — NOT on every App render (selection, dialogs, …), which would
+  // re-read every cell and hand FileList a new object each time.
+  return useMemo<UseColumnsResult>(() => {
+    const columns = ColumnsRegistry.columnsForDir(currentDir, homeDir);
+    const cellData: ColumnCellData = {};
+    if (columns.length) {
+      for (const item of files) {
+        const row: Record<string, ColumnCellState> = {};
+        for (const col of columns) row[col.id] = ColumnsRegistry.getCell(col.id, item);
+        cellData[item.path] = row;
+      }
     }
-  }
-
-  return { columns, cellData };
+    return { columns, cellData };
+  }, [files, currentDir, homeDir, version]);
 }

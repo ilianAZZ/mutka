@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import "./Dialog.css";
 import type { DialogPromptOptions, DialogConfirmOptions, DialogChooseOptions } from "../../core/types";
+import { safeImageSrc } from "../../module-manager/imageSrc";
 
 interface PromptDialogState {
   type: "prompt";
@@ -101,8 +102,8 @@ export function Dialog({ state, onClose }: Props) {
             {state.options.options.map((opt) => (
               <li key={opt.value}>
                 <button className="dialog-choice" onClick={() => choose(opt.value)}>
-                  {opt.icon && (
-                    <img className="dialog-choice-icon" src={opt.icon} alt="" draggable={false} />
+                  {safeImageSrc(opt.icon) && (
+                    <img className="dialog-choice-icon" src={safeImageSrc(opt.icon)} alt="" draggable={false} />
                   )}
                   <span className="dialog-choice-text">
                     <span className="dialog-choice-label">{opt.label}</span>

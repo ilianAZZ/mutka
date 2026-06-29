@@ -123,7 +123,14 @@ class ShortcutManagerClass {
   private loadOverrides(): void {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      if (raw) this.overrides = new Map(Object.entries(JSON.parse(raw) as Record<string, string>));
+      if (!raw) return;
+      // Same string-only filter as importOverrides — a non-string value would
+      // later blow up on normalize/`.toLowerCase()`.
+      this.overrides = new Map(
+        Object.entries(JSON.parse(raw) as Record<string, unknown>)
+          .filter(([, v]) => typeof v === "string")
+          .map(([k, v]) => [k, (v as string).toLowerCase()])
+      );
     } catch { /* ignore */ }
   }
 

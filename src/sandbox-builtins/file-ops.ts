@@ -1,5 +1,11 @@
 import { defineModule } from "../core/sandbox/defineModule";
 
+/** Join a directory and a child name — safe at the root "/" (no "//name") and for
+ *  scheme paths (webdav:acc/sub). */
+function joinPath(dir: string, name: string): string {
+  return `${dir.replace(/\/+$/, "")}/${name}`;
+}
+
 export default defineModule({
   id: "core.file-ops",
   name: "File Operations",
@@ -16,14 +22,14 @@ export default defineModule({
     host.onCommand("core.file-ops.new-file", async (snap) => {
       const name = (await host.dialog.prompt({ message: "New file name:", placeholder: "untitled.txt" })) as string | null;
       if (!name) return;
-      await host.fs.createFile(`${snap.currentDirectory}/${name}`);
+      await host.fs.createFile(joinPath(snap.currentDirectory, name));
       await host.refresh();
     });
 
     host.onCommand("core.file-ops.new-folder", async (snap) => {
       const name = (await host.dialog.prompt({ message: "New folder name:", placeholder: "New Folder" })) as string | null;
       if (!name) return;
-      await host.fs.createFolder(`${snap.currentDirectory}/${name}`);
+      await host.fs.createFolder(joinPath(snap.currentDirectory, name));
       await host.refresh();
     });
 
@@ -32,8 +38,9 @@ export default defineModule({
       if (!item) return;
       const newName = (await host.dialog.prompt({ message: "Rename to:", defaultValue: item.name })) as string | null;
       if (!newName || newName === item.name) return;
-      const parent = item.path.substring(0, item.path.lastIndexOf("/"));
-      await host.fs.renameItem(item.path, `${parent}/${newName}`);
+      // The item lives in the current directory, so derive the target from it
+      // (root- and scheme-safe) rather than re-splitting item.path.
+      await host.fs.renameItem(item.path, joinPath(snap.currentDirectory, newName));
       await host.refresh();
     });
 
@@ -45,10 +52,19 @@ export default defineModule({
         destructive: true,
       })) as boolean;
       if (!confirmed) return;
+      // Delete each independently so one failure doesn't abort the rest, then
+      // surface what couldn't be deleted (the throw → error toast).
+      const failed: string[] = [];
       for (const item of snap.selectedItems) {
-        await host.fs.deleteItem(item.path);
+        try {
+          await host.fs.deleteItem(item.path);
+        } catch (err) {
+          failed.push(item.name);
+          host.log(`delete failed for ${item.name}:`, err);
+        }
       }
       await host.refresh();
+      if (failed.length) throw new Error(`Couldn't delete: ${failed.join(", ")}`);
     });
   },
 });

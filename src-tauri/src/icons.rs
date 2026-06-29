@@ -213,8 +213,6 @@ pub struct IconSpec {
 pub async fn icons_for_types(specs: Vec<IconSpec>) -> Result<Vec<Option<String>>, String> {
     #[cfg(target_os = "macos")]
     {
-        let t0 = std::time::Instant::now();
-        let mut rendered = 0usize;
         let out = objc::rc::autoreleasepool(|| {
             specs
                 .iter()
@@ -225,7 +223,6 @@ pub async fn icons_for_types(specs: Vec<IconSpec>) -> Result<Vec<Option<String>>
                             return Some(hit);
                         }
                     }
-                    rendered += 1;
                     let uri = unsafe {
                         native_icon_data_uri(s.extension.as_deref(), s.is_dir, s.path.as_deref())
                     }
@@ -237,13 +234,6 @@ pub async fn icons_for_types(specs: Vec<IconSpec>) -> Result<Vec<Option<String>>
                 })
                 .collect::<Vec<_>>()
         });
-        eprintln!(
-            "[icons_for_types] {} specs, {} rendered, {} cached, in {:?}",
-            specs.len(),
-            rendered,
-            specs.len() - rendered,
-            t0.elapsed()
-        );
         Ok(out)
     }
     #[cfg(not(target_os = "macos"))]

@@ -20,9 +20,6 @@ const FALLBACK_ICON =
 
 const DRAG_ICON_PX = 32;
 
-/** Synchronously resize a data-URI icon to DRAG_ICON_PX. Data-URIs decode
- *  instantly so img.complete is true and drawImage is synchronous — no async
- *  gap that would lose the pointer gesture. */
 function shrinkIcon(dataUri: string): string {
   const img = new Image();
   img.src = dataUri;
@@ -36,6 +33,12 @@ function shrinkIcon(dataUri: string): string {
   return canvas.toDataURL("image/png");
 }
 
+function safeDragIcon(icon?: string): string {
+  const s = icon?.trim();
+  if (!s) return FALLBACK_ICON;
+  return /^https?:\/\//i.test(s) || /^data:image\//i.test(s) || s.startsWith("/") ? s : FALLBACK_ICON;
+}
+
 class DragServiceClass {
   /**
    * Start a native drag of `paths`, previewed by `icon` (a data-URI or image
@@ -44,7 +47,7 @@ class DragServiceClass {
    */
   async start(paths: string[], icon?: string): Promise<void> {
     if (paths.length === 0) return;
-    await startDrag({ item: paths, icon: icon || FALLBACK_ICON });
+    await startDrag({ item: paths, icon: safeDragIcon(icon) });
   }
 
   /**

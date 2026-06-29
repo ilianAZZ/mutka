@@ -30,7 +30,7 @@ export default defineModule({
     host.events.on("selection:changed", (payload) => {
       const items = (payload as { items?: { path: string }[] }).items ?? [];
       const target = items[0];
-      if (target) void host.sys.previewUpdate(target.path);
+      if (target) void host.sys.previewUpdate(target.path).catch(() => {}); // no-op when panel closed
     });
   },
 });

@@ -4,6 +4,10 @@ import { Events } from "../event-bus/events";
 
 const STORAGE_KEY = "mutka.theme";
 
+function isThemePreference(v: unknown): v is ThemePreference {
+  return v === "system" || v === "light" || v === "dark";
+}
+
 function getSystemTheme(): "dark" | "light" {
   return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
@@ -17,8 +21,10 @@ class ThemeManagerClass {
   private mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
   constructor() {
-    const saved = localStorage.getItem(STORAGE_KEY) as ThemePreference | null;
-    this.preference = saved ?? "system";
+    // Validate the stored value — a corrupt "Dark"/"blue" must not be applied
+    // verbatim as data-theme / to the native window.
+    const saved = localStorage.getItem(STORAGE_KEY);
+    this.preference = isThemePreference(saved) ? saved : "system";
 
     // Apply immediately on construction (before first paint)
     applyResolved(this.getResolved());

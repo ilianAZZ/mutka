@@ -1,4 +1,5 @@
 import type { ModulePermission } from "../module-registry/module-registry.types";
+import type { EventMap } from "../event-bus/events";
 
 // What a sandboxed module is allowed to learn from the bus via host.events.on().
 //
@@ -20,7 +21,9 @@ import type { ModulePermission } from "../module-registry/module-registry.types"
 // Add entries deliberately — this is a trust surface. Host-internal events that
 // would leak OTHER modules' state (ui:changed, statusbar:changed) or arbitrary
 // internals (error:action) are on neither list and stay unreachable.
-export const SUBSCRIBABLE_EVENTS = new Set<string>([
+// Typed against EventMap so every entry is a real event — a renamed event here
+// is now a compile error instead of a silently-dead whitelist entry.
+const SUBSCRIBABLE_LIST: readonly (keyof EventMap)[] = [
   // Lifecycle / launch
   "app:ready",
   // Input + open intents (the single item/path the module acts on)
@@ -55,13 +58,19 @@ export const SUBSCRIBABLE_EVENTS = new Set<string>([
   // event was already observable, so delivering the id only adds "which feature";
   // it lets a usage/analytics module report command popularity.
   "action:dispatch",
-]);
+];
+
+export const SUBSCRIBABLE_EVENTS: ReadonlySet<string> = new Set(SUBSCRIBABLE_LIST);
+
 
 // Delivered as a bare ping (payload stripped to `undefined`). See the note above.
-export const NOTIFY_ONLY_EVENTS = new Set<string>([
+const NOTIFY_ONLY_LIST: readonly (keyof EventMap)[] = [
   "clipboard:changed", // full clipboard contents → re-read via board.readFiles (clipboard:read)
   "tabs:changed",      // every open tab's path
-]);
+];
+
+export const NOTIFY_ONLY_EVENTS: ReadonlySet<string> = new Set(NOTIFY_ONLY_LIST);
+
 
 // A few whitelisted events carry data sensitive enough that RECEIVING them needs a
 // permission — subscribing is otherwise unpermissioned. `file:external-drop` delivers
