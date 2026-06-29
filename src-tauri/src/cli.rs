@@ -23,8 +23,10 @@ pub fn cli_output(text: String) -> Result<(), String> {
     Ok(())
 }
 
-/// Exit the process with a given code (used after --picker completes).
+/// Exit the process with a given code (used after --picker completes). Routes
+/// through Tauri so the app tears down cleanly (watcher run-loop, plugins, Drop)
+/// instead of `std::process::exit` hard-killing it mid-flight.
 #[tauri::command]
-pub fn cli_exit(code: i32) -> Result<(), String> {
-    std::process::exit(code);
+pub fn cli_exit(app: tauri::AppHandle, code: i32) {
+    app.exit(code);
 }

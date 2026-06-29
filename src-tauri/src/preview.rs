@@ -27,7 +27,7 @@ mod ql {
 
     // QLPreviewPanelDataSource: how many items the panel shows (0 or 1).
     extern "C" fn number_of_items(_this: &Object, _cmd: Sel, _panel: Id) -> isize {
-        match CURRENT_PATH.lock().unwrap().as_deref() {
+        match CURRENT_PATH.lock().unwrap_or_else(|e| e.into_inner()).as_deref() {
             Some(p) if !p.is_empty() => 1,
             _ => 0,
         }
@@ -36,7 +36,7 @@ mod ql {
     // QLPreviewPanelDataSource: the item at `index` as a file NSURL (NSURL
     // conforms to QLPreviewItem). Returns nil when no path is set.
     extern "C" fn preview_item_at(_this: &Object, _cmd: Sel, _panel: Id, _index: isize) -> Id {
-        let guard = CURRENT_PATH.lock().unwrap();
+        let guard = CURRENT_PATH.lock().unwrap_or_else(|e| e.into_inner());
         let path = match guard.as_deref() {
             Some(p) if !p.is_empty() => p,
             _ => return std::ptr::null_mut(),
@@ -106,7 +106,7 @@ mod ql {
 pub fn quick_look(app: tauri::AppHandle, path: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        *CURRENT_PATH.lock().unwrap() = Some(path);
+        *CURRENT_PATH.lock().unwrap_or_else(|e| e.into_inner()) = Some(path);
         app.run_on_main_thread(|| unsafe { ql::toggle() })
             .map_err(|e| e.to_string())?;
     }
@@ -121,7 +121,7 @@ pub fn quick_look(app: tauri::AppHandle, path: String) -> Result<(), String> {
 pub fn preview_update(app: tauri::AppHandle, path: String) -> Result<(), String> {
     #[cfg(target_os = "macos")]
     {
-        *CURRENT_PATH.lock().unwrap() = Some(path);
+        *CURRENT_PATH.lock().unwrap_or_else(|e| e.into_inner()) = Some(path);
         app.run_on_main_thread(|| unsafe { ql::refresh() })
             .map_err(|e| e.to_string())?;
     }
