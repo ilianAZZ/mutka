@@ -188,7 +188,7 @@ mutka/
 │   │   ├── settings.ts          ← open settings (⌘,) → toggles SettingsStore
 │   │   ├── drop-import.ts       ← import files dropped from Finder (temp file → copy)
 │   │   ├── auto-refresh.ts      ← re-read the list on "directory:changed" (file watch)
-│   │   ├── telemetry.ts         ← times folder opens (data vs render) via nav/listing events
+│   │   ├── telemetry.ts         ← times folder opens (data vs render) + reports anonymous usage to PostHog (network:public, storage)
 │   │   ├── github-discovery.ts  ← module-discovery source for GitHub, shipped AS a module
 │   │   └── reveal.ts            ← example: open with system default app
 │   │
