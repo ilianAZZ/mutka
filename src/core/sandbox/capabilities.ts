@@ -16,7 +16,7 @@ import { StatusBarStore } from "../stores/StatusBarStore";
 import { ModuleRegistry } from "../module-registry/ModuleRegistry";
 import { DragService } from "../drag/DragService";
 import { probeManifest } from "./probeManifest";
-import type { UINode, StatusBarItem } from "./protocol";
+import type { UINode, StatusBarItem, NetRequestOptions, NetResponse } from "./protocol";
 
 /** localStorage key for the last visited local directory (restored at launch). */
 export const LAST_DIR_KEY = "mutka.lastDir";
@@ -39,7 +39,37 @@ export interface CapabilityDef {
   run: (args: unknown[], moduleId: string, permissions: readonly ModulePermission[]) => Promise<unknown>;
 }
 
-export type CapabilityTable = Record<string, Record<string, CapabilityDef>>;
+/**
+ * Typed map of every capability group → its method names. Used by `hostProxy.ts`
+ * to compile-check the `call("group", "method", …)` strings — a typo or a
+ * rename in this table is a compile error in the proxy, not a silent runtime
+ * failure.
+ */
+export interface CapabilityMethodMap {
+  fs: "readDir" | "openItem" | "readBytes" | "cloudStatus" | "deleteItem" | "renameItem" | "createFile" | "createFolder" | "copyFiles" | "moveFiles";
+  board: "readFiles" | "writeFiles";
+  nav: "navigate" | "goBack" | "goForward" | "goUp";
+  tabs: "openTab" | "openTabInBackground" | "isActive";
+  dialog: "prompt" | "confirm" | "choose" | "pickFile";
+  net: "request";
+  modules: "probe" | "install";
+  config: "get" | "set";
+  secrets: "get" | "set" | "delete";
+  selection: "set";
+  view: "setSort" | "toggleSort" | "toggleHidden" | "setShowHidden";
+  app: "refresh" | "activate";
+  home: "get" | "set";
+  settings: "toggle";
+  ui: "render" | "clear" | "modal";
+  statusbar: "set" | "remove";
+  sys: "homeDir" | "appVersion" | "lastDir" | "writeTempFile" | "quickLook" | "previewUpdate" | "appsForFile" | "openWith" | "startDrag";
+}
+
+export type CapabilityTable = {
+  [G in keyof CapabilityMethodMap]: {
+    [M in CapabilityMethodMap[G]]: CapabilityDef;
+  };
+};
 
 // Namespace a module's config entry. The id↔key delimiter is ":" — NOT "." —
 // because a module id may itself contain dots (`com.acme.vault`), so a "." here
@@ -63,24 +93,6 @@ function bytesToBase64(bytes: Uint8Array): string {
     bin += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
   }
   return btoa(bin);
-}
-
-/** Options accepted by the `net.request` capability (the module-facing shape). */
-interface NetRequestOptions {
-  url: string;
-  method?: string;
-  headers?: Record<string, string>;
-  /** Text (UTF-8) or raw bytes; the gateway base64-encodes either for transport. */
-  body?: string | Uint8Array;
-}
-/** What `net.request` resolves to (decoded host-side from the Rust response). */
-interface NetResponse {
-  status: number;
-  headers: Record<string, string>;
-  /** Body decoded as UTF-8 text (use for JSON/XML/text APIs). */
-  body: string;
-  /** Body as raw bytes (use for binary downloads). */
-  bytes: Uint8Array;
 }
 
 /**

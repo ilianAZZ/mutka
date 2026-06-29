@@ -1,7 +1,9 @@
-import type { WorkerToHost, HostSnapshot, ColumnCell, ProviderMethod, DiscoveryMethod, UINode, StatusBarItem, SandboxManifest } from "./protocol";
+import type { WorkerToHost, HostSnapshot, ColumnCell, ProviderMethod, DiscoveryMethod, UINode, StatusBarItem, SandboxManifest, NetRequestOptions, NetResponse } from "./protocol";
 import type { FileItem, AppInfo } from "../types";
 import type { SidebarItem } from "../module-registry/public-types";
 import type { DiscoveryQuery, DiscoveryResult } from "../discovery/types";
+import type { SortKey, SortState } from "../stores/listing.types";
+import type { CapabilityMethodMap } from "./capabilities";
 
 export type { ProviderMethod } from "./protocol";
 
@@ -27,24 +29,7 @@ export type UIEventHandler = (value: unknown) => void | Promise<void>;
 export type DiscoverHandler = (query: DiscoveryQuery) => Promise<DiscoveryResult>;
 export type FetchSourceHandler = (ref: string) => Promise<string>;
 
-/** Options for host.net.request — a host-proxied HTTP call (bypasses CORS). */
-export interface NetRequestOptions {
-  url: string;
-  method?: string;
-  headers?: Record<string, string>;
-  /** Text (UTF-8) or raw bytes (e.g. from host.fs.readBytes for an upload). */
-  body?: string | Uint8Array;
-}
-
-/** What host.net.request resolves to. */
-export interface NetResponse {
-  status: number;
-  headers: Record<string, string>;
-  /** Body decoded as UTF-8 text (JSON/XML/text APIs). */
-  body: string;
-  /** Body as raw bytes (binary downloads). */
-  bytes: Uint8Array;
-}
+export type { NetRequestOptions, NetResponse } from "./protocol";
 
 /** What host.board.readFiles resolves to — the pasteboard's pending file list. */
 export interface ClipboardFiles {
@@ -94,8 +79,8 @@ export interface SandboxHostApi<TCommandId extends string = string> {
     set(items: FileItem[]): Promise<void>;
   };
   view: {
-    setSort(sort: { key: string; dir: "asc" | "desc" }): Promise<void>;
-    toggleSort(key: string): Promise<void>;
+    setSort(sort: SortState): Promise<void>;
+    toggleSort(key: SortKey): Promise<void>;
     /** Toggle whether hidden/system files (dotfiles) are shown. */
     toggleHidden(): Promise<void>;
     /** Explicitly set whether hidden/system files are shown. */
@@ -231,7 +216,7 @@ export interface SandboxHostApi<TCommandId extends string = string> {
 }
 
 interface Transport {
-  callHost: (cap: string, method: string, args: unknown[]) => Promise<unknown>;
+  callHost: <G extends keyof CapabilityMethodMap>(cap: G, method: CapabilityMethodMap[G], args: unknown[]) => Promise<unknown>;
   registerCommand: (commandId: string, handler: CommandHandler) => void;
   registerOpen: (handlerId: string, handler: OpenHandler) => void;
   registerColumn: (columnId: string, provider: ColumnProvider) => void;
@@ -245,99 +230,100 @@ interface Transport {
 
 export function createHostProxy(t: Transport): SandboxHostApi {
   const { callHost } = t;
-  // The wire result is always `unknown` (it crossed postMessage / the gateway);
-  // `call<T>` asserts the concrete shape each capability is documented to return,
-  // so the SandboxHostApi above gives authors precise types without ad-hoc casts.
-  const call = <T>(cap: string, method: string, args: unknown[]): Promise<T> =>
-    callHost(cap, method, args) as Promise<T>;
+  // The wire result is always `unknown` (it crossed postMessage / the gateway).
+  // `call` constrains cap/method to `CapabilityMethodMap`, so a typo or a
+  // renamed capability is a compile error. The return cast to the expected shape
+  // is at each call site (the gateway can't provide static return types).
+  const call = <G extends keyof CapabilityMethodMap>(cap: G, method: CapabilityMethodMap[G], args: unknown[]): Promise<unknown> =>
+    callHost(cap, method, args);
   return {
     fs: {
-      readDir:      (path) => call<FileItem[]>("fs", "readDir", [path]),
-      openItem:     (path) => call<void>("fs", "openItem", [path]),
-      readBytes:    (path) => call<Uint8Array>("fs", "readBytes", [path]),
-      cloudStatus:  (path) => call<CloudStatus>("fs", "cloudStatus", [path]),
-      copyFiles:    (paths, dest) => call<void>("fs", "copyFiles", [paths, dest]),
-      moveFiles:    (paths, dest) => call<void>("fs", "moveFiles", [paths, dest]),
-      deleteItem:   (path) => call<void>("fs", "deleteItem", [path]),
-      renameItem:   (from, to) => call<void>("fs", "renameItem", [from, to]),
-      createFile:   (path) => call<void>("fs", "createFile", [path]),
-      createFolder: (path) => call<void>("fs", "createFolder", [path]),
+      readDir:      (path) => call("fs", "readDir", [path]) as Promise<FileItem[]>,
+      openItem:     (path) => call("fs", "openItem", [path]) as Promise<void>,
+      readBytes:    (path) => call("fs", "readBytes", [path]) as Promise<Uint8Array>,
+      cloudStatus:  (path) => call("fs", "cloudStatus", [path]) as Promise<CloudStatus>,
+      copyFiles:    (paths, dest) => call("fs", "copyFiles", [paths, dest]) as Promise<void>,
+      moveFiles:    (paths, dest) => call("fs", "moveFiles", [paths, dest]) as Promise<void>,
+      deleteItem:   (path) => call("fs", "deleteItem", [path]) as Promise<void>,
+      renameItem:   (from, to) => call("fs", "renameItem", [from, to]) as Promise<void>,
+      createFile:   (path) => call("fs", "createFile", [path]) as Promise<void>,
+      createFolder: (path) => call("fs", "createFolder", [path]) as Promise<void>,
     },
     board: {
-      readFiles:  () => call<ClipboardFiles | null>("board", "readFiles", []),
-      writeFiles: (paths, operation) => call<void>("board", "writeFiles", [paths, operation]),
+      readFiles:  () => call("board", "readFiles", []) as Promise<ClipboardFiles | null>,
+      writeFiles: (paths, operation) => call("board", "writeFiles", [paths, operation]) as Promise<void>,
     },
     nav: {
-      navigate:  (path) => call<void>("nav", "navigate", [path]),
-      goBack:    () => call<void>("nav", "goBack", []),
-      goForward: () => call<void>("nav", "goForward", []),
-      goUp:      () => call<void>("nav", "goUp", []),
+      navigate:  (path) => call("nav", "navigate", [path]) as Promise<void>,
+      goBack:    () => call("nav", "goBack", []) as Promise<void>,
+      goForward: () => call("nav", "goForward", []) as Promise<void>,
+      goUp:      () => call("nav", "goUp", []) as Promise<void>,
     },
     tabs: {
-      openTab:             (path) => call<void>("tabs", "openTab", [path]),
-      openTabInBackground: (path) => call<void>("tabs", "openTabInBackground", [path]),
-      isActive:            () => call<boolean>("tabs", "isActive", []),
+      openTab:             (path) => call("tabs", "openTab", [path]) as Promise<void>,
+      openTabInBackground: (path) => call("tabs", "openTabInBackground", [path]) as Promise<void>,
+      isActive:            () => call("tabs", "isActive", []) as Promise<boolean>,
     },
     selection: {
-      set: (items) => call<void>("selection", "set", [items]),
+      set: (items) => call("selection", "set", [items]) as Promise<void>,
     },
     view: {
-      setSort:       (sort) => call<void>("view", "setSort", [sort]),
-      toggleSort:    (key) => call<void>("view", "toggleSort", [key]),
-      toggleHidden:  () => call<void>("view", "toggleHidden", []),
-      setShowHidden: (value) => call<void>("view", "setShowHidden", [value]),
+      setSort:       (sort) => call("view", "setSort", [sort]) as Promise<void>,
+      toggleSort:    (key) => call("view", "toggleSort", [key]) as Promise<void>,
+      toggleHidden:  () => call("view", "toggleHidden", []) as Promise<void>,
+      setShowHidden: (value) => call("view", "setShowHidden", [value]) as Promise<void>,
     },
     dialog: {
-      prompt:  (options) => call<string | null>("dialog", "prompt", [options]),
-      confirm: (options) => call<boolean>("dialog", "confirm", [options]),
-      choose:  (options) => call<string | null>("dialog", "choose", [options]),
-      pickFile: (options) => call<string | null>("dialog", "pickFile", [options]),
+      prompt:  (options) => call("dialog", "prompt", [options]) as Promise<string | null>,
+      confirm: (options) => call("dialog", "confirm", [options]) as Promise<boolean>,
+      choose:  (options) => call("dialog", "choose", [options]) as Promise<string | null>,
+      pickFile: (options) => call("dialog", "pickFile", [options]) as Promise<string | null>,
     },
     home: {
-      get: () => call<string>("home", "get", []),
-      set: (path) => call<void>("home", "set", [path]),
+      get: () => call("home", "get", []) as Promise<string>,
+      set: (path) => call("home", "set", [path]) as Promise<void>,
     },
     settings: {
-      toggle: () => call<void>("settings", "toggle", []),
+      toggle: () => call("settings", "toggle", []) as Promise<void>,
     },
     ui: {
-      render: (surfaceId, node) => call<void>("ui", "render", [surfaceId, node]),
-      clear:  (surfaceId) => call<void>("ui", "clear", [surfaceId]),
-      modal:  (node) => call<void>("ui", "modal", [node]),
+      render: (surfaceId, node) => call("ui", "render", [surfaceId, node]) as Promise<void>,
+      clear:  (surfaceId) => call("ui", "clear", [surfaceId]) as Promise<void>,
+      modal:  (node) => call("ui", "modal", [node]) as Promise<void>,
     },
     statusbar: {
-      set:    (item) => call<void>("statusbar", "set", [item]),
-      remove: (itemId) => call<void>("statusbar", "remove", [itemId]),
+      set:    (item) => call("statusbar", "set", [item]) as Promise<void>,
+      remove: (itemId) => call("statusbar", "remove", [itemId]) as Promise<void>,
     },
     sys: {
-      homeDir: () => call<string>("sys", "homeDir", []),
-      appVersion: () => call<string>("sys", "appVersion", []),
-      lastDir: () => call<string | null>("sys", "lastDir", []),
-      writeTempFile: (filename, data) => call<string>("sys", "writeTempFile", [filename, data]),
-      quickLook: (path) => call<void>("sys", "quickLook", [path]),
-      previewUpdate: (path) => call<void>("sys", "previewUpdate", [path]),
-      appsForFile: (path) => call<AppInfo[]>("sys", "appsForFile", [path]),
-      openWith: (path, appPath) => call<void>("sys", "openWith", [path, appPath]),
-      startDrag: (paths, icon) => call<void>("sys", "startDrag", [paths, icon]),
+      homeDir: () => call("sys", "homeDir", []) as Promise<string>,
+      appVersion: () => call("sys", "appVersion", []) as Promise<string>,
+      lastDir: () => call("sys", "lastDir", []) as Promise<string | null>,
+      writeTempFile: (filename, data) => call("sys", "writeTempFile", [filename, data]) as Promise<string>,
+      quickLook: (path) => call("sys", "quickLook", [path]) as Promise<void>,
+      previewUpdate: (path) => call("sys", "previewUpdate", [path]) as Promise<void>,
+      appsForFile: (path) => call("sys", "appsForFile", [path]) as Promise<AppInfo[]>,
+      openWith: (path, appPath) => call("sys", "openWith", [path, appPath]) as Promise<void>,
+      startDrag: (paths, icon) => call("sys", "startDrag", [paths, icon]) as Promise<void>,
     },
     net: {
-      request: (options) => call<NetResponse>("net", "request", [options]),
+      request: (options) => call("net", "request", [options]) as Promise<NetResponse>,
     },
     modules: {
-      probe: (source) => call<SandboxManifest>("modules", "probe", [source]),
-      install: (source) => call<void>("modules", "install", [source]),
+      probe: (source) => call("modules", "probe", [source]) as Promise<SandboxManifest>,
+      install: (source) => call("modules", "install", [source]) as Promise<void>,
     },
     config: {
-      get: (key) => call<string | null>("config", "get", [key]),
-      set: (key, value) => call<void>("config", "set", [key, value]),
+      get: (key) => call("config", "get", [key]) as Promise<string | null>,
+      set: (key, value) => call("config", "set", [key, value]) as Promise<void>,
     },
     secrets: {
-      get: (key) => call<string | null>("secrets", "get", [key]),
-      set: (key, value) => call<void>("secrets", "set", [key, value]),
-      delete: (key) => call<void>("secrets", "delete", [key]),
+      get: (key) => call("secrets", "get", [key]) as Promise<string | null>,
+      set: (key, value) => call("secrets", "set", [key, value]) as Promise<void>,
+      delete: (key) => call("secrets", "delete", [key]) as Promise<void>,
     },
-    refresh: () => call<void>("app", "refresh", []),
-    activate: (item) => call<void>("app", "activate", [item]),
+    refresh: () => call("app", "refresh", []) as Promise<void>,
+    activate: (item) => call("app", "activate", [item]) as Promise<void>,
     onCommand: (commandId, handler) => t.registerCommand(commandId, handler),
     onOpen: (handlerId, handler) => t.registerOpen(handlerId, handler),
     onColumn: (columnId, provider) => t.registerColumn(columnId, provider),

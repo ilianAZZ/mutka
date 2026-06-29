@@ -87,6 +87,25 @@ ctx.onmessage = async (e: MessageEvent<HostToWorker>): Promise<void> => {
       }
       break;
     }
+    case "column-batch": {
+      const provider = columns.get(msg.columnId);
+      if (!provider) {
+        post({ t: "column-batch-result", id: msg.id, ok: true, values: msg.items.map(() => null) });
+        break;
+      }
+      try {
+        const values = await Promise.all(
+          msg.items.map(async (item) => {
+            try { return (await provider(item)) ?? null; }
+            catch { return null; }
+          })
+        );
+        post({ t: "column-batch-result", id: msg.id, ok: true, values });
+      } catch (err) {
+        post({ t: "column-batch-result", id: msg.id, ok: false, error: String(err) });
+      }
+      break;
+    }
     case "ui-event":
       await safeRun(uiEvents.get(msg.handler), msg.value, `ui-event "${msg.handler}"`);
       break;

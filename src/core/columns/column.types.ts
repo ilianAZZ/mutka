@@ -10,6 +10,9 @@ export type { ColumnCell, ColumnContribution, ColumnDirMatch } from "../sandbox/
 /** Produces a cell value for an item, in whichever runtime backs the module. */
 export type ColumnRunner = (columnId: string, item: FileItem) => Promise<ColumnCell | null>;
 
+/** Produces cell values for a batch of items in one dispatch (O(1) round-trips). */
+export type ColumnBatchRunner = (columnId: string, items: FileItem[]) => Promise<(ColumnCell | null)[]>;
+
 /** What a cell currently is: a resolved value, an empty cell, or pending. */
 export type ColumnCellState = ColumnCell | null | "loading";
 

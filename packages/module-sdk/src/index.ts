@@ -75,6 +75,9 @@ export type {
 // ─── Foundation types ────────────────────────────────────────────────────────
 export type { FileItem, ClipboardState, AppInfo } from "../../../src/core/types";
 
+// ─── Listing / sort types (used by host.view.*) ─────────────────────────────
+export type { SortKey, SortState } from "../../../src/core/stores/listing.types";
+
 // ─── Permissions, sidebar entries, discovery queries ─────────────────────────
 export type {
   ModulePermission,

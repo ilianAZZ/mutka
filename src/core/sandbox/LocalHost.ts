@@ -83,6 +83,7 @@ export class LocalHost {
       run: (id, snap) => this.run(this.commands.get(id), snap, `command "${id}"`),
       runOpen: (id, item) => this.run(this.opens.get(id), item, `open handler "${id}"`),
       runColumn: (id, item) => this.runColumn(id, item),
+      runColumnBatch: (id, items) => this.runColumnBatch(id, items),
       runUIEvent: (id, value) => this.run(this.uiEvents.get(id), value, `ui-event "${id}"`),
       dispose: () => this.dispose(),
     });
@@ -93,6 +94,15 @@ export class LocalHost {
     const provider = this.columns.get(columnId);
     if (!provider) return null;
     return (await provider(item)) ?? null;
+  }
+
+  private async runColumnBatch(columnId: string, items: FileItem[]): Promise<(ColumnCell | null)[]> {
+    const provider = this.columns.get(columnId);
+    if (!provider) return items.map(() => null);
+    return Promise.all(items.map(async (item) => {
+      try { return (await provider(item)) ?? null; }
+      catch { return null; }
+    }));
   }
 
   private callProvider(scheme: string, method: ProviderMethod, ...args: unknown[]): Promise<unknown> {
