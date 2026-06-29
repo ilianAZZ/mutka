@@ -18,9 +18,21 @@ import { FileIconRegistry } from "../file-icons/FileIconRegistry";
 const FALLBACK_ICON =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwAEhgGAhqmM/wAAAABJRU5ErkJggg==";
 
-// A module-supplied drag icon (via sys.startDrag) is untrusted. Allow only the
-// shapes the plugin legitimately renders — a data:image URI, an http(s) URL, or
-// an absolute file path — so a weird scheme (javascript:, …) never reaches it.
+const DRAG_ICON_PX = 32;
+
+function shrinkIcon(dataUri: string): string {
+  const img = new Image();
+  img.src = dataUri;
+  if (!img.complete || img.naturalWidth === 0) return dataUri;
+  const canvas = document.createElement("canvas");
+  canvas.width = DRAG_ICON_PX;
+  canvas.height = DRAG_ICON_PX;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return dataUri;
+  ctx.drawImage(img, 0, 0, DRAG_ICON_PX, DRAG_ICON_PX);
+  return canvas.toDataURL("image/png");
+}
+
 function safeDragIcon(icon?: string): string {
   const s = icon?.trim();
   if (!s) return FALLBACK_ICON;
@@ -45,7 +57,8 @@ class DragServiceClass {
    */
   startForItems(items: FileItem[]): Promise<void> {
     if (items.length === 0) return Promise.resolve();
-    const icon = FileIconRegistry.resolveSync(items[0]) ?? undefined;
+    const raw = FileIconRegistry.resolveSync(items[0]);
+    const icon = raw ? shrinkIcon(raw) : undefined;
     return this.start(items.map((i) => i.path), icon);
   }
 }

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { FileItem, BaseContext } from "./core/types";
 import { ModuleRegistry } from "./core/module-registry/ModuleRegistry";
 import { EventBus } from "./core/event-bus/EventBus";
@@ -72,6 +72,8 @@ export function App() {
   // ── State derived from stores + subsystems (one hook per concern) ────────────
   const { homeDir, showSettings, showModules, selected, clipboard, listing } = useStoreSnapshots();
   const { currentDir, canGoBack, canGoForward, navigateTo, goBack, goForward, goUp } = useNavigation();
+  const currentDirRef = useRef(currentDir);
+  currentDirRef.current = currentDir;
   const { refresh, loadError } = useDirectoryListing(currentDir);
   const { rightPanels, sidebarItemGroups } = useSidebarContributions();
   const { dialogAPI, dialogState, closeDialog, pickerState } = useDialog();
@@ -147,30 +149,39 @@ export function App() {
     }
   }, []);
 
-  // Shared props handed to every module-contributed sidebar panel
-  const panelProps: SidebarPanelProps = {
+  const panelProps = useMemo<SidebarPanelProps>(() => ({
     selectedItems: selected,
     currentDirectory: currentDir,
     navigate: navigateTo,
     refresh,
-  };
+  }), [selected, currentDir, navigateTo, refresh]);
 
-  // BaseContext for ContextMenu isEnabled/isVisible checks (read-only, no services)
-  const viewCtx: BaseContext = {
+  const viewCtx = useMemo<BaseContext>(() => ({
     selectedItems: selected,
     currentDirectory: currentDir,
     clipboard,
     navigation: { navigate: navigateTo, goBack, goForward, goUp, canGoBack, canGoForward },
-  };
+  }), [selected, currentDir, clipboard, navigateTo, goBack, goForward, goUp, canGoBack, canGoForward]);
 
   // Module-contributed list columns that apply to the current directory.
   const { columns: extraColumns, cellData: columnCells } = useColumns(listing.items, currentDir, homeDir);
   const { widths: columnWidths, setWidth: handleColumnResize } = useColumnWidths();
 
-  // Actions for the zone the user right-clicked. Empty → no menu is shown.
-  const menuGroups = contextMenu
-    ? ModuleRegistry.getContextMenuActions(viewCtx, contextMenu.zone)
-    : [];
+  const cutItems = useMemo(
+    () => clipboard.operation === "cut" ? clipboard.items : [],
+    [clipboard],
+  );
+  const handleSelect = useCallback((items: FileItem[]) => SelectionStore.set(items), []);
+  const handleOpen = useCallback((item: FileItem) => { ModuleRegistry.resolveOpen(item); }, []);
+  const handleNativeDrag = useCallback((items: FileItem[]) => DragService.startForItems(items), []);
+  const handleRendered = useCallback((count: number) => {
+    EventBus.emit(Events.Listing.rendered, { path: currentDirRef.current, count });
+  }, []);
+
+  const menuGroups = useMemo(
+    () => contextMenu ? ModuleRegistry.getContextMenuActions(viewCtx, contextMenu.zone) : [],
+    [contextMenu, viewCtx],
+  );
 
   // ── Render ────────────────────────────────────────────────────────────────────
 
@@ -206,7 +217,7 @@ export function App() {
         fileList={{
           files: listing.items,
           selected,
-          cutItems: clipboard.operation === "cut" ? clipboard.items : [],
+          cutItems,
           sort: listing.sort,
           error: loadError,
           currentDir,
@@ -214,15 +225,15 @@ export function App() {
           cellData: columnCells,
           columnWidths,
           onColumnResize: handleColumnResize,
-          onSelect: (items) => SelectionStore.set(items),
-          onOpen: (item) => ModuleRegistry.resolveOpen(item),
+          onSelect: handleSelect,
+          onOpen: handleOpen,
           onSortChange: handleSortChange,
           onModifierOpen: handleModifierOpen,
           onMiddleClick: handleMiddleClick,
           onMoveItems: handleMoveItems,
           onDropExternal: handleDropExternal,
-          onNativeDrag: (items) => DragService.startForItems(items),
-          onRendered: (count) => EventBus.emit(Events.Listing.rendered, { path: currentDir, count }),
+          onNativeDrag: handleNativeDrag,
+          onRendered: handleRendered,
         }}
         right={<Sidebar side="right" panels={rightPanels} panelProps={panelProps} />}
         footer={
