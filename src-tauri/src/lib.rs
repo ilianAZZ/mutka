@@ -8,6 +8,7 @@ use window_vibrancy::{apply_vibrancy, NSVisualEffectMaterial};
 
 // One module per feature/scope. Each declares its own #[tauri::command]s; this
 // file only wires them into the Tauri builder. See src-tauri/CLAUDE.md.
+mod app_info;
 mod cli;
 mod clipboard;
 mod fs_ops;
@@ -22,6 +23,7 @@ mod watcher;
 #[cfg(target_os = "macos")]
 mod traffic_lights;
 
+use app_info::get_app_version;
 use cli::{cli_exit, cli_output, get_cli_args, CliArgs};
 use clipboard::{clipboard_read_files, clipboard_write_files};
 use fs_ops::{
@@ -142,6 +144,7 @@ pub fn run() {
             apps_for_file,
             open_with,
             get_home_dir,
+            get_app_version,
             read_file_base64,
             cloud_status,
             write_temp_file,

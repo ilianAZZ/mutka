@@ -28,6 +28,7 @@ deliberately, not by default.
 | `file:open-no-app`       | An item was opened but no app claims it (offer a picker) |
 | `file:external-drop`     | Files were dropped in from Finder                       |
 | `sidebar:item-remove`    | The user removed one of this module's sidebar items     |
+| `action:dispatch`        | A command ran — payload is `{ actionId }` (e.g. `core.clipboard.copy`), a static feature id (no user data) |
 
 ```ts
 setup(host) {

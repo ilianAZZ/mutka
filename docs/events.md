@@ -52,6 +52,7 @@ it has **two tiers** in `src/core/sandbox/eventWhitelist.ts`:
 | `"file:modifier-open"` | `core.tabs` (ctrl/⌘-click a folder → open in a tab) |
 | `"directory:changed"` | `core.auto-refresh` (re-read list when the dir changes on disk) |
 | `"navigation:start"` · `"listing:loaded"` · `"listing:rendered"` · `"icons:settled"` | `core.telemetry` (times each folder open: data fetch, render, icons) |
+| `"action:dispatch"` | `core.telemetry` (reports which command ran — payload is `{ actionId }`, a static feature id, not user data) |
 | `"selection:changed"` | declarative panels reacting to the selection |
 | `"navigation:back"` · `"navigation:forward"` | nav-aware modules reacting to history moves |
 | `"theme:changed"` · `"view:changed"` · `"settings:changed"` · `"modules-ui:changed"` · `"sidebar:changed"` · `"module:registered"` · `"module:unregistered"` · `"columns:cell-resolved"` · `"columns:widths-changed"` | trivial signals (booleans / ids / theme) — nothing to protect |
@@ -64,7 +65,6 @@ it has **two tiers** in `src/core/sandbox/eventWhitelist.ts`:
 | --- | --- | --- |
 | `"clipboard:changed"` | full clipboard contents | re-read via `host.board.readFiles()` (`clipboard:read`) |
 | `"tabs:changed"` | every open tab's path | — (react to the ping only) |
-| `"action:dispatch"` | every command the user runs | — (react to the ping only) |
 
 For a worker module, `SandboxHost` subscribes on the EventBus and re-posts over
 postMessage; for a built-in, `LocalHost` subscribes directly. Either way the whitelist

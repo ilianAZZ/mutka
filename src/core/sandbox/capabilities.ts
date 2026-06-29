@@ -220,6 +220,11 @@ export function createCapabilityTable(): CapabilityTable {
     },
     sys: {
       homeDir:     { permission: "fs:read", run: () => invoke("get_home_dir") },
+      // The app's own version string (e.g. "1.0.0") — non-sensitive build metadata,
+      // not a filesystem read. Gated by `storage` (not `fs:read`) so an analytics /
+      // config module that already persists data can tag events by version and
+      // detect updates without also requesting the far broader `fs:read`.
+      appVersion:  { permission: "storage", run: () => invoke("get_app_version") },
       // Last visited local directory, restored at launch. Null on first run.
       lastDir:     { permission: "fs:read", run: async () => localStorage.getItem(LAST_DIR_KEY) },
       // Write bytes to a temp file, returning its path. Accepts a Uint8Array (e.g.

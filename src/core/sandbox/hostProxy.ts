@@ -141,6 +141,8 @@ export interface SandboxHostApi<TCommandId extends string = string> {
   sys: {
     /** The OS home directory. */
     homeDir(): Promise<string>;
+    /** The app's own version string (e.g. "1.0.0"). Gated by `storage`. */
+    appVersion(): Promise<string>;
     /** The last visited local directory, or null on first run. */
     lastDir(): Promise<string | null>;
     /** Write bytes to a temp file and return its path (Uint8Array, or a base64
@@ -309,6 +311,7 @@ export function createHostProxy(t: Transport): SandboxHostApi {
     },
     sys: {
       homeDir: () => call<string>("sys", "homeDir", []),
+      appVersion: () => call<string>("sys", "appVersion", []),
       lastDir: () => call<string | null>("sys", "lastDir", []),
       writeTempFile: (filename, data) => call<string>("sys", "writeTempFile", [filename, data]),
       quickLook: (path) => call<void>("sys", "quickLook", [path]),

@@ -207,14 +207,15 @@ axis is privacy, not secrecy):
   (`app:ready`, `navigation:back`/`forward`, `theme:changed`, `view:changed`,
   `settings:changed`, `modules-ui:changed`, `sidebar:changed`,
   `module:registered`/`unregistered`, `columns:cell-resolved`/`widths-changed`,
-  `icons:settled`) or the single path/items a module legitimately acts on
+  `icons:settled`, the ran command's `action:dispatch` `{ actionId }` — a static
+  feature id, not user data) or the single path/items a module legitimately acts on
   (`selection:changed`, `directory:changed`, `navigation:start`, `listing:loaded`,
   `listing:rendered`, the `input:mouse-navigate` / `file:*` open intents,
   `sidebar:item-remove`).
 - **`NOTIFY_ONLY_EVENTS`** — delivered as a bare ping with the payload stripped to
-  `undefined` (`clipboard:changed`, `tabs:changed`, `action:dispatch`). The
+  `undefined` (`clipboard:changed`, `tabs:changed`). The
   occurrence is useful (cache-bust, re-render) but the payload is profiling-grade
-  (the whole clipboard, every open tab, every command), so a module that needs the
+  (the whole clipboard, every open tab), so a module that needs the
   data fetches it through a permission-gated capability (e.g. `board.readFiles`
   needs `clipboard:read`). Both hosts strip the payload via `deliverablePayload`.
 

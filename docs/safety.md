@@ -200,7 +200,7 @@ event carries a credential — the gate is privacy, not secrecy):
 - **`SUBSCRIBABLE_EVENTS`** are delivered with their payload — trivial signals
   (`app:ready`, `theme:changed`, …) or the single path/items a module legitimately acts
   on (`selection:changed`, `directory:changed`, the mouse/open events, …).
-- **`NOTIFY_ONLY_EVENTS`** (`clipboard:changed`, `tabs:changed`, `action:dispatch`) are
+- **`NOTIFY_ONLY_EVENTS`** (`clipboard:changed`, `tabs:changed`) are
   delivered as a bare ping with the payload stripped to `undefined` (via
   `deliverablePayload`): the occurrence is useful but the full payload would be
   profiling-grade. A module that needs the data re-fetches it through a

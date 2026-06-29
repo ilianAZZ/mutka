@@ -188,7 +188,7 @@ mutka/
 │   │   ├── settings.ts          ← open settings (⌘,) → toggles SettingsStore
 │   │   ├── drop-import.ts       ← import files dropped from Finder (temp file → copy)
 │   │   ├── auto-refresh.ts      ← re-read the list on "directory:changed" (file watch)
-│   │   ├── telemetry.ts         ← times folder opens (data vs render) via nav/listing events
+│   │   ├── telemetry.ts         ← times folder opens (data vs render) + reports anonymous usage to PostHog (network:public, storage)
 │   │   ├── github-discovery.ts  ← module-discovery source for GitHub, shipped AS a module
 │   │   └── reveal.ts            ← example: open with system default app
 │   │
@@ -339,6 +339,7 @@ The same format runs in two interchangeable runtimes, differing only in transpor
 | `ui.render`/`clear`/`modal`                                                      | `ui`                | UIStore (declarative UINode surfaces + the modal)   |
 | `statusbar.set`/`remove`                                                         | `ui`                | StatusBarStore (bottom status-bar items)            |
 | `sys.homeDir`                                                                    | `fs:read`           | Rust `get_home_dir` (the OS home dir)               |
+| `sys.appVersion`                                                                 | `storage`           | Rust `get_app_version` (app build version; non-sensitive metadata, so `storage` not `fs:read`) |
 | `sys.lastDir`                                                                    | `fs:read`           | localStorage (last visited dir, for launch restore) |
 | `sys.writeTempFile`                                                              | `fs:temp`           | Rust `write_temp_file` (lower-risk than `fs:write`) |
 | `modules.probe`                                                                  | `discovery`         | `probeManifest` (validate a source → manifest, for discovery sources) |

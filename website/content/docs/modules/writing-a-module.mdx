@@ -86,6 +86,7 @@ definition — the same id inference with zero runtime import.
 | `host.tabs.*`      | `openTab`, `openTabInBackground`, `isActive`                                                               | `navigation`                         |
 | `host.dialog.*`    | `prompt(opts)` → `Promise<string \| null>`, `confirm(opts)` → `Promise<boolean>`                           | `dialog`                             |
 | `host.sys.homeDir` | The user's OS home directory                                                                               | `fs:read`                            |
+| `host.sys.appVersion` | The app's own version string (e.g. `1.0.0`)                                                             | `storage`                            |
 | `host.refresh()`   | Re-read the current directory after a mutation                                                            | `fs:read`                            |
 
 A command's handler receives a serializable `snapshot` of
