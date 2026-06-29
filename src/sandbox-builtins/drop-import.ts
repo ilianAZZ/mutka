@@ -18,13 +18,23 @@ export default defineModule({
   setup(host) {
     host.events.on("file:external-drop", async (payload) => {
       const { files, dest } = payload as ExternalDrop;
-      if (!files.length) return;
+      if (!files?.length) return;
       const temps: string[] = [];
       for (const file of files) {
-        temps.push((await host.sys.writeTempFile(file.name, file.base64)) as string);
+        // Skip malformed entries and don't let one bad file abort the whole drop.
+        if (typeof file?.name !== "string" || typeof file?.base64 !== "string") continue;
+        try {
+          temps.push((await host.sys.writeTempFile(file.name, file.base64)) as string);
+        } catch (e) {
+          host.log(`[drop-import] could not stage ${file?.name}:`, e);
+        }
       }
-      await host.fs.copyFiles(temps, dest);
-      await host.refresh();
+      if (!temps.length) return;
+      try {
+        await host.fs.copyFiles(temps, dest);
+      } finally {
+        await host.refresh();
+      }
     });
   },
 });
