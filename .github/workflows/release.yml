@@ -5,11 +5,15 @@ name: Release (build & publish)
 #
 #   1. Called by release-please.yml when a release PR is merged (final release).
 #      release-please created the Release as a DRAFT (no public "Latest", and a
-#      draft has NO git tag yet), so we build from the merge `sha` it passes us,
-#      upload the binaries into the draft, and only THEN publish it (the last
-#      step un-drafts it, which is the moment GitHub creates the tag + Latest
-#      badge). This closes the window where a "Latest" release exists with no
-#      installable .dmg.
+#      draft has NO git tag yet), so we build from the merge `sha` it passes us
+#      and upload the binaries into the draft. A separate `test` job then INSTALLS
+#      the .dmg (mount → copy out → run) and smoke-tests it; only if that passes
+#      does the `publish` job un-draft the release — the moment GitHub creates the
+#      tag + Latest badge. So a "Latest" release never exists without an
+#      installable, smoke-tested .dmg.
+#
+# Jobs: build → test → publish (+ npm), each gating the next. A red `test` leaves
+# the release a draft forever; you fix the bug and re-merge to re-stage a new draft.
 #   2. Triggered directly by pushing a `vX.Y.Z-rc.N` tag by hand (release
 #      candidate). No release exists yet, so tauri-action creates one, flagged as
 #      a pre-release. RC tags do NOT touch the changelog or npm — they're throwaway
@@ -153,35 +157,65 @@ jobs:
           prerelease: ${{ needs.setup.outputs.prerelease }}
           args: --target universal-apple-darwin
 
-      # Smoke-test the bundle we just built BEFORE it can go public. This runs on
-      # the macOS runner that's already up for the build (so it costs ~1 min, no
-      # extra runner) — and it must: the artifact is a Mach-O universal binary, so
-      # only macOS can execute it (Linux/Xvfb cannot run it, and cannot build it
-      # either — window-vibrancy/objc/keyring/codesign/notarize are macOS-only).
-      #
-      # `--list-actions` is a real functional smoke test, not just "does it boot":
-      # the app must launch the WebView, load EVERY module through the permission
-      # gateway, emit app:ready, ask ModuleRegistry for the actions, print them and
-      # exit 0. A broken module load, a broken registry, or a launch crash all fail
-      # here. If this step fails, the job fails and the "Publish the release" step
-      # below never runs — so the release stays a DRAFT and never becomes "Latest".
-      - name: Smoke-test the bundle
+      # Hand the freshly built .dmg to the `test` job (same bytes that were just
+      # uploaded into the draft). Passing it as a workflow artifact is reliable;
+      # downloading a DRAFT's asset by tag is not (the get-release-by-tag API hides
+      # drafts — the same reason we upload by release id above).
+      - name: Upload the bundle for the test job
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-bundle
+          path: src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          if-no-files-found: error
+          retention-days: 1
+
+  # Install the .dmg like a user (mount → copy the .app out → run) and smoke-test
+  # the INSTALLED copy, before anything goes public. Must run on macOS: the artifact
+  # is a Mach-O universal binary, so only macOS can execute it (Linux/Xvfb can
+  # neither run nor build it — window-vibrancy/objc/keyring/codesign/notarize are
+  # macOS-only). This is a real functional test, not just "does it boot":
+  # `--list-actions` launches the WebView, loads EVERY module through the permission
+  # gateway, emits app:ready, dumps the action registry and exits 0. A broken module
+  # load, a broken registry, or a launch crash all fail here — and a failed `test`
+  # blocks `publish`, so the release can never reach "Latest".
+  test:
+    needs: [setup, build]
+    runs-on: macos-14
+    steps:
+      - name: Download the built bundle
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-bundle
+          path: dist
+
+      - name: Install from the .dmg and smoke-test
         run: |
           set -euo pipefail
-          APP=$(find src-tauri/target/universal-apple-darwin/release/bundle/macos -maxdepth 1 -name '*.app' | head -1)
-          test -n "$APP" || { echo "no .app built"; exit 1; }
+          DMG=$(find dist -name '*.dmg' | head -1)
+          test -n "$DMG" || { echo "::error::no .dmg in artifact"; exit 1; }
+          echo "Mounting $DMG"
+          # Mount read-only; the mount point is the /Volumes line of hdiutil's output.
+          MOUNT=$(hdiutil attach "$DMG" -nobrowse -readonly | grep -o '/Volumes/.*' | tail -1)
+          test -n "$MOUNT" || { echo "::error::dmg mount failed"; exit 1; }
+          SRC=$(find "$MOUNT" -maxdepth 1 -name '*.app' | head -1)
+          test -n "$SRC" || { echo "::error::no .app inside the dmg"; hdiutil detach "$MOUNT" || true; exit 1; }
+          # "Install": drag the .app out of the read-only dmg to a writable location,
+          # then detach — exactly what a user does, and what makes the run realistic.
+          mkdir -p "$RUNNER_TEMP/install"
+          cp -R "$SRC" "$RUNNER_TEMP/install/"
+          hdiutil detach "$MOUNT"
+          APP="$RUNNER_TEMP/install/$(basename "$SRC")"
           BIN="$APP/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Contents/Info.plist")"
-          echo "Testing $BIN"
+          echo "Installed $APP"
 
           # Structural: universal (both arches) + valid signature + Gatekeeper accepts
-          # (the latter proves notarization stapled). These are cheap and catch a
-          # mis-signed or single-arch bundle that would fail on users' machines.
+          # the INSTALLED copy (proves notarization stapled + survived the dmg round-trip).
           lipo -info "$BIN" | grep -q arm64
           lipo -info "$BIN" | grep -q x86_64
           codesign --verify --deep --strict --verbose=2 "$APP"
           spctl -a -vvv -t install "$APP"
 
-          # Functional: boot the whole app headlessly and dump the action registry.
+          # Functional: boot the installed app and dump the action registry.
           # macOS has no Xvfb; the runner's WindowServer session lets the window open.
           # Portable timeout (macOS has no coreutils `timeout`): poll then kill.
           "$BIN" --list-actions > cli-out.txt 2>&1 &
@@ -202,16 +236,20 @@ jobs:
             echo "::error::expected core actions missing — module load likely failed"
             cat cli-out.txt; exit 1
           }
-          echo "Smoke test passed:"; cat cli-out.txt
+          echo "Install + smoke test passed:"; cat cli-out.txt
 
-      # Binaries are attached AND smoke-tested — NOW make the release public. Un-drafting is the
-      # moment GitHub creates the vX.Y.Z tag and assigns the "Latest" badge, so
-      # the release never appears as "Latest" without an installable .dmg. We patch
-      # by release id (a draft has no tag to address it by). make_latest=true gives
-      # it the "Latest" badge, replacing whichever older release currently holds it.
-      # Only the draft (final) path reaches this; rc builds were never drafts.
-      - name: Publish the release
-        if: needs.setup.outputs.draft == 'true'
+  # The bundle is attached to the draft AND the installed-.dmg smoke test passed —
+  # NOW make the release public. Un-drafting is the moment GitHub creates the vX.Y.Z
+  # tag and assigns "Latest", so a "Latest" release never exists without an
+  # installable, smoke-tested .dmg. We patch by release id (a draft has no tag to
+  # address it by). make_latest=true gives it the badge, replacing the older holder.
+  # Only the draft (final) path runs; rc builds were never drafts.
+  publish:
+    needs: [setup, test]
+    if: needs.setup.outputs.draft == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Publish the release (un-draft → Latest)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -223,14 +261,14 @@ jobs:
   # their package.json in lockstep, so they publish at the correct version with no
   # stamping. RC tags skip this.
   publish-sdk:
-    needs: setup
+    needs: [setup, test]
     if: needs.setup.outputs.prerelease == 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          # The SHA, not the tag: on the draft path the tag does not exist yet
-          # (these jobs run in parallel with build, which publishes it at the end).
+          # The SHA, not the tag: the tag is created only when `publish` un-drafts,
+          # which runs in parallel with this job — so the tag may not exist yet.
           ref: ${{ needs.setup.outputs.ref }}
       - uses: actions/setup-node@v4
         with:
@@ -249,14 +287,14 @@ jobs:
         run: npm publish --access public
 
   publish-create:
-    needs: setup
+    needs: [setup, test]
     if: needs.setup.outputs.prerelease == 'false'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
-          # The SHA, not the tag: on the draft path the tag does not exist yet
-          # (these jobs run in parallel with build, which publishes it at the end).
+          # The SHA, not the tag: the tag is created only when `publish` un-drafts,
+          # which runs in parallel with this job — so the tag may not exist yet.
           ref: ${{ needs.setup.outputs.ref }}
       - uses: actions/setup-node@v4
         with:
