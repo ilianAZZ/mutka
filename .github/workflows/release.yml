@@ -153,7 +153,58 @@ jobs:
           prerelease: ${{ needs.setup.outputs.prerelease }}
           args: --target universal-apple-darwin
 
-      # Binaries are attached — NOW make the release public. Un-drafting is the
+      # Smoke-test the bundle we just built BEFORE it can go public. This runs on
+      # the macOS runner that's already up for the build (so it costs ~1 min, no
+      # extra runner) — and it must: the artifact is a Mach-O universal binary, so
+      # only macOS can execute it (Linux/Xvfb cannot run it, and cannot build it
+      # either — window-vibrancy/objc/keyring/codesign/notarize are macOS-only).
+      #
+      # `--list-actions` is a real functional smoke test, not just "does it boot":
+      # the app must launch the WebView, load EVERY module through the permission
+      # gateway, emit app:ready, ask ModuleRegistry for the actions, print them and
+      # exit 0. A broken module load, a broken registry, or a launch crash all fail
+      # here. If this step fails, the job fails and the "Publish the release" step
+      # below never runs — so the release stays a DRAFT and never becomes "Latest".
+      - name: Smoke-test the bundle
+        run: |
+          set -euo pipefail
+          APP=$(find src-tauri/target/universal-apple-darwin/release/bundle/macos -maxdepth 1 -name '*.app' | head -1)
+          test -n "$APP" || { echo "no .app built"; exit 1; }
+          BIN="$APP/Contents/MacOS/$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Contents/Info.plist")"
+          echo "Testing $BIN"
+
+          # Structural: universal (both arches) + valid signature + Gatekeeper accepts
+          # (the latter proves notarization stapled). These are cheap and catch a
+          # mis-signed or single-arch bundle that would fail on users' machines.
+          lipo -info "$BIN" | grep -q arm64
+          lipo -info "$BIN" | grep -q x86_64
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          spctl -a -vvv -t install "$APP"
+
+          # Functional: boot the whole app headlessly and dump the action registry.
+          # macOS has no Xvfb; the runner's WindowServer session lets the window open.
+          # Portable timeout (macOS has no coreutils `timeout`): poll then kill.
+          "$BIN" --list-actions > cli-out.txt 2>&1 &
+          PID=$!
+          for _ in $(seq 60); do kill -0 "$PID" 2>/dev/null || break; sleep 1; done
+          if kill -0 "$PID" 2>/dev/null; then
+            kill "$PID" 2>/dev/null || true
+            echo "::error::--list-actions did not exit within 60s (boot hang?)"
+            cat cli-out.txt; exit 1
+          fi
+          wait "$PID"; RC=$?
+          if [ "$RC" -ne 0 ]; then
+            echo "::error::--list-actions exited with $RC"
+            cat cli-out.txt; exit 1
+          fi
+          # A core built-in must be present, proving the module pipeline registered.
+          grep -q "core.clipboard.copy" cli-out.txt || {
+            echo "::error::expected core actions missing — module load likely failed"
+            cat cli-out.txt; exit 1
+          }
+          echo "Smoke test passed:"; cat cli-out.txt
+
+      # Binaries are attached AND smoke-tested — NOW make the release public. Un-drafting is the
       # moment GitHub creates the vX.Y.Z tag and assigns the "Latest" badge, so
       # the release never appears as "Latest" without an installable .dmg. We patch
       # by release id (a draft has no tag to address it by). make_latest=true gives
