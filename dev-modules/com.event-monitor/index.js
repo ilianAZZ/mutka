@@ -18,6 +18,9 @@ export default {
   id: "com.event-monitor",
   name: "Event Monitor",
   version: "1.0.0",
+  icon: "data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%3E%3Crect%20width%3D'24'%20height%3D'24'%20rx%3D'6'%20fill%3D'%238b5cf6'%2F%3E%3Ccircle%20cx%3D'12'%20cy%3D'15'%20r%3D'1.8'%20fill%3D'%23fff'%2F%3E%3Cpath%20d%3D'M8.8%2015a3.2%203.2%200%200%201%206.4%200M6.5%2015a5.5%205.5%200%200%201%2011%200'%20stroke%3D'%23fff'%20stroke-width%3D'1.4'%20fill%3D'none'%20stroke-linecap%3D'round'%2F%3E%3C%2Fsvg%3E",
+  author: { name: "Ilian", github: "ilianAZZ" },
+  tags: ["dev","events","debug"],
   description: "Live-streams every subscribable bus event to a side panel and the console.",
   permissions: ["ui"],
   panels: [
