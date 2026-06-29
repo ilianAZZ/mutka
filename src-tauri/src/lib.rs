@@ -45,7 +45,12 @@ fn parse_cli_args(matches: &tauri_plugin_cli::Matches) -> CliArgs {
     let path = matches
         .args
         .get("path")
-        .and_then(|v| v.value.as_str().map(String::from));
+        .and_then(|v| v.value.as_str().map(String::from))
+        .map(|p| {
+            std::fs::canonicalize(&p)
+                .map(|abs| abs.to_string_lossy().into_owned())
+                .unwrap_or(p)
+        });
     let picker = matches
         .args
         .get("picker")
@@ -81,12 +86,39 @@ pub fn run() {
         // CLI argument parsing (mutka <path>, --picker, --run <action>).
         .plugin(tauri_plugin_cli::init())
         // Forward CLI args to the running instance instead of spawning a second one.
-        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+        .plugin(tauri_plugin_single_instance::init(|app, argv, cwd| {
             // Re-parse the forwarded argv and emit to the frontend.
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.set_focus();
-                // argv[0] is the binary path; forward the rest as a cli:args event.
-                let _ = window.emit("cli:forwarded-args", &argv[1..]);
+                // Resolve positional path args relative to the second instance's cwd so
+                // that `mutka .` forwarded from another terminal window gets the right path.
+                let mut resolved: Vec<String> = Vec::with_capacity(argv.len().saturating_sub(1));
+                let mut skip_next = false;
+                for a in &argv[1..] {
+                    if skip_next {
+                        skip_next = false;
+                        resolved.push(a.clone());
+                        continue;
+                    }
+                    if a == "--run" {
+                        skip_next = true;
+                        resolved.push(a.clone());
+                        continue;
+                    }
+                    if a.starts_with('-') {
+                        resolved.push(a.clone());
+                        continue;
+                    }
+                    // Positional arg — resolve as path relative to forwarding process's cwd.
+                    let p = std::path::Path::new(a.as_str());
+                    let full = if p.is_absolute() { p.to_path_buf() } else { std::path::Path::new(&cwd).join(p) };
+                    resolved.push(
+                        std::fs::canonicalize(&full)
+                            .map(|abs| abs.to_string_lossy().into_owned())
+                            .unwrap_or_else(|_| a.clone()),
+                    );
+                }
+                let _ = window.emit("cli:forwarded-args", &resolved);
             }
         }))
         .setup(|app| {
