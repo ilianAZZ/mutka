@@ -119,7 +119,7 @@ version, write a changelog, or create a tag. The rules:
    lists everything. The release PR is the "hold everything until you ship" mechanism —
    rc's are just optional test builds.
 
-See `docs/releasing.md` for the full flow and the `cut-release` / `commit-conventions` skills.
+See the `cut-release` / `commit-conventions` skills for the full workflow.
 
 ### Signing secrets (repo Actions secrets)
 
@@ -146,7 +146,7 @@ Two independent concerns, both optional — CI still builds installable bundles 
 mutka/
 ├── CLAUDE.md                    ← you are here (project overview)
 ├── INSTALL.md                   ← end-user install guide
-├── docs/                        ← architecture.md, safety.md, flows.md, events.md, releasing.md
+├── docs/                        ← retired stubs (one-liner pointers to the website)
 │
 ├── dev-modules/                 ← repo-local community modules (DEV only)
 │   ├── com.dir-stats/index.js   ← example untrusted module, worker-loaded
@@ -188,7 +188,7 @@ mutka/
 │   │   ├── settings.ts          ← open settings (⌘,) → toggles SettingsStore
 │   │   ├── drop-import.ts       ← import files dropped from Finder (temp file → copy)
 │   │   ├── auto-refresh.ts      ← re-read the list on "directory:changed" (file watch)
-│   │   ├── telemetry.ts         ← times folder opens (data vs render) via nav/listing events
+│   │   ├── telemetry.ts         ← times folder opens (data vs render) + reports anonymous usage to PostHog (network:public, storage)
 │   │   ├── github-discovery.ts  ← module-discovery source for GitHub, shipped AS a module
 │   │   └── reveal.ts            ← example: open with system default app
 │   │
@@ -339,6 +339,7 @@ The same format runs in two interchangeable runtimes, differing only in transpor
 | `ui.render`/`clear`/`modal`                                                      | `ui`                | UIStore (declarative UINode surfaces + the modal)   |
 | `statusbar.set`/`remove`                                                         | `ui`                | StatusBarStore (bottom status-bar items)            |
 | `sys.homeDir`                                                                    | `fs:read`           | Rust `get_home_dir` (the OS home dir)               |
+| `sys.appVersion`                                                                 | `storage`           | Rust `get_app_version` (app build version; non-sensitive metadata, so `storage` not `fs:read`) |
 | `sys.lastDir`                                                                    | `fs:read`           | localStorage (last visited dir, for launch restore) |
 | `sys.writeTempFile`                                                              | `fs:temp`           | Rust `write_temp_file` (lower-risk than `fs:write`) |
 | `modules.probe`                                                                  | `discovery`         | `probeManifest` (validate a source → manifest, for discovery sources) |
@@ -372,7 +373,7 @@ enforced in Rust (`http.rs` → `check_url_allowed`). Crucially, a module **cann
 native network calls at all** (`fetch`, `XMLHttpRequest`, `WebSocket`, a remote
 `import()`, …): the app Content-Security-Policy (`tauri.conf.json`) restricts
 `connect-src` to the Tauri IPC bridge and forbids remote scripts, so the only egress
-from the WebView is `host.net` → Rust → the permission gateway. See `docs/safety.md`.
+from the WebView is `host.net` → Rust → the permission gateway.
 
 ### Declarative UI — how a sandboxed module renders (no React, no JSX)
 

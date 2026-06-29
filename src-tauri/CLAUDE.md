@@ -102,6 +102,7 @@ Rust command name (snake_case) → TypeScript invoke name (same snake_case strin
 | `delete_item` | `"delete_item"` | Delete file or directory recursively |
 | `open_item` | `"open_item"` | Open with macOS default app (`open`) |
 | `get_home_dir` | `"get_home_dir"` | Returns `$HOME` |
+| `get_app_version` | `"get_app_version"` | Returns the app build version (`CARGO_PKG_VERSION`) |
 
 ### Module manager commands (`modules.rs`)
 

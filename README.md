@@ -38,12 +38,16 @@ Every module — built-in or community — is the same shape: `export default de
 
 ## Documentation
 
-| File                                           | What it covers                                                             |
-| ---------------------------------------------- | -------------------------------------------------------------------------- |
-| [`docs/architecture.md`](docs/architecture.md) | Layer diagram, core piece responsibilities, module auto-discovery          |
-| [`docs/flows.md`](docs/flows.md)               | Sequence diagrams: keyboard shortcut, mouse buttons, EventBus side effects |
-| [`docs/events.md`](docs/events.md)             | Full event reference table, how to add events, community module events     |
-| [`COMMUNITY_MODULES.md`](COMMUNITY_MODULES.md) | How to write, bundle, and distribute a community module                    |
+Full documentation lives on the website: **[mutka.app/docs](https://mutka.app/docs)**
+
+| Page | What it covers |
+| --- | --- |
+| [Architecture](https://mutka.app/docs/architecture) | Layer diagram, gateway, how commands flow |
+| [Writing a Module](https://mutka.app/docs/modules/writing-a-module) | `defineModule`, the host API, module ID convention |
+| [Permissions](https://mutka.app/docs/modules/permissions) | Full capability → permission map |
+| [Events & Watching](https://mutka.app/docs/modules/events-and-watching) | Subscribable events, notify-only, directory watching |
+| [Security Model](https://mutka.app/docs/modules/security) | Six-layer threat model, residual risks |
+| [API Reference](https://mutka.app/docs/api) | Auto-generated TypeDoc reference |
 
 ---
 
@@ -154,7 +158,7 @@ mutka/
 ```
 
 Community modules are NOT in this repo — they live on the user's disk at
-`~/.mutka/modules/<id>/index.js`. See [`COMMUNITY_MODULES.md`](COMMUNITY_MODULES.md).
+`~/.mutka/modules/<id>/index.js`. See the [Writing a Module](https://mutka.app/docs/modules/writing-a-module) guide.
 
 ---
 
@@ -241,9 +245,7 @@ Double-click on folder
   → default: core.navigation → host.nav.navigate(path)
 ```
 
-For full Mermaid diagrams of the architecture and each runtime flow, see [`docs/`](docs/).
-
-> **Diagram maintenance:** the diagrams in `docs/` are part of the codebase. Update them in the same PR as any code change that alters how input events flow, how actions are dispatched, how modules communicate, or how the EventBus is used. Stale diagrams are treated as bugs.
+For the full architecture reference, see the [documentation site](https://mutka.app/docs/architecture).
 
 ---
 

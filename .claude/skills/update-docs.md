@@ -30,33 +30,43 @@ shape change), no doc update is needed.
 
 ## Where each thing is documented — update the matching file(s)
 
-| You changed…                                    | Update…                                                              |
-| ----------------------------------------------- | ------------------------------------------------------------------- |
-| A capability or its required permission         | `CLAUDE.md` "Capabilities and the permissions they require" table   |
-| A `ModulePermission` value                      | `CLAUDE.md` `ModulePermission` list + the capability table          |
-| The `host` surface or `defineModule` shape      | `CLAUDE.md` module-system section + `docs/architecture.md`          |
-| The host ↔ worker protocol / `UINode` vocabulary| `docs/architecture.md` + `CLAUDE.md` "Declarative UI" section       |
-| An event or the event whitelist                 | `docs/events.md`                                                     |
-| An architectural flow                           | `docs/flows.md` (+ `CLAUDE.md` "Key architectural flows" if shaped) |
-| A Tauri command                                 | `CLAUDE.md` capability table (Backed-by column) + `src-tauri/CLAUDE.md` |
-| The author-facing types (`host`/`defineModule`/`protocol.ts`/re-exported types) | also: `COMMUNITY_MODULES.md` + `packages/CLAUDE.md`; the published `@mutka-explorer/module` d.ts **regenerates from source** (rebuild `packages/module-sdk`), so add a NEW author-facing type to `packages/module-sdk/src/index.ts`'s export list |
-| A new file / moved file / new directory         | `CLAUDE.md` "Project structure" tree + the nearest per-dir `CLAUDE.md` |
-| Anything resolving an "Open question"           | Move it out of `CLAUDE.md` "Open questions for future decisions"     |
+| You changed…                                    | Update CLAUDE.md…                                                    | Update website MDX…                                                 |
+| ----------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| A capability or its required permission         | "Capabilities and the permissions they require" table               | `website/content/docs/modules/permissions.mdx` capability tables    |
+| A `ModulePermission` value                      | `ModulePermission` list + the capability table                      | `website/content/docs/modules/permissions.mdx` permission enum table |
+| The `host` surface or `defineModule` shape      | Module-system section                                               | `website/content/docs/modules/writing-a-module.mdx` host API table  |
+| The host ↔ worker protocol / `UINode` vocabulary| "Declarative UI" section                                            | `website/content/docs/modules/declarative-ui.mdx`                   |
+| An event or the event whitelist                 | (if it's a subscribable/notify-only change)                         | `website/content/docs/modules/events-and-watching.mdx`              |
+| An architectural flow                           | "Key architectural flows" (if shaped)                               | `website/content/docs/architecture.mdx`                             |
+| A Tauri command                                 | Capability table (Backed-by column) + `src-tauri/CLAUDE.md`         | (only if it backs a new capability — update the capability tables)  |
+| The security model (gateway, isolation, install) | (if it's a contract change)                                        | `website/content/docs/modules/security.mdx`                         |
+| The author-facing types (`host`/`defineModule`/`protocol.ts`/re-exported types) | `packages/CLAUDE.md`; rebuild `packages/module-sdk`; add NEW types to `packages/module-sdk/src/index.ts`'s export list | `website/content/docs/modules/writing-a-module.mdx` host API table |
+| Storage, network, or secrets capabilities       | Capability table                                                     | `website/content/docs/modules/storage-network-secrets.mdx`          |
+| Virtual filesystem / `fileSystemProviders`      | Module-system section                                               | `website/content/docs/modules/virtual-file-system.mdx`              |
+| Open handlers / match shape                     | Module-system section                                               | `website/content/docs/modules/open-handlers.mdx`                   |
+| Columns / file icons                            | Module-system section                                               | `website/content/docs/modules/columns-and-icons.mdx`               |
+| Publishing / discovery flow                     | (if shaped)                                                          | `website/content/docs/modules/publishing-a-module.mdx`              |
+| A new file / moved file / new directory         | "Project structure" tree + the nearest per-dir `CLAUDE.md`          | —                                                                    |
+| Anything resolving an "Open question"           | Move it out of "Open questions for future decisions"                | —                                                                    |
 
 The per-directory `CLAUDE.md` files (`src/CLAUDE.md`, `src/core/CLAUDE.md`,
 `src/components/CLAUDE.md`, `src-tauri/CLAUDE.md`, `packages/CLAUDE.md`) document local
 rules — update the one closest to the file you changed.
 
+The **website MDX pages** (`website/content/docs/`) are the single public canonical
+documentation for module authors. They are the primary docs to keep in sync.
+
 ## Step-by-step
 
 1. **Identify the contract** you touched from the list above.
-2. **Find every doc that references it.** Grep the docs and CLAUDE.md files for the old
-   name/shape so nothing stale survives a rename:
+2. **Find every doc that references it.** Grep the CLAUDE.md files AND the website MDX
+   for the old name/shape so nothing stale survives a rename:
    ```bash
-   grep -rn "OldName" CLAUDE.md docs/ src/**/CLAUDE.md src-tauri/CLAUDE.md
+   grep -rn "OldName" CLAUDE.md src/**/CLAUDE.md src-tauri/CLAUDE.md website/content/docs/
    ```
-3. **Update the matching file(s)** from the table. Keep examples compiling — if you changed
-   a signature, fix every code snippet that uses it.
+3. **Update the matching file(s)** from the table — both the CLAUDE.md column AND the
+   website MDX column. Keep examples compiling — if you changed a signature, fix every
+   code snippet that uses it.
 4. **Update the project-structure tree** in the root `CLAUDE.md` if you added, removed, or
    moved a file or directory.
 5. **Resolve open questions**: if your change answers an item under "Open questions for
@@ -69,3 +79,6 @@ rules — update the one closest to the file you changed.
 - A renamed symbol must not survive anywhere in the docs. Grep to be sure.
 - Match the existing doc's tone and format (tables, ASCII diagrams, fenced examples).
 - Do not invent docs for internal-only changes. This skill is about **contracts**.
+- The generated API reference (`website/content/docs/api/`) is NOT hand-edited — it
+  regenerates from source via `npm run docs:api` in the website directory. Never hand-edit
+  files under `api/`.

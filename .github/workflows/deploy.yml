@@ -15,6 +15,11 @@ on:
       - "docker-compose.yml"
       - ".github/workflows/deploy.yml"
       - ".github/workflows/_discord_notif.yml"
+      # TypeDoc entry points — regenerate the API reference when source changes
+      - "src/core/sandbox/defineModule.ts"
+      - "src/core/sandbox/hostProxy.ts"
+      - "src/core/module-registry/module-registry.types.ts"
+      - "src/core/types.ts"
   workflow_dispatch:
 
 concurrency:
@@ -48,6 +53,18 @@ jobs:
     steps:
       - name: Check out
         uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Generate API reference (TypeDoc)
+        working-directory: website
+        run: pnpm run docs:api
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3

@@ -17,6 +17,10 @@ deliberately, not by default.
 
 ## Subscribable events
 
+These events are forwarded **with** their payload. They either carry nothing
+sensitive (booleans, theme, module ids) or carry the single path/items a module
+legitimately needs to act on.
+
 | Event                    | Fires when…                                              |
 | ------------------------ | ------------------------------------------------------- |
 | `app:ready`              | All modules registered + AppBridge connected (the launch hook) |
@@ -28,6 +32,22 @@ deliberately, not by default.
 | `file:open-no-app`       | An item was opened but no app claims it (offer a picker) |
 | `file:external-drop`     | Files were dropped in from Finder                       |
 | `sidebar:item-remove`    | The user removed one of this module's sidebar items     |
+| `action:dispatch`        | A command ran — payload is `{ actionId }` (e.g. `core.clipboard.copy`), a static feature id (no user data) |
+| `navigation:start`       | A folder-open navigation has been initiated (carries `{ path }`) |
+| `navigation:back`        | The user navigated back in history                    |
+| `navigation:forward`     | The user navigated forward in history                 |
+| `listing:loaded`         | Directory items fetched and stored (carries `{ path, count }`) |
+| `listing:rendered`       | File rows committed to the DOM (carries `{ path, count }`) |
+| `icons:settled`          | Native icon fetch queue fully drained                 |
+| `theme:changed`          | The theme changed (carries `{ preference, resolved }`) |
+| `view:changed`           | A view preference changed (e.g. show-hidden toggled)  |
+| `settings:changed`       | The settings overlay was opened or closed              |
+| `modules-ui:changed`     | The module-manager overlay was opened or closed        |
+| `sidebar:changed`        | A sidebar panel was added, removed, or reordered       |
+| `module:registered`      | A module was registered (carries `{ moduleId }`)       |
+| `module:unregistered`    | A module was unregistered (carries `{ moduleId }`)     |
+| `columns:cell-resolved`  | A custom column cell finished resolving its value      |
+| `columns:widths-changed` | The user resized a column                              |
 
 ```ts
 setup(host) {
@@ -43,6 +63,45 @@ setup(host) {
   state. The built-in `core.home` listens for it to resolve the home directory
   and run the first navigation. Do app-startup work here, not at module top
   level.
+</Callout>
+
+<Callout title="file:external-drop requires fs:read">
+  Some whitelisted events carry data sensitive enough that *receiving* them
+  requires a permission. `file:external-drop` delivers the actual bytes of files
+  the user dragged in from Finder, so your module must declare `fs:read` to
+  receive it. Without the permission, the subscription is silently dropped —
+  just like a non-whitelisted event.
+</Callout>
+
+## Notify-only events
+
+A second, smaller set of events is delivered as a **bare ping** — the event
+fires, but its payload is stripped to `undefined`. The occurrence is useful
+(cache-bust, trigger a re-render), but the payload is profiling-grade: it would
+expose the full clipboard contents or every open tab's path.
+
+| Event                | Why the payload is stripped                 | How to get the data instead                          |
+| -------------------- | ------------------------------------------ | ---------------------------------------------------- |
+| `clipboard:changed`  | Carries full clipboard contents            | Re-read via `host.board.readFiles()` (requires `clipboard:read`) |
+| `tabs:changed`       | Carries every open tab's path              | React to the ping only — no read-back capability today |
+
+```ts
+setup(host) {
+  host.events.on("clipboard:changed", () => {
+    // the payload is undefined — the event is just a signal
+    // to get the actual clipboard contents, use a capability:
+    const files = await host.board.readFiles();
+  });
+}
+```
+
+<Callout title="Why strip instead of just blocking?">
+  The *occurrence* of these events is genuinely useful — a module that displays
+  clipboard state needs to know when to re-read, and a module reacting to tab
+  changes needs to know *that* something changed. Blocking the event entirely
+  would force polling; stripping the payload gives the signal without the
+  sensitive data. The module that actually needs the data fetches it through a
+  permission-gated capability, so the access is explicit and auditable.
 </Callout>
 
 ## How directory watching works
@@ -75,3 +134,29 @@ Two reasons, one cost and one correctness:
 The practical consequence for module authors: you get notified about changes to
 the folder the user is looking at, which is what a file explorer actually needs.
 If you need to know about other locations, poll them yourself with `host.fs.readDir`.
+
+## Custom events from community modules
+
+A module can declare its own events via TypeScript declaration merging on `EventMap`
+(the interface in `src/core/event-bus/events.ts`):
+
+```ts
+declare module "../../core/event-bus/events" {
+  interface EventMap {
+    "acme.git-status:repo-changed": { path: string };
+  }
+}
+```
+
+<Callout title="Naming convention">
+  Module-scoped events must follow the pattern `"<module-id>:<past-tense-verb>"` —
+  e.g. `"acme.git-status:repo-changed"`. The module ID prefix prevents collisions
+  between unrelated modules.
+</Callout>
+
+Note that a sandboxed (worker) module cannot reach the EventBus directly — it
+has no core reference. It only receives the whitelisted events the host forwards
+to it, and emits side effects through `host.*` capabilities. Cross-module event
+broadcasting from within a worker is not a supported path today; custom events
+are primarily useful for built-in modules that run in-process and can import the
+EventBus.

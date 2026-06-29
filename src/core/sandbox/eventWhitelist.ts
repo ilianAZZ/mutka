@@ -14,9 +14,9 @@ import type { EventMap } from "../event-bus/events";
 //     module legitimately needs to act on.
 //   • NOTIFY_ONLY_EVENTS — delivered as a bare ping, payload replaced by
 //     `undefined`. The OCCURRENCE is useful (cache-bust, re-render) but the
-//     payload is profiling-grade (the whole clipboard, every open tab, every
-//     command). A module that wants the data fetches it through a
-//     permission-gated capability (e.g. board.readFiles needs clipboard:read).
+//     payload is profiling-grade (the whole clipboard, every open tab). A module
+//     that wants the data fetches it through a permission-gated capability (e.g.
+//     board.readFiles needs clipboard:read).
 //
 // Add entries deliberately — this is a trust surface. Host-internal events that
 // would leak OTHER modules' state (ui:changed, statusbar:changed) or arbitrary
@@ -52,16 +52,25 @@ const SUBSCRIBABLE_LIST: readonly (keyof EventMap)[] = [
   "module:unregistered",
   "columns:cell-resolved",
   "columns:widths-changed",
-];
+  // The id of the command that just ran (e.g. "core.clipboard.copy"). A static
+  // FEATURE identifier, not user data (no paths/contents) — unlike clipboard/tabs
+  // below, whose payloads carry the user's files. The occurrence + timing of this
+  // event was already observable, so delivering the id only adds "which feature";
+  // it lets a usage/analytics module report command popularity.
+  "action:dispatch",
+]);
+
 export const SUBSCRIBABLE_EVENTS: ReadonlySet<string> = new Set(SUBSCRIBABLE_LIST);
+
 
 // Delivered as a bare ping (payload stripped to `undefined`). See the note above.
 const NOTIFY_ONLY_LIST: readonly (keyof EventMap)[] = [
   "clipboard:changed", // full clipboard contents → re-read via board.readFiles (clipboard:read)
   "tabs:changed",      // every open tab's path
-  "action:dispatch",   // every command the user runs
 ];
+
 export const NOTIFY_ONLY_EVENTS: ReadonlySet<string> = new Set(NOTIFY_ONLY_LIST);
+
 
 // A few whitelisted events carry data sensitive enough that RECEIVING them needs a
 // permission — subscribing is otherwise unpermissioned. `file:external-drop` delivers

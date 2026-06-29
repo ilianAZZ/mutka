@@ -9,6 +9,7 @@
     "declarative-ui",
     "columns-and-icons",
     "events-and-watching",
-    "storage-network-secrets"
+    "storage-network-secrets",
+    "security"
   ]
 }

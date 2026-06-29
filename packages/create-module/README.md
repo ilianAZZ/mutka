@@ -45,4 +45,4 @@ npm run install:local   # build + copy into ~/.mutka/modules/<id>/, then reload 
 
 Edit `src/index.ts` — `host` is fully typed. The module runs isolated in a Web
 Worker (no DOM, no native network; use `host.net`). See the
-[developer guide](https://github.com/ilianAZZ/mutka/blob/main/COMMUNITY_MODULES.md).
+[developer guide](https://mutka.app/docs/modules/writing-a-module).

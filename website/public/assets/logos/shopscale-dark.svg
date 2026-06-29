@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 89 36" role="img" aria-label="ShopScale logo">
+  <!-- Shopping bag with scale arrow -->
+  <rect x="0" y="0" width="36" height="36" rx="8" fill="#EA580C"/>
+  <path d="M10 15 L11 25 L25 25 L26 15 Z" fill="white" opacity="0.95"/>
+  <path d="M12 15 C14 11 22 11 24 15" fill="none" stroke="white" stroke-width="2.2" stroke-linecap="round"/>
+  <!-- <line x1="22" y1="23" x2="22" y2="27" stroke="#EA580C" stroke-width="1.5"/>
+  <line x1="19" y1="25" x2="25" y2="25" stroke="#EA580C" stroke-width="1.5"/> -->
+  <!-- Text -->
+  <text x="39" y="15" font-family="system-ui,-apple-system,sans-serif" font-size="11" font-weight="700" fill="#EA580C" letter-spacing="0.3">SHOP</text>
+  <text x="38" y="29" font-family="system-ui,-apple-system,sans-serif" font-size="16" font-weight="800" fill="#ffffff" letter-spacing="-0.3">SCALE</text>
+</svg>
