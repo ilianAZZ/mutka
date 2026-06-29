@@ -337,6 +337,8 @@ export type WorkerToHost =
   | { t: "host-call"; id: number; cap: string; method: string; args: unknown[] }
   | { t: "column-result"; id: number; ok: true; value: ColumnCell | null }
   | { t: "column-result"; id: number; ok: false; error: string }
+  | { t: "column-batch-result"; id: number; ok: true; values: (ColumnCell | null)[] }
+  | { t: "column-batch-result"; id: number; ok: false; error: string }
   | { t: "provider-result"; id: number; ok: true; value: unknown }
   | { t: "provider-result"; id: number; ok: false; error: string }
   | { t: "discovery-result"; id: number; ok: true; value: unknown }
@@ -353,6 +355,7 @@ export type HostToWorker =
   | { t: "run"; commandId: string; snapshot: HostSnapshot }
   | { t: "open"; handlerId: string; item: FileItem }
   | { t: "column"; id: number; columnId: string; item: FileItem }
+  | { t: "column-batch"; id: number; columnId: string; items: FileItem[] }
   /** Run a UI-event handler the module registered with host.onUIEvent. */
   | { t: "ui-event"; handler: string; value: unknown }
   /** Ask the module's file-system provider to handle one operation. */
