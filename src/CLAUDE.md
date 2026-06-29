@@ -104,7 +104,7 @@ type ThemePreference = "system" | "light" | "dark";
 - Written in the SAME format as community modules: `export default defineModule({ ... })`
 - A module imports NOTHING except `defineModule` (a types-only helper). It reaches the system **only** through the `host` object passed to `setup(host)` — every `host.*` call is permission-checked by the gateway.
 - Built-ins run in-process (via `LocalHost`); community modules run isolated in a Web Worker (via `SandboxHost`). The module code is identical either way.
-- Community modules are NOT in this repo: they live on the user's disk at `~/.mutka/modules/<id>/index.js`. See `COMMUNITY_MODULES.md`.
+- Community modules are NOT in this repo: they live on the user's disk at `~/.mutka/modules/<id>/index.js`.
 
 ### `src/components/` — presentational UI only
 
@@ -168,7 +168,7 @@ const handleOpen = useCallback((item: FileItem) => {
 Before writing code, ask:
 
 1. Is this a **core infrastructure concern**? → `src/core/`
-2. Is this a **user-facing operation** (command, open behavior)? → new `defineModule` file in `src/sandbox-builtins/` (built-in) or a community module under `~/.mutka/modules/` (see `COMMUNITY_MODULES.md`)
+2. Is this a **user-facing operation** (command, open behavior)? → new `defineModule` file in `src/sandbox-builtins/` (built-in) or a community module under `~/.mutka/modules/`
 3. Is this **pure UI presentation** (no FS, no business logic)? → `src/components/`
 4. Does it need a **Rust command**? → add to `src-tauri/src/lib.rs`, then expose it as a capability in `src/core/sandbox/capabilities.ts` (the only place modules can reach it), and read `src-tauri/CLAUDE.md`
 5. Does it cross these boundaries? → split it into multiple files, one per concern

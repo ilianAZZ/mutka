@@ -8,6 +8,9 @@
 # fumadocs generated source
 /.source
 
+# TypeDoc-generated API reference (regenerated at build time via `npm run docs:api`)
+/content/docs/api
+
 # production
 /build
 

@@ -36,7 +36,7 @@ const post = (m: WorkerToHost): void => ctx.postMessage(m);
 // `script-src` forbids remote origins (so remote `import()` can't load code).
 // WebKit applies that policy below JavaScript, in the worker realm too, so no
 // string trick / `eval` / `Function` can get around it. See
-// src-tauri/tauri.conf.json (`app.security.csp`) and docs/safety.md.
+// src-tauri/tauri.conf.json (`app.security.csp`).
 // =============================================================================
 
 const commands = new Map<string, CommandHandler>();

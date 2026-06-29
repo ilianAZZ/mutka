@@ -146,8 +146,8 @@ export default defineModule({
 ```
 
 A community module is the same object literal, dropped in `~/.mutka/modules/<id>/index.js`
-(without the `defineModule` import), and runs isolated in a Web Worker. See
-`COMMUNITY_MODULES.md`.
+(without the `defineModule` import), and runs isolated in a Web Worker. See the
+[Writing a Module](https://mutka.app/docs/modules/writing-a-module) guide.
 
 ### Command snapshot
 

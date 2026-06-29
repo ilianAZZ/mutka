@@ -1,0 +1,223 @@
+---
+title: Security Model
+description: The security guarantees that protect users when running community modules — six layers from worker isolation to event whitelisting, and the residual risks you should understand.
+---
+
+A community module is **untrusted code** — a plain ESM file downloaded from
+GitHub and run on the user's machine. The security model assumes the author may
+be hostile and the code may try to read other modules' data, escape the
+sandbox, or exfiltrate information. Six layers defend against that assumption.
+
+Built-in modules ship in the repo and run in-process. They are still gated by
+the same permission barrier (defense in depth), but isolation buys nothing for
+first-party code, so they skip the worker.
+
+## Layer 1 — Worker isolation
+
+A community module runs inside a **Web Worker**. Inside that worker the module
+has:
+
+- **No DOM** — no `document`, no `window`, no access to the React app.
+- **No `invoke`** — the Tauri IPC bridge to the Rust backend is not present in
+  the worker realm, so the module **cannot call a Rust command directly**.
+- **No reference to the core** — it is imported from a `blob:` URL; it never
+  imports anything from the application source.
+
+The only channel out is `postMessage`. A denied capability is not just refused
+— it is **physically unreachable**, because the code that performs it lives on
+the other side of the worker boundary.
+
+<Callout title="No native network">
+  A module cannot make its own network calls — not `fetch`,
+  `XMLHttpRequest`, `WebSocket`, `EventSource`, `navigator.sendBeacon`,
+  WebRTC, a nested `Worker`, nor a remote dynamic `import()`. CORS blocks
+  *reading* a cross-origin reply but not *sending* the request, so a raw
+  `fetch` to an attacker's URL would be an ungated exfiltration channel. The
+  only sanctioned egress is `host.net.*` (gated by `network:public` /
+  `network:local`, executed in Rust). See
+  [Storage, Network & Secrets](/docs/modules/storage-network-secrets) for the
+  API.
+</Callout>
+
+This is enforced **at the engine level** by the app Content-Security-Policy,
+not by deleting JS globals (a denylist would be fragile). `connect-src` is
+restricted to the Tauri IPC bridge so no other host is reachable, and
+`script-src` forbids remote origins so a remote `import()` cannot load code.
+WebKit applies CSP below JavaScript — in the worker realm too — so no `eval`
+or `Function` trick can circumvent it.
+
+## Layer 2 — The gateway
+
+Every `host.*` call — from a worker module or a built-in — funnels through a
+single function: `dispatchCapability` in `gateway.ts`. Three guarantees fall
+out:
+
+1. **The check is per-call, not per-session.** There is no "unlock once" —
+   every single `host.fs.readDir`, `host.net.request`, `host.secrets.get`
+   re-checks the manifest. A module cannot escalate after load.
+2. **The capability table is the whole vocabulary.** If an operation is not
+   listed in `capabilities.ts`, no module can perform it — there is no escape
+   hatch to add one at runtime.
+3. **Permissions are declared up front and cannot be forged.** A module lists
+   its `permissions` in its manifest; the host holds the authoritative copy
+   before `setup` runs. The module cannot widen it later.
+
+See the [Permissions & Capabilities](/docs/modules/permissions) page for the
+full capability-to-permission map.
+
+## Layer 3 — Install consent
+
+Permissions are declared, so the user sees them **before** the module is
+enabled. The install-review dialog lists every requested permission with a
+human-readable label, and **sensitive ones are flagged**: `fs:write` (can
+delete files), `clipboard:write`, `network:public` / `network:local` (can send
+data off the machine), `secrets`, `discovery`, and `shell`. Nothing is granted
+silently.
+
+<Callout title="Dangerous permissions are visually distinct">
+  The install dialog highlights dangerous permissions so they stand out in the
+  list. A module that requests only safe permissions (e.g. `fs:read` +
+  `view`) installs without alarm; one that requests `network:public` +
+  `secrets` gets a clear warning. The user always has the final say.
+</Callout>
+
+## Layer 4 — Per-module data isolation
+
+If two modules both hold the `secrets` permission, can one read the other's
+secrets? **No.**
+
+Secrets are namespaced by the module's id, and **the module never chooses the
+namespace.** When a module calls `host.secrets.get(key)` it passes only the
+key — never the Keychain service name. The gateway injects the module's own id
+and derives the service from it: `mutka.<moduleId>`. There is no parameter a
+module can set to reach another module's drawer.
+
+The only way two modules could share a secret namespace is if they had the
+**same module id** — and that cannot happen for two installed modules, because
+a module is installed at `~/.mutka/modules/<id>/` (one directory per id).
+Installing a second module with an existing id overwrites the first rather than
+coexisting.
+
+The same namespacing protects **config**: `host.config.*` keys are stored under
+`mutka.modcfg.<moduleId>:<key>` with the id injected the same way. The
+delimiter between id and key is `:` (not `.`) deliberately — a module id may
+contain dots (e.g. `com.acme.vault`), so a `.` here would let module `com`
+reach `com.acme.vault`'s keys.
+
+See [Storage, Network & Secrets](/docs/modules/storage-network-secrets) for the
+config and secrets API.
+
+## Layer 5 — Filesystem confinement
+
+Module **code** can only ever live in one place. The Rust commands that read
+and write modules are hard-confined to `~/.mutka/modules/`:
+
+- `read_module_file` rejects any path outside the modules directory.
+- `install_module` and `uninstall_module` validate the id: non-empty, no
+  leading dot, no path separators, no `..`, only `[A-Za-z0-9._-]`, at most
+  200 characters.
+
+This prevents a malicious id like `../../etc` from escaping the modules
+directory, and it is the same check that makes the id usable as the secret
+namespace.
+
+<Callout title="This confines module code, not file operations">
+  A granted `fs:read` or `fs:write` capability still operates on real paths
+  the user navigates to — there is no per-path scoping yet. See "Residual
+  risks" below.
+</Callout>
+
+## Layer 6 — Event whitelist
+
+A module can subscribe to app events via `host.events.on(...)`, but only to a
+**whitelisted** set. That set has two tiers:
+
+| Tier | Delivery | Examples |
+| --- | --- | --- |
+| **Subscribable** | Full payload | `app:ready`, `directory:changed`, `selection:changed` |
+| **Notify-only** | Bare ping (payload stripped to `undefined`) | `clipboard:changed`, `tabs:changed` |
+
+Notify-only events tell the module *something* happened without giving it the
+data. A module that needs the actual content re-fetches it through a
+permission-gated capability (e.g. `board.readFiles` requires `clipboard:read`).
+
+Some whitelisted events also require a **permission to receive**.
+`file:external-drop` carries the bytes of files the user dragged in from
+Finder, so a subscriber must hold `fs:read`. Without it the subscription is
+silently dropped.
+
+A subscription to any non-whitelisted event is dropped with a warning.
+Host-internal events that would leak other modules' state or app internals
+are on neither list, so a module cannot passively snoop on the rest of the
+app.
+
+See [Events & File Watching](/docs/modules/events-and-watching) for the full
+subscribable event list and how directory watching works.
+
+## Network security — two tiers, no raw fetch
+
+There is no blanket `network` permission. Network access is split into two
+least-privilege tiers, enforced in Rust by classifying the request URL:
+
+| Tier | Allows | Blocks |
+| --- | --- | --- |
+| `network:public` | HTTPS to public domains (a host with a dot and a real TLD) | IP addresses, `localhost`, bare hostnames, plaintext HTTP |
+| `network:local` | http or https to a private IP range (RFC 1918 / loopback / link-local / CGNAT / IPv6 ULA) or `localhost` | Public IPs, public domains |
+
+A **public IP literal** (e.g. `https://8.8.8.8`) and **plaintext HTTP to a
+public domain** are refused by both tiers.
+
+`network:local` is the **broader-trust** tier: beyond a NAS or self-hosted
+server it can reach routers, admin panels, and internal services, and via a
+forwarding proxy on the LAN it can reach the internet too. Grant it more
+cautiously than `network:public`.
+
+Redirects are **not followed**: the HTTP agent returns a 3xx as-is rather than
+fetching the redirect target. Auto-following would reach a URL that was never
+tier-checked (the classic SSRF bounce). A module that wants to follow a
+redirect re-requests the `Location` itself, which goes through
+`check_url_allowed` again.
+
+## Residual risks
+
+Be honest about the edges — these are things the security model does **not**
+protect against:
+
+- **Granted permissions are real.** If the user approves `network:public`, the
+  module can send data to any public website; if they approve `fs:write`, it
+  can delete files. The defense is consent and the dangerous-permission flag,
+  not a technical block. Review what you install.
+- **DNS rebinding against `network:public`.** The tier check classifies the URL
+  by its hostname, not the IP it resolves to. A public domain that an attacker
+  points at a private address would pass the `network:public` check and connect
+  to the internal host. Treat `network:public` as "can reach the internet," not
+  "provably cannot reach your LAN."
+- **`fs:read` can launch applications.** `host.fs.openItem` and
+  `host.sys.openWith` open a path with macOS Launch Services, so a module with
+  `fs:read` can launch an app — not just read bytes. Paths are passed as
+  process arguments (no shell), so there is no command injection, but treat
+  `fs:read` as "can read files **and** open them with the system."
+- **No per-path filesystem scoping (yet).** `fs:read` / `fs:write` apply to any
+  path the module is handed or the user navigates to. A future capability could
+  narrow this to specific directories.
+- **Id authenticity rests on the install path.** The secret/config boundary
+  assumes ids are unique, which the single-directory-per-id layout guarantees
+  locally. There is no cryptographic signing of authorship.
+- **Worker isolation is the browser's.** The security of Layer 1 relies on the
+  WebView's Worker boundary. A WebView sandbox-escape vulnerability would
+  undercut it — kept current via Tauri and OS updates.
+
+## Where each guarantee lives
+
+A quick map from guarantee to enforcement point:
+
+| Guarantee | Enforced in |
+| --- | --- |
+| No direct backend access from community code | Worker boundary (`SandboxHost` + `sandbox.worker`) |
+| Permission checked on every call | `gateway.ts` (`dispatchCapability`) |
+| Fixed set of possible operations | `capabilities.ts` — the only caller of `invoke` / `AppBridge` / `TabManager` |
+| Secrets and config scoped per module | `capabilities.ts` (namespace derivation, id from gateway) |
+| Keychain trusts the gateway's service name | Rust `secrets.rs` |
+| Module code confined to `~/.mutka/modules` | Rust `modules.rs` (`is_safe_id`, path check) |
+| Informed consent with danger flags | Install-review dialog + `permissionInfo.ts` |
+| Only whitelisted events reach a module | `eventWhitelist.ts` |

@@ -105,6 +105,6 @@ Next steps:
   npm run install:local   # build + load into Mutka, then reload the app
   # edit src/index.ts — host is fully typed
 
-Docs: https://github.com/ilianAZZ/mutka/blob/main/COMMUNITY_MODULES.md
+Docs: https://mutka.app/docs/modules/writing-a-module
 `);
 }
