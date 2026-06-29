@@ -14,6 +14,18 @@ import type { SandboxHost } from "../core/sandbox/SandboxHost";
 /** Where a module came from. Built-in/dev ship in the bundle; community is on disk. */
 export type ModuleSource = "builtin" | "dev" | "community";
 
+/** Only on-disk (community) modules can be removed — bundled ones ship in the app. */
+export function canUninstall(source: ModuleSource): boolean {
+  return source === "community";
+}
+
+/**
+ * Synthetic discovery-source id for a listing that has no real remote source —
+ * a local file or a module-proposed install. It is never registered with the
+ * DiscoveryRegistry; the source is already in hand, so nothing resolves it.
+ */
+export const LOCAL_SOURCE_ID = "local";
+
 /** Runtime state of a tracked module. */
 export type ModuleStatus = "active" | "disabled" | "error";
 

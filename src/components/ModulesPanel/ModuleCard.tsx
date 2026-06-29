@@ -1,4 +1,4 @@
-import type { ManagedModule, ModuleSource } from "../../module-manager/types";
+import { canUninstall, type ManagedModule, type ModuleSource } from "../../module-manager/types";
 import { resolveAuthor } from "../../module-manager/authorInfo";
 import { PermissionBadges } from "./PermissionBadges";
 import { ModuleIcon } from "./ModuleIcon";
@@ -58,7 +58,7 @@ export function ModuleCard({ module, busy, onToggle, onDelete }: ModuleCardProps
           <span className="module-toggle-knob" />
         </button>
 
-        {module.source === "community" && (
+        {canUninstall(module.source) && (
           <button
             className="module-delete"
             disabled={busy}

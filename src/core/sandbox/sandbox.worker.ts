@@ -10,7 +10,9 @@
 // =============================================================================
 
 import { createHostProxy, type CommandHandler, type OpenHandler, type EventHandler, type ColumnProvider, type UIEventHandler, type ProviderHandler, type DiscoverHandler, type FetchSourceHandler } from "./hostProxy";
-import type { HostToWorker, WorkerToHost, SandboxManifest } from "./protocol";
+import type { HostToWorker, WorkerToHost } from "./protocol";
+import { manifestFromDef } from "./manifestFromDef";
+import type { SandboxModuleDef } from "./defineModule";
 
 const ctx = self as unknown as DedicatedWorkerGlobalScope;
 const post = (m: WorkerToHost): void => ctx.postMessage(m);
@@ -133,32 +135,10 @@ async function safeRun<A>(fn: ((arg: A) => void | Promise<void>) | undefined, ar
   }
 }
 
-interface RawModule {
-  id: string;
-  name?: string;
-  version?: string;
-  description?: string;
-  icon?: SandboxManifest["icon"];
-  author?: SandboxManifest["author"];
-  tags?: SandboxManifest["tags"];
-  permissions?: SandboxManifest["permissions"];
-  commands?: SandboxManifest["commands"];
-  openHandlers?: SandboxManifest["openHandlers"];
-  sidebarItems?: SandboxManifest["sidebarItems"];
-  fileSystemProviders?: SandboxManifest["fileSystemProviders"];
-  fileIcons?: SandboxManifest["fileIcons"];
-  columns?: SandboxManifest["columns"];
-  panels?: SandboxManifest["panels"];
-  settingsSections?: SandboxManifest["settingsSections"];
-  discoverySources?: SandboxManifest["discoverySources"];
-  moduleManagerButtons?: SandboxManifest["moduleManagerButtons"];
-  setup?: (host: ReturnType<typeof createHostProxy>) => void | Promise<void>;
-}
-
 async function loadModule(source: string): Promise<void> {
   try {
     const url = URL.createObjectURL(new Blob([source], { type: "application/javascript" }));
-    const mod = (await import(/* @vite-ignore */ url)) as { default?: RawModule };
+    const mod = (await import(/* @vite-ignore */ url)) as { default?: SandboxModuleDef };
     URL.revokeObjectURL(url);
 
     const def = mod.default;
@@ -166,26 +146,9 @@ async function loadModule(source: string): Promise<void> {
       throw new Error("module must `export default` an object with a string `id`");
     }
 
-    const manifest: SandboxManifest = {
-      id: def.id,
-      name: def.name ?? def.id,
-      version: def.version ?? "0.0.0",
-      description: def.description,
-      icon: def.icon,
-      author: def.author,
-      tags: def.tags,
-      permissions: def.permissions ?? [],
-      commands: def.commands ?? [],
-      openHandlers: def.openHandlers ?? [],
-      sidebarItems: def.sidebarItems ?? [],
-      fileSystemProviders: def.fileSystemProviders ?? [],
-      fileIcons: def.fileIcons ?? [],
-      columns: def.columns ?? [],
-      panels: def.panels ?? [],
-      settingsSections: def.settingsSections ?? [],
-      discoverySources: def.discoverySources ?? [],
-      moduleManagerButtons: def.moduleManagerButtons ?? [],
-    };
+    // Same builder as LocalHost (manifestFromDef), so both runtimes derive the
+    // manifest identically — a new contribution field can't drift between them.
+    const manifest = manifestFromDef(def);
     // Report BEFORE setup runs, so the host knows this module's permissions
     // before any host-call can be served.
     post({ t: "ready", manifest });

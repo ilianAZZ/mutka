@@ -8,20 +8,15 @@ import type { InstalledMeta, ResolvedModule } from "./types";
 // install_module command, which sandboxes writes to ~/.mutka/modules/<id>/.
 // =============================================================================
 
-/** "owner/repo" for a GitHub URL, else the URL itself, for display provenance. */
-function originFromUrl(url?: string): string | undefined {
-  if (!url) return undefined;
-  const m = url.match(/github\.com\/([^/]+\/[^/]+)/);
-  return m ? m[1] : url;
-}
-
 /** Write a resolved module to ~/.mutka/modules/<id>/index.js. Returns its provenance. */
 export async function writeModule(resolved: ResolvedModule): Promise<InstalledMeta> {
   await invoke("install_module", { id: resolved.manifest.id, source: resolved.source });
   return {
     sourceId: resolved.listing.sourceId,
     ref: resolved.listing.ref,
-    origin: originFromUrl(resolved.listing.homepageUrl),
+    // The source supplies display provenance (e.g. "owner/repo"); the generic
+    // install layer never parses a source-specific URL. Fall back to homepageUrl.
+    origin: resolved.listing.provenance ?? resolved.listing.homepageUrl,
     installedAt: new Date().toISOString(),
   };
 }

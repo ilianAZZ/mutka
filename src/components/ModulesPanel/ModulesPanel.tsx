@@ -3,7 +3,7 @@ import { ModuleManager } from "../../module-manager/ModuleManager";
 import { DiscoveryRegistry } from "../../module-manager/DiscoveryRegistry";
 import { probeManifest } from "../../module-manager/probeManifest";
 import { resolveAuthor } from "../../module-manager/authorInfo";
-import type { ModuleListing, ResolvedModule } from "../../module-manager/types";
+import { LOCAL_SOURCE_ID, type ModuleListing, type ResolvedModule } from "../../module-manager/types";
 import type { SandboxManifest } from "../../core/sandbox/protocol";
 import { ModulesStore } from "../../core/stores/ModulesStore";
 import { NotificationStore } from "../../core/stores/NotificationStore";
@@ -21,7 +21,7 @@ import "./ModulesPanel.css";
 /** A synthetic listing for a raw source (local file / module-proposed install). */
 function localListing(manifest: SandboxManifest): ModuleListing {
   return {
-    sourceId: "local",
+    sourceId: LOCAL_SOURCE_ID,
     ref: manifest.id,
     id: manifest.id,
     name: manifest.name,

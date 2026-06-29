@@ -127,6 +127,7 @@ export default defineModule({
             permissions: manifest.permissions,
             tags: manifest.tags,
             homepageUrl: repo.html_url,
+            provenance: repo.full_name, // "owner/repo" — the source owns its own format
           });
         } catch {
           // One bad entry shouldn't drop the rest of the repo's modules.
