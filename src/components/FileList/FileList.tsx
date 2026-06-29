@@ -191,14 +191,19 @@ export function FileList({
     e.preventDefault();
     e.stopPropagation();
     setDropTarget(null);
-    if (e.dataTransfer.files.length > 0 && de) {
-      de(e.dataTransfer.files, item.path);
+    // Internal drag (our own rows) takes priority — the native drag plugin
+    // injects real files into dataTransfer.files, so checking files.length
+    // first would misroute an internal move into the external-drop (copy) path.
+    const paths = dragPathsRef.current.filter((p) => p !== item.path);
+    if (paths.length && mi) {
+      dragPathsRef.current = [];
+      mi(paths, item.path);
       return;
     }
-    if (!mi) return;
-    const paths = dragPathsRef.current.filter((p) => p !== item.path);
     dragPathsRef.current = [];
-    if (paths.length) mi(paths, item.path);
+    if (e.dataTransfer.files.length > 0 && de) {
+      de(e.dataTransfer.files, item.path);
+    }
   }, []);
 
   // ── Background drop (Finder → empty area → current dir) ─────────────────
