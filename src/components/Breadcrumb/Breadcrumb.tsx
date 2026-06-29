@@ -6,8 +6,19 @@ interface Props {
   onNavigate: (path: string) => void;
 }
 
+/** Split a path into a navigable root + segments. A virtual scheme path
+ *  ("webdav:acc/sub") keeps "webdav:acc" as the root so the local-POSIX split
+ *  doesn't mangle it into "/webdav:/acc". */
+function parseBreadcrumb(path: string): { rootLabel: string; rootPath: string; segments: string[] } {
+  const m = /^([a-z][a-z0-9+.-]*:[^/]*)(\/.*)?$/i.exec(path);
+  if (m) {
+    return { rootLabel: m[1], rootPath: `${m[1]}/`, segments: (m[2] ?? "").split("/").filter(Boolean) };
+  }
+  return { rootLabel: "/", rootPath: "/", segments: path.split("/").filter(Boolean) };
+}
+
 export function Breadcrumb({ path, onNavigate }: Props) {
-  const segments = path.split("/").filter(Boolean);
+  const { rootLabel, rootPath, segments } = parseBreadcrumb(path);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(path);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -68,11 +79,11 @@ export function Breadcrumb({ path, onNavigate }: Props) {
       onClick={handleBackgroundClick}
       title="Click to edit path"
     >
-      <button className="breadcrumb-segment" onClick={() => onNavigate("/")}>
-        /
+      <button className="breadcrumb-segment" onClick={() => onNavigate(rootPath)}>
+        {rootLabel}
       </button>
       {segments.map((seg, i) => {
-        const segPath = "/" + segments.slice(0, i + 1).join("/");
+        const segPath = rootPath.replace(/\/$/, "") + "/" + segments.slice(0, i + 1).join("/");
         return (
           <span key={segPath} className="breadcrumb-item">
             {/* The root "/" button already provides the leading slash — only put a

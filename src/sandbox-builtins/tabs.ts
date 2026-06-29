@@ -37,15 +37,21 @@ export default defineModule({
 
     host.events.on("file:modifier-open", (payload) => {
       const { item, modifiers } = payload as ModifierOpen;
-      if (item.isDir && (modifiers.ctrl || modifiers.meta)) host.tabs.openTab(item.path);
+      if (item.isDir && (modifiers.ctrl || modifiers.meta)) {
+        void host.tabs.openTab(item.path).catch((e) => host.log("[tabs] openTab failed:", e));
+      }
     });
 
     // Middle-click a folder → open it in a background tab (browser-style).
     host.events.on("file:middle-open", async (payload) => {
-      const { item } = payload as { item: { path: string; isDir: boolean } };
-      if (!item.isDir) return;
-      if (!(await host.tabs.isActive())) await host.tabs.openTab(item.path);
-      else await host.tabs.openTabInBackground(item.path);
+      try {
+        const { item } = payload as { item: { path: string; isDir: boolean } };
+        if (!item.isDir) return;
+        if (!(await host.tabs.isActive())) await host.tabs.openTab(item.path);
+        else await host.tabs.openTabInBackground(item.path);
+      } catch (e) {
+        host.log("[tabs] middle-open failed:", e);
+      }
     });
   },
 });

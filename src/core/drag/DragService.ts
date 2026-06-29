@@ -18,6 +18,15 @@ import { FileIconRegistry } from "../file-icons/FileIconRegistry";
 const FALLBACK_ICON =
   "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mNk+M9QDwAEhgGAhqmM/wAAAABJRU5ErkJggg==";
 
+// A module-supplied drag icon (via sys.startDrag) is untrusted. Allow only the
+// shapes the plugin legitimately renders — a data:image URI, an http(s) URL, or
+// an absolute file path — so a weird scheme (javascript:, …) never reaches it.
+function safeDragIcon(icon?: string): string {
+  const s = icon?.trim();
+  if (!s) return FALLBACK_ICON;
+  return /^https?:\/\//i.test(s) || /^data:image\//i.test(s) || s.startsWith("/") ? s : FALLBACK_ICON;
+}
+
 class DragServiceClass {
   /**
    * Start a native drag of `paths`, previewed by `icon` (a data-URI or image
@@ -26,7 +35,7 @@ class DragServiceClass {
    */
   async start(paths: string[], icon?: string): Promise<void> {
     if (paths.length === 0) return;
-    await startDrag({ item: paths, icon: icon || FALLBACK_ICON });
+    await startDrag({ item: paths, icon: safeDragIcon(icon) });
   }
 
   /**

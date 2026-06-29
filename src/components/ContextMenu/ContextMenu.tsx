@@ -61,7 +61,15 @@ export function ContextMenu({ x, y, groups, context, onAction, onClose }: Props)
         <div key={group.label ?? "__default__"} className="context-menu-group">
           {gi > 0 && <div className="context-menu-sep" />}
           {group.actions.map((action) => {
-            const isEnabled = action.isEnabled ? action.isEnabled(context) : true;
+            // A module's isEnabled predicate must never crash the whole menu —
+            // treat a throw as "disabled" (the registry's never-crash contract).
+            let isEnabled = true;
+            try {
+              isEnabled = action.isEnabled ? action.isEnabled(context) : true;
+            } catch (err) {
+              console.error(`[ContextMenu] "${action.id}" isEnabled threw:`, err);
+              isEnabled = false;
+            }
             return (
               <button
                 key={action.id}

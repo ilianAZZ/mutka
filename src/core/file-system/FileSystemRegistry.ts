@@ -131,6 +131,11 @@ class FileSystemRegistryClass {
     }
     const local = paths.filter((p) => !this.isRemote(p));
     const sameProvider = paths.filter((p) => this.providerFor(p) === provider);
+    // A source on a DIFFERENT provider is in neither bucket — fail loudly rather
+    // than silently never moving it (and losing it from the user's mental model).
+    if (local.length + sameProvider.length < paths.length) {
+      throw new Error("Cannot move files between different file systems.");
+    }
     if (sameProvider.length) await provider.moveFiles(sameProvider, dest);
     if (local.length) {
       await provider.copyFiles(local, dest); // upload

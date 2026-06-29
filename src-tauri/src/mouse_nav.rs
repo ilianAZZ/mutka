@@ -39,7 +39,9 @@ pub unsafe fn setup_mouse_navigation() {
         }
 
         let now = std::time::Instant::now();
-        let mut last = LAST_NAV.lock().unwrap();
+        // Never unwrap inside an ObjC callback: a poisoned mutex would panic
+        // unwinding into AppKit (UB / crash). Recover the guard instead.
+        let mut last = LAST_NAV.lock().unwrap_or_else(|e| e.into_inner());
         if let Some(t) = *last {
             if now.duration_since(t).as_millis() < 400 {
                 return std::ptr::null_mut();

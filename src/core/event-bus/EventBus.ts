@@ -21,7 +21,17 @@ class EventBusClass {
     event: K,
     ...args: EventMap[K] extends undefined ? [] : [data: EventMap[K]]
   ): void {
-    this.listeners.get(event)?.forEach((h) => h(...(args as [unknown?])));
+    // Snapshot + isolate: a handler that throws (or one that unsubscribes mid-
+    // dispatch) must not starve the other subscribers of the same event.
+    const handlers = this.listeners.get(event);
+    if (!handlers) return;
+    for (const h of [...handlers]) {
+      try {
+        h(...(args as [unknown?]));
+      } catch (err) {
+        console.error(`[EventBus] "${String(event)}" handler threw:`, err);
+      }
+    }
   }
 }
 

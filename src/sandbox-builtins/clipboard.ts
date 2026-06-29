@@ -1,10 +1,5 @@
 import { defineModule } from "../core/sandbox/defineModule";
 
-interface ClipboardRead {
-  paths: string[];
-  operation: "copy" | "cut";
-}
-
 export default defineModule({
   id: "core.clipboard",
   name: "Clipboard",
@@ -24,15 +19,20 @@ export default defineModule({
       await host.board.writeFiles(snap.selectedItems.map((i) => i.path), "cut");
     });
     host.onCommand("core.clipboard.paste", async (snap) => {
-      const result = (await host.board.readFiles()) as ClipboardRead | null;
+      const result = await host.board.readFiles();
       if (!result || result.paths.length === 0) return;
-      if (result.operation === "copy") {
-        await host.fs.copyFiles(result.paths, snap.currentDirectory);
-      } else {
-        await host.fs.moveFiles(result.paths, snap.currentDirectory);
-        await host.board.writeFiles([], "copy"); // clear the pasteboard after a move
+      try {
+        // Only an explicit "cut" moves; anything else copies (the non-destructive
+        // default), so a bad/unknown operation can never delete the source.
+        if (result.operation === "cut") {
+          await host.fs.moveFiles(result.paths, snap.currentDirectory);
+          await host.board.writeFiles([], "copy"); // clear the pasteboard after a move
+        } else {
+          await host.fs.copyFiles(result.paths, snap.currentDirectory);
+        }
+      } finally {
+        await host.refresh(); // reflect whatever landed, even on a partial failure
       }
-      await host.refresh();
     });
   },
 });

@@ -11,8 +11,8 @@ export default defineModule({
   setup(host) {
     host.events.on("input:mouse-navigate", (payload) => {
       const { direction } = payload as { direction: "back" | "forward" };
-      if (direction === "back") host.nav.goBack();
-      else host.nav.goForward();
+      const nav = direction === "back" ? host.nav.goBack() : host.nav.goForward();
+      void nav.catch((e) => host.log("[mouse-nav] failed:", e));
     });
   },
 });

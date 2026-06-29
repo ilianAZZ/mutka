@@ -72,14 +72,22 @@ class DiscoveryRegistryClass {
    * one source; a heuristic with several).
    */
   async discover(query: DiscoveryQuery): Promise<DiscoveryResult> {
-    const results = await Promise.allSettled(this.list().map((s) => s.discover(query)));
+    const sources = this.list();
+    const results = await Promise.allSettled(sources.map((s) => s.discover(query)));
     const listings: ModuleListing[] = [];
     let nextPage: number | undefined;
-    for (const r of results) {
-      if (r.status !== "fulfilled") continue;
+    results.forEach((r, i) => {
+      if (r.status !== "fulfilled") {
+        // Don't swallow a failing source — a broken one should be diagnosable.
+        console.error(`[discovery] source "${sources[i].id}" failed:`, r.reason);
+        return;
+      }
       listings.push(...r.value.listings.filter((l) => matchesFilters(l, query)));
-      if (r.value.nextPage !== undefined) nextPage = r.value.nextPage;
-    }
+      // Keep paging while ANY source has more (max, not last-writer-wins).
+      if (r.value.nextPage !== undefined) {
+        nextPage = nextPage === undefined ? r.value.nextPage : Math.max(nextPage, r.value.nextPage);
+      }
+    });
     return { listings, nextPage };
   }
 

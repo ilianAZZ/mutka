@@ -12,7 +12,7 @@ export default defineModule({
   permissions: ["fs:read"],
   setup(host) {
     host.events.on("directory:changed", () => {
-      host.refresh();
+      void host.refresh().catch((e) => host.log("[auto-refresh] failed:", e));
     });
   },
 });

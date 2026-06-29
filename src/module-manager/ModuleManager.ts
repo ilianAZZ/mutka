@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { ModuleRegistry } from "../core/module-registry/ModuleRegistry";
 import type { SandboxManifest } from "../core/sandbox/protocol";
+import { manifestFromDef } from "../core/sandbox/manifestFromDef";
 import { collectDescriptors, makeWorkerDescriptor } from "./descriptors";
 import { loadConfig, saveConfig } from "./moduleConfig";
 import { writeModule } from "./installModule";
@@ -25,22 +26,9 @@ import type {
 
 /** A bare manifest for a module whose source couldn't even be read. */
 function minimalManifest(id: string): SandboxManifest {
-  return {
-    id,
-    name: id,
-    version: "0.0.0",
-    permissions: [],
-    commands: [],
-    openHandlers: [],
-    sidebarItems: [],
-    fileSystemProviders: [],
-    fileIcons: [],
-    columns: [],
-    panels: [],
-    settingsSections: [],
-    discoverySources: [],
-    moduleManagerButtons: [],
-  };
+  // Reuse the one manifest builder so a new contribution field is never missed
+  // here (an error-state module would otherwise be structurally invalid).
+  return manifestFromDef({ id });
 }
 
 class ModuleManagerClass {

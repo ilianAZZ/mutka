@@ -43,7 +43,14 @@ export class SandboxHost {
     this.worker = new Worker(new URL("./sandbox.worker.ts", import.meta.url), { type: "module" });
     this.ready = new Promise<SandboxManifest>((resolve, reject) => {
       this.worker.onmessage = (e: MessageEvent<WorkerToHost>) => this.onMessage(e.data, resolve, reject);
-      this.worker.onerror = (e) => reject(new Error(e.message));
+      this.worker.onerror = (e) => {
+        // A worker crash AFTER ready would otherwise leave every in-flight
+        // column/provider/discovery call hung forever — reject them and tear down.
+        const err = new Error(e.message || "module worker crashed");
+        reject(err);
+        this.rejectAllPending(err);
+        this.dispose();
+      };
     });
     this.send({ t: "load", source });
   }
@@ -128,16 +135,21 @@ export class SandboxHost {
     });
   }
 
-  private dispose(): void {
-    for (const unsub of this.eventUnsubs) unsub();
-    for (const { reject } of this.columnPending.values()) reject(new Error("module disposed"));
+  /** Reject every in-flight host→worker→host call (idempotent — maps are cleared). */
+  private rejectAllPending(error: Error): void {
+    for (const { reject } of this.columnPending.values()) reject(error);
     this.columnPending.clear();
     for (const { reject } of this.columnBatchPending.values()) reject(new Error("module disposed"));
     this.columnBatchPending.clear();
     for (const { reject } of this.providerPending.values()) reject(new Error("module disposed"));
     this.providerPending.clear();
-    for (const { reject } of this.discoveryPending.values()) reject(new Error("module disposed"));
+    for (const { reject } of this.discoveryPending.values()) reject(error);
     this.discoveryPending.clear();
+  }
+
+  private dispose(): void {
+    for (const unsub of this.eventUnsubs) unsub();
+    this.rejectAllPending(new Error("module disposed"));
     for (const scheme of this.registeredSchemes) FileSystemRegistry.unregisterProvider(scheme);
     for (const sourceId of this.registeredSources) DiscoveryRegistry.unregister(sourceId);
     this.worker.terminate();

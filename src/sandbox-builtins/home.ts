@@ -16,9 +16,19 @@ export default defineModule({
       await host.home.set(home);
 
       // Restore the last local path; a remote (provider) path may not be mounted
-      // yet, so only a path starting with "/" is trusted — else fall back home.
+      // yet, so only a path starting with "/" is trusted. Verify it still exists
+      // (it may have been deleted/unmounted) — else fall back home, so launch
+      // never lands on a dead, empty listing.
       const last = (await host.sys.lastDir()) as string | null;
-      const target = last && last.startsWith("/") ? last : home;
+      let target = home;
+      if (last && last.startsWith("/")) {
+        try {
+          await host.fs.readDir(last);
+          target = last;
+        } catch {
+          target = home;
+        }
+      }
       await host.nav.navigate(target);
     });
   },

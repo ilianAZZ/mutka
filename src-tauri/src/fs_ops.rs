@@ -48,13 +48,30 @@ fn is_package_extension(extension: &Option<String>) -> bool {
 }
 
 #[tauri::command]
-pub fn read_dir(app: tauri::AppHandle, path: String, show_hidden: bool) -> Result<Vec<FileItem>, String> {
+pub async fn read_dir(app: tauri::AppHandle, path: String, show_hidden: bool) -> Result<Vec<FileItem>, String> {
+    // Off the main/IPC thread: a large or slow (cloud/network) directory must
+    // never freeze the UI while it is read + stat'd.
+    tauri::async_runtime::spawn_blocking(move || read_dir_blocking(app, path, show_hidden))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn read_dir_blocking(app: tauri::AppHandle, path: String, show_hidden: bool) -> Result<Vec<FileItem>, String> {
     let entries = fs::read_dir(&path).map_err(|e| e.to_string())?;
     // Watch the directory we are now showing (re-arms the single live watcher).
     crate::watcher::arm(&app, &path);
     let mut items = Vec::new();
 
-    for entry in entries.flatten() {
+    for entry in entries {
+        // Don't silently drop an unreadable entry (e.g. a transient permission
+        // error) — log it so a partially-listed folder is diagnosable.
+        let entry = match entry {
+            Ok(e) => e,
+            Err(e) => {
+                eprintln!("[read_dir] skipping unreadable entry in {path}: {e}");
+                continue;
+            }
+        };
         let entry_path = entry.path();
         let name = entry.file_name().to_string_lossy().to_string();
 
@@ -79,9 +96,11 @@ pub fn read_dir(app: tauri::AppHandle, path: String, show_hidden: bool) -> Resul
             .unwrap_or_default()
             .as_secs();
 
+        // Lowercased to match the documented FileItem.extension contract, so
+        // openHandlers / icon keys matching "png" also match a "FILE.PNG".
         let extension = entry_path
             .extension()
-            .map(|e| e.to_string_lossy().to_string());
+            .map(|e| e.to_string_lossy().to_lowercase());
 
         let path_str = entry_path.to_string_lossy().to_string();
         let is_dir = meta.is_dir();
@@ -117,7 +136,14 @@ pub fn read_dir(app: tauri::AppHandle, path: String, show_hidden: bool) -> Resul
 }
 
 #[tauri::command]
-pub fn copy_files(paths: Vec<String>, dest: String) -> Result<(), String> {
+pub async fn copy_files(paths: Vec<String>, dest: String) -> Result<(), String> {
+    // Off the main thread: copying a whole tree byte-by-byte must not freeze the UI.
+    tauri::async_runtime::spawn_blocking(move || copy_files_blocking(paths, dest))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn copy_files_blocking(paths: Vec<String>, dest: String) -> Result<(), String> {
     for src in &paths {
         let src_path = std::path::Path::new(src);
         let file_name = src_path
@@ -150,7 +176,14 @@ fn copy_dir_all(src: &std::path::Path, dest: &str) -> std::io::Result<()> {
 }
 
 #[tauri::command]
-pub fn move_files(paths: Vec<String>, dest: String) -> Result<(), String> {
+pub async fn move_files(paths: Vec<String>, dest: String) -> Result<(), String> {
+    // Off the main thread: a cross-volume move can fall back to a full copy.
+    tauri::async_runtime::spawn_blocking(move || move_files_blocking(paths, dest))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn move_files_blocking(paths: Vec<String>, dest: String) -> Result<(), String> {
     for src in &paths {
         let file_name = std::path::Path::new(src)
             .file_name()
@@ -181,7 +214,14 @@ pub fn rename_item(from: String, to: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn delete_item(path: String) -> Result<(), String> {
+pub async fn delete_item(path: String) -> Result<(), String> {
+    // Off the main thread: remove_dir_all on a big tree must not freeze the UI.
+    tauri::async_runtime::spawn_blocking(move || delete_item_blocking(path))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn delete_item_blocking(path: String) -> Result<(), String> {
     let meta = fs::metadata(&path).map_err(|e| e.to_string())?;
     if meta.is_dir() {
         fs::remove_dir_all(&path).map_err(|e| e.to_string())?;
@@ -253,7 +293,15 @@ const MAX_READ_BYTES: u64 = 32 * 1024 * 1024;
 /// `fs.readBytes` capability (the frontend gateway decodes it to a Uint8Array).
 /// Enables content-reading modules: image metadata, hex preview, .DS_Store, …
 #[tauri::command]
-pub fn read_file_base64(path: String) -> Result<String, String> {
+pub async fn read_file_base64(path: String) -> Result<String, String> {
+    // Off the main thread: reads up to MAX_READ_BYTES into memory and base64-
+    // encodes it (~1.33x), so it must not block the UI.
+    tauri::async_runtime::spawn_blocking(move || read_file_base64_blocking(path))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+fn read_file_base64_blocking(path: String) -> Result<String, String> {
     use base64::Engine;
     let meta = fs::metadata(&path).map_err(|e| e.to_string())?;
     if meta.is_dir() {
@@ -305,10 +353,28 @@ pub fn write_temp_file(filename: String, content_base64: String) -> Result<Strin
     let safe_name = std::path::Path::new(&filename)
         .file_name()
         .ok_or("Invalid filename")?;
-    let dest = std::env::temp_dir().join("mutka-dropped").join(safe_name);
-    if let Some(parent) = dest.parent() {
-        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-    }
+    let staging = std::env::temp_dir().join("mutka-dropped");
+    fs::create_dir_all(&staging).map_err(|e| e.to_string())?;
+    prune_stale_temp_files(&staging); // best-effort: these accumulate forever otherwise
+    let dest = staging.join(safe_name);
     fs::write(&dest, bytes).map_err(|e| e.to_string())?;
     Ok(dest.to_string_lossy().to_string())
+}
+
+/// Remove files in the staging dir older than 1 hour (a dropped file is consumed
+/// — copied/uploaded — immediately after this returns, so anything left over is
+/// stale). Best-effort: any error is ignored, this is just housekeeping.
+fn prune_stale_temp_files(dir: &std::path::Path) {
+    let Ok(entries) = fs::read_dir(dir) else { return };
+    let cutoff = std::time::SystemTime::now() - std::time::Duration::from_secs(3600);
+    for entry in entries.flatten() {
+        let stale = entry
+            .metadata()
+            .and_then(|m| m.modified())
+            .map(|m| m < cutoff)
+            .unwrap_or(false);
+        if stale {
+            let _ = fs::remove_file(entry.path());
+        }
+    }
 }
