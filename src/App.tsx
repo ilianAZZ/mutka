@@ -39,6 +39,8 @@ import { ModulesPanel } from "./components/ModulesPanel/ModulesPanel";
 import { StatusBar } from "./components/StatusBar/StatusBar";
 import { DeclarativeModal } from "./components/Declarative/DeclarativeModal";
 import { UpdateToast } from "./components/UpdateToast/UpdateToast";
+import { NotificationToasts } from "./components/Notifications/NotificationToasts";
+import { NotificationStore } from "./core/stores/NotificationStore";
 import { useActiveModal } from "./hooks/useActiveModal";
 import { outputPickerResult } from "./core/cli/CliHandler";
 import "./styles/toolbar.css";
@@ -49,6 +51,7 @@ import "./styles/toolbar.css";
 const modulesReady = ModuleManager.init().catch((e) => console.error("[App] ModuleManager.init:", e));
 InputManager.init();
 DirectoryWatcher.init();
+NotificationStore.init();
 // Warm the icon cache from disk so previously-seen file types render instantly
 // on the first folder open (no IPC, no placeholder flash).
 void FileIconRegistry.preload();
@@ -259,6 +262,7 @@ export function App() {
       {activeModal && <DeclarativeModal moduleId={activeModal.moduleId} node={activeModal.node} />}
 
       <UpdateToast />
+      <NotificationToasts />
     </div>
   );
 }

@@ -6,7 +6,9 @@ import { resolveAuthor } from "../../module-manager/authorInfo";
 import type { ModuleListing, ResolvedModule } from "../../module-manager/types";
 import type { SandboxManifest } from "../../core/sandbox/protocol";
 import { ModulesStore } from "../../core/stores/ModulesStore";
+import { NotificationStore } from "../../core/stores/NotificationStore";
 import { ModuleRegistry } from "../../core/module-registry/ModuleRegistry";
+import { AppBridge } from "../../core/app-bridge/AppBridge";
 import { EventBus } from "../../core/event-bus/EventBus";
 import { Events } from "../../core/event-bus/events";
 import { ICON_REGISTRY } from "../ContextMenu/icon-registry";
@@ -110,13 +112,22 @@ export function ModulesPanel({ onClose }: ModulesPanelProps) {
   }, []);
 
   const handleDelete = useCallback(async (id: string) => {
-    if (!window.confirm(`Delete "${id}" from disk? This cannot be undone.`)) return;
+    // window.confirm() is a no-op in the Tauri webview, so use the app's dialog.
+    const ok = await AppBridge.dialog.confirm({
+      message: `Delete "${id}"?`,
+      detail: "This removes the module from disk. This cannot be undone.",
+      destructive: true,
+    });
+    if (!ok) return;
     setBusyId(id);
     setActionError(null);
     try {
       await ModuleManager.uninstall(id);
+      NotificationStore.success("Module deleted", id);
     } catch (err) {
-      setActionError(String(err instanceof Error ? err.message : err));
+      const message = String(err instanceof Error ? err.message : err);
+      setActionError(message);
+      NotificationStore.error(`Couldn't delete ${id}`, message);
     } finally {
       setBusyId(null);
     }
@@ -143,6 +154,7 @@ export function ModulesPanel({ onClose }: ModulesPanelProps) {
     setReviewError(null);
     try {
       await ModuleManager.install(review);
+      NotificationStore.success("Module installed", `${review.manifest.name} v${review.manifest.version}`);
       setReview(null);
       setTab("installed");
     } catch (err) {
