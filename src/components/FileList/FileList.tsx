@@ -295,11 +295,10 @@ export function FileList({
                     key={item.path}
                     style={{
                       position: "absolute",
-                      top: 0,
+                      top: virtualRow.start,
                       left: 0,
                       width: "100%",
                       height: virtualRow.size,
-                      transform: `translateY(${virtualRow.start}px)`,
                     }}
                   >
                     <FileRow
