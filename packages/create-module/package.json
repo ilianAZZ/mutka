@@ -1,6 +1,6 @@
 {
   "name": "@mutka-explorer/create",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Scaffold a new Mutka module — a typed TypeScript project wired to @mutka-explorer/module that builds to a single ESM file.",
   "license": "MIT",
   "author": "Mutka contributors",
