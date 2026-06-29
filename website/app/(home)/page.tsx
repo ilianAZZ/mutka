@@ -3,6 +3,7 @@ import { GITHUB_URL, DISCORD_URL } from "../layout.config";
 import { ModularBench } from "@/components/demo/ModularBench";
 import { FeatureCardGrid } from "@/components/features/FeatureCardGrid";
 import { InstallCommand } from "@/components/InstallCommand";
+import { ThemedLogo } from "@/components/ThemedLogo";
 
 function GitHubIcon({ size = 16 }: { size?: number }) {
   return (
@@ -139,6 +140,44 @@ const IDEAS = [
   },
 ];
 
+const TRUSTED = [
+  {
+    name: "Head of Science",
+    href: "https://headofscience.fr",
+    light: "/assets/logos/headofscience.svg",
+    dark: "/assets/logos/headofscience-dark.svg",
+    height: "3.6rem",
+  },
+  {
+    name: "Breem",
+    href: "https://breem.app",
+    light: "/assets/logos/breem.svg",
+    dark: "/assets/logos/breem.svg",
+    height: "2.7rem",
+  },
+  {
+    name: "WealthDrop",
+    href: "https://wealthdrop.io",
+    light: "/assets/logos/wealthdrop.svg",
+    dark: "/assets/logos/wealthdrop-dark.svg",
+    height: "2.5rem",
+  },
+  {
+    name: "ShopScale",
+    href: "https://shopscale.app",
+    light: "/assets/logos/shopscale.svg",
+    dark: "/assets/logos/shopscale-dark.svg",
+    height: "2.7rem",
+  },
+  {
+    name: "UnlimitedMessaging",
+    href: "https://unlimitedmessaging.app",
+    light: "/assets/logos/unlimitedmessaging.svg",
+    dark: "/assets/logos/unlimitedmessaging.svg",
+    height: "3rem",
+  },
+];
+
 export default function HomePage() {
   return (
     <main className="flex flex-1 flex-col gap-56">
@@ -208,6 +247,36 @@ export default function HomePage() {
           </div>
         </header>
         <ModularBench />
+      </section>
+
+      {/* Trusted by — a monochrome partner logo wall */}
+      <section
+        className="mx-auto -mt-40 w-full max-w-5xl px-6"
+        aria-label="Trusted by"
+      >
+        <p className="mb-10 text-center text-[0.8rem] font-semibold uppercase tracking-[0.12em] text-fd-muted-foreground/60">
+          Trusted by employees at
+        </p>
+        <ul className="m-0 flex list-none flex-wrap items-center justify-center gap-x-14 gap-y-8 p-0">
+          {TRUSTED.map((b) => (
+            <li key={b.name}>
+              <a
+                href={b.href + '/utm_source=mutka.app'}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={b.name}
+                className="trust-logo"
+              >
+                <ThemedLogo
+                  light={b.light}
+                  dark={b.dark}
+                  alt={b.name}
+                  height={b.height}
+                />
+              </a>
+            </li>
+          ))}
+        </ul>
       </section>
 
       {/* What */}
