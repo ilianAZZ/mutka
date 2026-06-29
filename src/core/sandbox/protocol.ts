@@ -364,6 +364,29 @@ export type HostToWorker =
   | { t: "discovery"; id: number; sourceId: string; method: DiscoveryMethod; args: unknown[] }
   | { t: "event"; event: string; payload: unknown };
 
+// ─── Host-proxied HTTP types (shared by hostProxy + capabilities) ────────────
+
+/** Options for host.net.request — a host-proxied HTTP call (bypasses CORS). */
+export interface NetRequestOptions {
+  url: string;
+  method?: string;
+  headers?: Record<string, string>;
+  /** Text (UTF-8) or raw bytes (e.g. from host.fs.readBytes for an upload). */
+  body?: string | Uint8Array;
+}
+
+/** What host.net.request resolves to. */
+export interface NetResponse {
+  status: number;
+  headers: Record<string, string>;
+  /** Body decoded as UTF-8 text (JSON/XML/text APIs). */
+  body: string;
+  /** Body as raw bytes (binary downloads). */
+  bytes: Uint8Array;
+}
+
+// ─── Method-name unions for wire messages ────────────────────────────────────
+
 /** The file-system provider operations a module may implement (mirrors hostProxy). */
 export type ProviderMethod =
   | "list" | "openFile" | "createFolder" | "createFile" | "deleteItem" | "renameItem" | "copyFiles" | "moveFiles";
