@@ -101,6 +101,7 @@ unreachable*, since the worker has no `invoke`.
 | Capability                  | Permission | Backed by                                          |
 | --------------------------- | ---------- | -------------------------------------------------- |
 | `sys.homeDir`               | `fs:read`  | Rust `get_home_dir` (the OS home dir)              |
+| `sys.appVersion`            | `storage`  | Rust `get_app_version` (app build version; non-sensitive, so `storage` not `fs:read`) |
 | `sys.lastDir`               | `fs:read`  | `localStorage` (last dir, for launch restore)      |
 | `sys.writeTempFile`         | `fs:temp`  | Rust `write_temp_file` (OS temp dir only)          |
 | `sys.quickLook` / `previewUpdate` | `fs:read` | Rust Quick Look panel                          |
