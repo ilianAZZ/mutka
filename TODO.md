@@ -85,9 +85,8 @@ Run the app and confirm each ported feature still works:
 
 ## Done (later passes)
 
-- [x] All docs rewritten to the unified architecture (root + src + core + components
-      + src-tauri CLAUDE.md, docs/{architecture,flows,events}.md, COMMUNITY_MODULES.md,
-      README, INSTALL, and the `.claude/skills/*` authoring guides).
+- [x] All docs rewritten to the unified architecture (CLAUDE.md files for agents,
+      website MDX for public docs, README, INSTALL, and `.claude/skills/*` guides).
 - [x] Dead code removed: top-bar panels (`MutkaTopBarPanel`/`topBarPanels`/`getTopBarPanels`),
       toolbar contributions (`showInToolbar`/`getToolbarActions`), `getModules`/`ModuleManifest`.
 - [x] UX wins: middle-click tab close, middle-click folder → background tab, column

@@ -27,7 +27,7 @@ denies the call.
 > and is inlined by the bundler so the built file stays import-free. The `host` is
 > precisely typed there (`host.fs.readDir` → `FileItem[]`, etc.). This skill covers
 > **built-in** modules in this repo (which use the same `defineModule` from
-> `core/sandbox`); for the author experience point people at `COMMUNITY_MODULES.md`.
+> `core/sandbox`); for the author experience point people at https://mutka.app/docs/modules/writing-a-module.
 
 ## Step-by-step
 

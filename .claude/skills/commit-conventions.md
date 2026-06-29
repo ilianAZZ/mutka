@@ -44,7 +44,7 @@ feat!: remove host.net.download
 
 BREAKING CHANGE: host.net.download/upload are gone. Read bytes with
 host.fs.readBytes and pass them as the request body; save responses with
-host.sys.writeTempFile. See docs/safety.md.
+host.sys.writeTempFile.
 ```
 
 Either the `!` or the `BREAKING CHANGE:` footer forces a **major** bump — use them
@@ -71,4 +71,4 @@ feat!: rename host.board.* to host.clipboard.*            # major
   a PR — this one can't be bypassed, so a malformed message blocks the merge.
 
 Get the type right and the release pipeline is fully automatic — see the
-`cut-release` skill and `docs/releasing.md`.
+`cut-release` skill.

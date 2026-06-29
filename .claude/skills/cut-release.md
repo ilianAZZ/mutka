@@ -8,8 +8,8 @@ description: Cut a Mutka release. Releases are driven by release-please + Conven
 Mutka uses **release-please** on top of **Conventional Commits**. You do **not**
 hand-edit versions, write the changelog, run a local script, or push a final tag.
 The version + `CHANGELOG.md` are computed from commit messages and applied by
-merging an auto-maintained PR. See `docs/releasing.md` and the `commit-conventions`
-skill.
+merging an auto-maintained PR. See the `commit-conventions` skill and the
+"Releasing" section of the root `CLAUDE.md`.
 
 ## How it works
 
@@ -76,4 +76,4 @@ The build auto-publishes (signed + notarized in CI), so
   (+ `_PASSWORD`). Independent of Apple signing.
 - **npm publish**: `NPM_TOKEN` (automation token for the `mutka-explorer` org).
 
-See `docs/releasing.md`.
+See the "Releasing" section of the root `CLAUDE.md` for the full flow.

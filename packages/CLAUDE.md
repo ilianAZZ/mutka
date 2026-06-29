@@ -7,7 +7,7 @@ outside this repo can build modules in typed TypeScript instead of hand-written 
 Both publish to npm on each `vX.Y.Z` release tag (jobs `publish-sdk` /
 `publish-create` in `.github/workflows/release.yml`), **versioned in lockstep with
 the app**. Publishing needs the `NPM_TOKEN` repo secret and the `mutka-explorer` npm
-org. See `docs/releasing.md`.
+org.
 
 | Package                   | npm name                  | What it is                                                            |
 | ------------------------- | ------------------------- | -------------------------------------------------------------------- |
@@ -47,7 +47,7 @@ import can instead `import type { SandboxModuleDef }` and annotate
 
 **Consequence for contract changes:** if you change the `host` surface, `defineModule`
 shape, `protocol.ts`, or a re-exported type, the SDK just needs a **rebuild** (no manual
-type edits) — but update the author-facing docs that mention it (`COMMUNITY_MODULES.md`,
+type edits) — but update the author-facing docs that mention it (the website MDX pages,
 root `CLAUDE.md`). If you add a NEW author-facing type, also add it to
 `module-sdk/src/index.ts`'s export list so authors can name it. See the `update-docs` skill.
 

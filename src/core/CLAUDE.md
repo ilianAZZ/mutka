@@ -32,7 +32,7 @@ Two runtimes host modules, **same format, same gateway**:
 Which runtime backs a module is decided by its source in `src/module-manager/descriptors.ts`
 (built-ins → `LocalHost`, dev/community → `SandboxHost`); the module code is identical
 either way. The `src/module-manager/` service owns discovery + the enable/disable/install
-lifecycle. For an author's guide, see `COMMUNITY_MODULES.md`.
+lifecycle.
 
 ---
 
