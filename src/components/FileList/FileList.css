@@ -3,10 +3,10 @@
    what keeps dark mode actually dark instead of letting the OS vibrancy bleed through. */
 #file-list {
   flex: 1;
-  overflow-y: auto;
   display: flex;
   flex-direction: column;
   background: rgba(246, 246, 248, 0.97);
+  min-height: 0;
 }
 
 [data-theme="dark"] #file-list {
@@ -57,13 +57,13 @@
   font-weight: 600;
   letter-spacing: 0.02em;
   text-transform: uppercase;
-  position: sticky;
-  top: 0;
-  z-index: 1;
+  flex-shrink: 0;
 }
 
 #file-list .file-list-body {
   flex: 1;
+  overflow-y: auto;
+  min-height: 0;
 }
 
 /* Drop-into-current-folder highlight (files dragged from Finder onto the empty area) */
@@ -81,8 +81,8 @@
   align-items: center;
 }
 
-/* Zebra striping — every other row gets a faint tint (Finder's "% 2") */
-#file-list .file-row:nth-child(even) {
+/* Zebra striping — class-based for virtualized rows (nth-child won't work). */
+#file-list .file-row.file-row--even {
   background: var(--row-stripe);
 }
 

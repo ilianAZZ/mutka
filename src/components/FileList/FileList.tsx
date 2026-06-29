@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
 import { FileItem } from "../../core/types";
 import type { SortKey, SortState } from "../../core/stores/listing.types";
 import type { ColumnDescriptor, ColumnCellState } from "../../core/columns/column.types";
-import { FileIcon } from "./FileIcon";
 import { FileIconRegistry } from "../../core/file-icons/FileIconRegistry";
+import { EventBus } from "../../core/event-bus/EventBus";
+import { Events } from "../../core/event-bus/events";
+import { FileRow } from "./FileRow";
 import "./FileList.css";
 
 interface Props {
@@ -11,50 +14,24 @@ interface Props {
   selected: FileItem[];
   cutItems: FileItem[];
   sort: SortState;
-  /** The directory currently shown — destination for drops on the empty area. */
   currentDir: string;
-  /** Module-contributed columns that apply to the current directory. */
   extraColumns?: ColumnDescriptor[];
-  /** Per-path cell state for each extra column. */
   cellData?: Record<string, Record<string, ColumnCellState>>;
-  /** Persisted width overrides, keyed by built-in sort key or custom column id. */
   columnWidths?: Record<string, number>;
-  /** Commit a new width for a column (live during a header drag). */
   onColumnResize?: (id: string, width: number) => void;
-  /** Error message to show in place of the listing (e.g. a failed remote load). */
   error?: string | null;
   onSelect: (items: FileItem[]) => void;
   onOpen: (item: FileItem) => void;
   onSortChange: (key: SortKey) => void;
   onModifierOpen?: (item: FileItem, modifiers: { ctrl: boolean; meta: boolean }) => void;
   onMiddleClick?: (item: FileItem) => void;
-  /** Move dragged paths into a destination directory (internal drag & drop). */
   onMoveItems?: (paths: string[], destPath: string) => void;
-  /** Files dropped from outside the app (e.g. Finder) onto a folder. */
   onDropExternal?: (files: FileList, destPath: string) => void;
-  /** Start a native OS drag of items so dropping on Finder/other apps moves the real files. */
   onNativeDrag?: (items: FileItem[]) => void;
-  /** Fired after the rows for a new listing are committed to the DOM (timing hook). */
   onRendered?: (count: number) => void;
 }
 
-function formatSize(bytes: number): string {
-  if (bytes === 0) return "—";
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
-}
-
-function formatDate(ts: number): string {
-  return new Date(ts * 1000).toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+const ROW_HEIGHT = 26;
 
 const COLUMNS: { key: SortKey; label: string; className: string }[] = [
   { key: "name", label: "Name", className: "col-name" },
@@ -63,21 +40,7 @@ const COLUMNS: { key: SortKey; label: string; className: string }[] = [
   { key: "size", label: "Size", className: "col-size" },
 ];
 
-/** Default widths of the resizable built-in columns. A trailing 1fr spacer (not
-    a real column) eats the leftover space, so every column is fixed + resizable
-    and resizing one only pushes the columns to its right — never the reverse. */
 const BUILTIN_DEFAULT_WIDTH: Record<string, number> = { name: 280, date: 180, type: 100, size: 90 };
-
-function renderCell(state: ColumnCellState | undefined): React.ReactNode {
-  if (!state || state === "loading") return null;
-  return (
-    <>
-      {state.icon && <img className="col-extra-icon" src={state.icon} alt="" />}
-      {state.text && <span style={state.tint ? { color: state.tint } : undefined}>{state.text}</span>}
-      {state.badge && <span className="col-extra-badge">{state.badge}</span>}
-    </>
-  );
-}
 
 export function FileList({
   files, selected, cutItems, sort, error, currentDir, extraColumns, cellData, columnWidths, onColumnResize,
@@ -86,21 +49,30 @@ export function FileList({
 }: Props) {
   const columns = extraColumns ?? [];
 
-  // Signal once the rows for a new listing are in the DOM (before paint). Fires
-  // only when the items array changes — icon/cell updates keep the same `files`
-  // reference — so it marks the end of an open, not every re-render.
   useLayoutEffect(() => { onRendered?.(files.length); }, [files]);
 
-  // Render all of this folder's not-yet-cached icons in one off-main-thread
-  // batch (after paint), so opening a folder never blocks on icon rendering.
   useEffect(() => { FileIconRegistry.prefetch(files); }, [files]);
-  // Effective width of a column: a stored override, else its default.
+
+  // ── Lifted icon resolution: ONE subscription instead of per-row ──────────
+  const [iconVersion, setIconVersion] = useState(0);
+  useEffect(() => EventBus.on(Events.Icons.settled, () => setIconVersion((v) => v + 1)), []);
+
+  const iconMap = useMemo(() => {
+    void iconVersion;
+    const map = new Map<string, string | null>();
+    for (const item of files) map.set(item.path, FileIconRegistry.resolveSync(item));
+    return map;
+  }, [files, iconVersion]);
+
+  // ── Memoized Sets — selecting one file no longer rebuilds every row ──────
+  const selectedPaths = useMemo(() => new Set(selected.map((f) => f.path)), [selected]);
+  const cutPaths = useMemo(() => new Set(cutItems.map((f) => f.path)), [cutItems]);
+
+  // ── Column grid template ────────────────────────────────────────────────
   const ew = useCallback(
     (id: string, def: number) => columnWidths?.[id] ?? def,
-    [columnWidths]
+    [columnWidths],
   );
-  // Every column is a fixed px track; a trailing 1fr spacer absorbs leftover
-  // width so rows stay full-width and resizing only pushes columns rightward.
   const gridStyle = useMemo<React.CSSProperties>(() => ({
     gridTemplateColumns: [
       `${ew("name", BUILTIN_DEFAULT_WIDTH.name)}px`,
@@ -112,8 +84,6 @@ export function FileList({
     ].join(" "),
   }), [columns, ew]);
 
-  // Drag a header's right edge to resize that column. Listeners live only for the
-  // duration of the drag; widths are committed live so the grid tracks the cursor.
   const startResize = useCallback((e: React.MouseEvent, id: string, startWidth: number) => {
     e.preventDefault();
     e.stopPropagation();
@@ -130,98 +100,135 @@ export function FileList({
     document.addEventListener("mouseup", onUp);
   }, [onColumnResize]);
 
-  const selectedPaths = new Set(selected.map((f) => f.path));
-  const cutPaths = new Set(cutItems.map((f) => f.path));
+  // ── Virtualization ──────────────────────────────────────────────────────
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const rowVirtualizer = useVirtualizer({
+    count: files.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ROW_HEIGHT,
+    overscan: 10,
+  });
+
+  // ── Stable handlers via live ref (never change identity → memo works) ───
   const dragPathsRef = useRef<string[]>([]);
   const [dropTarget, setDropTarget] = useState<string | null>(null);
   const [bgDrop, setBgDrop] = useState(false);
 
-  // Files dropped from outside onto the empty area → the current directory.
+  const live = useRef({
+    files, selected, selectedPaths, currentDir,
+    onSelect, onOpen, onModifierOpen, onMiddleClick, onMoveItems, onDropExternal, onNativeDrag,
+  });
+  live.current = {
+    files, selected, selectedPaths, currentDir,
+    onSelect, onOpen, onModifierOpen, onMiddleClick, onMoveItems, onDropExternal, onNativeDrag,
+  };
+
+  const handleClick = useCallback((e: React.MouseEvent, item: FileItem) => {
+    const { files: f, selected: sel, selectedPaths: sp, onSelect: os } = live.current;
+    if (e.metaKey || e.ctrlKey) {
+      if (sp.has(item.path)) {
+        os(sel.filter((s) => s.path !== item.path));
+      } else {
+        os([...sel, item]);
+      }
+    } else if (e.shiftKey && sel.length > 0) {
+      const last = sel[sel.length - 1];
+      const lastIdx = f.findIndex((fi) => fi.path === last.path);
+      const thisIdx = f.findIndex((fi) => fi.path === item.path);
+      const [from, to] = lastIdx < thisIdx ? [lastIdx, thisIdx] : [thisIdx, lastIdx];
+      os(f.slice(from, to + 1));
+    } else {
+      os([item]);
+    }
+  }, []);
+
+  const handleContextMenu = useCallback((item: FileItem) => {
+    const { selectedPaths: sp, onSelect: os } = live.current;
+    if (!sp.has(item.path)) os([item]);
+  }, []);
+
+  const handleAuxClick = useCallback((e: React.MouseEvent, item: FileItem) => {
+    const mc = live.current.onMiddleClick;
+    if (e.button === 1 && mc) { e.preventDefault(); mc(item); }
+  }, []);
+
+  const handleDoubleClick = useCallback((e: React.MouseEvent, item: FileItem) => {
+    const { onModifierOpen: mo, onOpen: oo } = live.current;
+    if ((e.ctrlKey || e.metaKey) && mo) {
+      mo(item, { ctrl: e.ctrlKey, meta: e.metaKey });
+    } else {
+      oo(item);
+    }
+  }, []);
+
+  const handleDragStart = useCallback((e: React.DragEvent, item: FileItem) => {
+    const { selectedPaths: sp, selected: sel, onNativeDrag: nd } = live.current;
+    const dragItems = sp.has(item.path) ? sel : [item];
+    const paths = dragItems.map((f) => f.path);
+    dragPathsRef.current = paths;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", paths.join("\n"));
+    nd?.(dragItems);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, item: FileItem) => {
+    const { onMoveItems: mi, onDropExternal: de } = live.current;
+    if (!item.isDir || item.isPackage || (!mi && !de)) return;
+    if (dragPathsRef.current.includes(item.path)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = e.dataTransfer.types.includes("Files") ? "copy" : "move";
+    setDropTarget(item.path);
+  }, []);
+
+  const handleDragLeave = useCallback((item: FileItem) => {
+    setDropTarget((t) => (t === item.path ? null : t));
+  }, []);
+
+  const handleDrop = useCallback((e: React.DragEvent, item: FileItem) => {
+    const { onMoveItems: mi, onDropExternal: de } = live.current;
+    if (!item.isDir || item.isPackage) return;
+    e.preventDefault();
+    e.stopPropagation();
+    setDropTarget(null);
+    if (e.dataTransfer.files.length > 0 && de) {
+      de(e.dataTransfer.files, item.path);
+      return;
+    }
+    if (!mi) return;
+    const paths = dragPathsRef.current.filter((p) => p !== item.path);
+    dragPathsRef.current = [];
+    if (paths.length) mi(paths, item.path);
+  }, []);
+
+  // ── Background drop (Finder → empty area → current dir) ─────────────────
   const handleBgDragOver = useCallback((e: React.DragEvent) => {
-    if (!onDropExternal || !e.dataTransfer.types.includes("Files")) return;
+    if (!live.current.onDropExternal || !e.dataTransfer.types.includes("Files")) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
     setBgDrop(true);
-  }, [onDropExternal]);
+  }, []);
 
   const handleBgDrop = useCallback((e: React.DragEvent) => {
     setBgDrop(false);
-    if (!onDropExternal || e.dataTransfer.files.length === 0) return;
+    const { onDropExternal: de, currentDir: cd } = live.current;
+    if (!de || e.dataTransfer.files.length === 0) return;
     e.preventDefault();
-    onDropExternal(e.dataTransfer.files, currentDir);
-  }, [onDropExternal, currentDir]);
+    de(e.dataTransfer.files, cd);
+  }, []);
 
-  const handleClick = useCallback(
-    (e: React.MouseEvent, item: FileItem) => {
-      if (e.metaKey || e.ctrlKey) {
-        if (selectedPaths.has(item.path)) {
-          onSelect(selected.filter((f) => f.path !== item.path));
-        } else {
-          onSelect([...selected, item]);
-        }
-      } else if (e.shiftKey && selected.length > 0) {
-        const last = selected[selected.length - 1];
-        const lastIdx = files.findIndex((f) => f.path === last.path);
-        const thisIdx = files.findIndex((f) => f.path === item.path);
-        const [from, to] = lastIdx < thisIdx ? [lastIdx, thisIdx] : [thisIdx, lastIdx];
-        onSelect(files.slice(from, to + 1));
-      } else {
-        onSelect([item]);
-      }
-    },
-    [files, selected, selectedPaths, onSelect]
-  );
-
-  const handleDragStart = useCallback(
-    (e: React.DragEvent, item: FileItem) => {
-      // Drag the whole selection if the dragged row is part of it; otherwise just this row.
-      const dragItems = selectedPaths.has(item.path) ? selected : [item];
-      const paths = dragItems.map((f) => f.path);
-      dragPathsRef.current = paths;
-      e.dataTransfer.effectAllowed = "move";
-      e.dataTransfer.setData("text/plain", paths.join("\n")); // keeps the in-app folder-drop working
-      // Also start a NATIVE drag so dropping on Finder/another app moves the real
-      // files (not just their text paths) — the Finder behaviour.
-      onNativeDrag?.(dragItems);
-    },
-    [selected, selectedPaths, onNativeDrag]
-  );
-
-  const handleDragOver = useCallback((e: React.DragEvent, item: FileItem) => {
-    // Packages (.app, …) are opaque — never a drop destination, like the Finder.
-    if (!item.isDir || item.isPackage || (!onMoveItems && !onDropExternal)) return;
-    if (dragPathsRef.current.includes(item.path)) return; // can't drop into itself
-    e.preventDefault();
-    e.stopPropagation(); // over a folder → don't also light up the background
-    e.dataTransfer.dropEffect = e.dataTransfer.types.includes("Files") ? "copy" : "move";
-    setDropTarget(item.path);
-  }, [onMoveItems, onDropExternal]);
-
-  const handleDrop = useCallback((e: React.DragEvent, item: FileItem) => {
-    if (!item.isDir || item.isPackage) return; // non-folders/packages fall through to the background handler
-    e.preventDefault();
-    e.stopPropagation(); // handled here — don't also drop into the current dir
-    setDropTarget(null);
-    // Files dropped from outside the app (Finder) arrive in dataTransfer.files.
-    if (e.dataTransfer.files.length > 0 && onDropExternal) {
-      onDropExternal(e.dataTransfer.files, item.path);
-      return;
-    }
-    if (!onMoveItems) return;
-    const paths = dragPathsRef.current.filter((p) => p !== item.path);
-    dragPathsRef.current = [];
-    if (paths.length) onMoveItems(paths, item.path);
-  }, [onMoveItems, onDropExternal]);
-
-  // Keep the active selection scrolled into view. Selection movement itself is a
-  // behavior (the core.selection module, driven by ↑/↓); this is the pure-UI
-  // reaction to it — a sandboxed module has no DOM to scroll.
+  // ── Scroll-to-selection via virtualizer (no querySelectorAll) ───────────
   useEffect(() => {
     const anchor = selected[selected.length - 1];
     if (!anchor) return;
     const idx = files.findIndex((f) => f.path === anchor.path);
-    if (idx >= 0) document.querySelectorAll("#file-list .file-row")[idx]?.scrollIntoView({ block: "nearest" });
-  }, [selected, files]);
+    if (idx >= 0) rowVirtualizer.scrollToIndex(idx, { align: "auto" });
+  }, [selected, files, rowVirtualizer]);
+
+  // ── Click empty area to deselect ────────────────────────────────────────
+  const handleBodyClick = useCallback((e: React.MouseEvent) => {
+    if (!(e.target as HTMLElement).closest(".file-row")) onSelect([]);
+  }, [onSelect]);
 
   return (
     <div
@@ -271,60 +278,55 @@ export function FileList({
               </span>
             ))}
           </div>
-          <div className="file-list-body">
-            {files.map((item) => (
-              <div
-                key={item.path}
-                draggable
-                style={gridStyle}
-                data-menu-zone="file"
-                className={[
-                  "file-row",
-                  selectedPaths.has(item.path) ? "selected" : "",
-                  cutPaths.has(item.path) ? "cut" : "",
-                  dropTarget === item.path ? "drop-target" : "",
-                  item.isHidden ? "file-row--hidden" : "",
-                ]
-                  .filter(Boolean)
-                  .join(" ")}
-                onClick={(e) => handleClick(e, item)}
-                onContextMenu={() => { if (!selectedPaths.has(item.path)) onSelect([item]); }}
-                onAuxClick={(e) => {
-                  if (e.button === 1 && onMiddleClick) { e.preventDefault(); onMiddleClick(item); }
-                }}
-                onDoubleClick={(e) => {
-                  if ((e.ctrlKey || e.metaKey) && onModifierOpen) {
-                    onModifierOpen(item, { ctrl: e.ctrlKey, meta: e.metaKey });
-                  } else {
-                    onOpen(item);
-                  }
-                }}
-                onDragStart={(e) => handleDragStart(e, item)}
-                onDragOver={(e) => handleDragOver(e, item)}
-                onDragLeave={() => setDropTarget((t) => (t === item.path ? null : t))}
-                onDrop={(e) => handleDrop(e, item)}
-              >
-                <span className="col-name">
-                  <FileIcon item={item} />
-                  {item.name}
-                </span>
-                <span className="col-date">{formatDate(item.modified)}</span>
-                <span className="col-type">
-                  {item.isDir && !item.isPackage
-                    ? "Folder"
-                    : item.extension?.toUpperCase() ?? "File"}
-                </span>
-                <span className="col-size">{item.isDir ? "—" : formatSize(item.size)}</span>
-                {columns.map((col) => (
-                  <span
-                    key={col.id}
-                    className={`col-extra${col.align === "end" ? " col-extra--end" : ""}`}
+          <div
+            ref={scrollRef}
+            className="file-list-body"
+            onClick={handleBodyClick}
+            onDragOver={handleBgDragOver}
+            onDragLeave={(e) => { if (e.target === e.currentTarget) setBgDrop(false); }}
+            onDrop={handleBgDrop}
+          >
+            <div
+              className="file-list-virtual"
+              style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}
+            >
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const item = files[virtualRow.index];
+                return (
+                  <div
+                    key={item.path}
+                    style={{
+                      position: "absolute",
+                      top: 0,
+                      left: 0,
+                      width: "100%",
+                      height: virtualRow.size,
+                      transform: `translateY(${virtualRow.start}px)`,
+                    }}
                   >
-                    {renderCell(cellData?.[item.path]?.[col.id])}
-                  </span>
-                ))}
-              </div>
-            ))}
+                    <FileRow
+                      item={item}
+                      isSelected={selectedPaths.has(item.path)}
+                      isCut={cutPaths.has(item.path)}
+                      isDropTarget={dropTarget === item.path}
+                      isEven={virtualRow.index % 2 === 1}
+                      iconSrc={iconMap.get(item.path) ?? null}
+                      gridStyle={gridStyle}
+                      columns={columns}
+                      cellData={cellData?.[item.path]}
+                      onClick={handleClick}
+                      onContextMenu={handleContextMenu}
+                      onAuxClick={handleAuxClick}
+                      onDoubleClick={handleDoubleClick}
+                      onDragStart={handleDragStart}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </>
       )}

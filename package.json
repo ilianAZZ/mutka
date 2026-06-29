@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@crabnebula/tauri-plugin-drag": "^2.1.0",
+    "@tanstack/react-virtual": "^3.14.4",
     "@tauri-apps/api": "^2.0.0",
     "@tauri-apps/plugin-cli": "^2.4.1",
     "@tauri-apps/plugin-process": "^2.3.1",
