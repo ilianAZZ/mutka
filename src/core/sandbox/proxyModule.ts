@@ -28,6 +28,8 @@ export interface ProxyRuntime {
   runOpen: (handlerId: string, item: FileItem) => void;
   /** Produce a column's cell value for an item in the backing runtime. */
   runColumn: (columnId: string, item: FileItem) => Promise<ColumnCell | null>;
+  /** Produce cell values for a batch of items in one dispatch. */
+  runColumnBatch: (columnId: string, items: FileItem[]) => Promise<(ColumnCell | null)[]>;
   /** Run a UI-event handler (button/list/form) in the backing runtime. */
   runUIEvent: (handlerId: string, value: unknown) => void;
   /** Tear down the backing runtime on unregister. */
@@ -68,7 +70,7 @@ export function registerProxyModule(manifest: SandboxManifest, runtime: ProxyRun
 
   // Register custom columns. The registry owns directory/cell gating + caching;
   // it calls back into this runtime only to produce a value for a matching cell.
-  ColumnsRegistry.register(manifest.id, manifest.columns, runtime.runColumn);
+  ColumnsRegistry.register(manifest.id, manifest.columns, runtime.runColumn, runtime.runColumnBatch);
 
   // Declarative panels / settings sections carry only data; the React layer
   // wraps each in the core <DeclarativeView>, reading the UINode the module

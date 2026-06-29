@@ -29,6 +29,7 @@ export class SandboxHost {
   // worker's own host-call pending map).
   private columnSeq = 0;
   private readonly columnPending = new Map<number, { resolve: (v: ColumnCell | null) => void; reject: (e: Error) => void }>();
+  private readonly columnBatchPending = new Map<number, { resolve: (v: (ColumnCell | null)[]) => void; reject: (e: Error) => void }>();
   // Host→worker→host calls for file-system-provider operations (list/openFile/…).
   private providerSeq = 0;
   private readonly providerPending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
@@ -88,6 +89,7 @@ export class SandboxHost {
       run: (commandId, snapshot) => this.send({ t: "run", commandId, snapshot }),
       runOpen: (handlerId, item) => this.send({ t: "open", handlerId, item }),
       runColumn: (columnId, item) => this.runColumn(columnId, item),
+      runColumnBatch: (columnId, items) => this.runColumnBatch(columnId, items),
       runUIEvent: (handler, value) => this.send({ t: "ui-event", handler, value }),
       dispose: () => this.dispose(),
     });
@@ -99,6 +101,14 @@ export class SandboxHost {
     return new Promise<ColumnCell | null>((resolve, reject) => {
       this.columnPending.set(id, { resolve, reject });
       this.send({ t: "column", id, columnId, item });
+    });
+  }
+
+  private runColumnBatch(columnId: string, items: FileItem[]): Promise<(ColumnCell | null)[]> {
+    const id = ++this.columnSeq;
+    return new Promise<(ColumnCell | null)[]>((resolve, reject) => {
+      this.columnBatchPending.set(id, { resolve, reject });
+      this.send({ t: "column-batch", id, columnId, items });
     });
   }
 
@@ -122,6 +132,8 @@ export class SandboxHost {
     for (const unsub of this.eventUnsubs) unsub();
     for (const { reject } of this.columnPending.values()) reject(new Error("module disposed"));
     this.columnPending.clear();
+    for (const { reject } of this.columnBatchPending.values()) reject(new Error("module disposed"));
+    this.columnBatchPending.clear();
     for (const { reject } of this.providerPending.values()) reject(new Error("module disposed"));
     this.providerPending.clear();
     for (const { reject } of this.discoveryPending.values()) reject(new Error("module disposed"));
@@ -174,6 +186,14 @@ export class SandboxHost {
         if (!pending) break;
         this.columnPending.delete(msg.id);
         if (msg.ok) pending.resolve(msg.value);
+        else pending.reject(new Error(msg.error));
+        break;
+      }
+      case "column-batch-result": {
+        const pending = this.columnBatchPending.get(msg.id);
+        if (!pending) break;
+        this.columnBatchPending.delete(msg.id);
+        if (msg.ok) pending.resolve(msg.values);
         else pending.reject(new Error(msg.error));
         break;
       }
