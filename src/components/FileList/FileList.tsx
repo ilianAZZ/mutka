@@ -226,16 +226,16 @@ export function FileList({
   }, [selected, files, rowVirtualizer]);
 
   // ── Click empty area to deselect ────────────────────────────────────────
-  const handleBodyClick = useCallback((e: React.MouseEvent) => {
-    if (!(e.target as HTMLElement).closest(".file-row")) onSelect([]);
-  }, [onSelect]);
+  const handleEmptyClick = useCallback((e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) live.current.onSelect([]);
+  }, []);
 
   return (
     <div
       id="file-list"
       data-menu-zone="background"
       className={bgDrop ? "file-list--drop" : undefined}
-      onClick={(e) => { if (e.target === e.currentTarget) onSelect([]); }}
+      onClick={handleEmptyClick}
       onDragOver={handleBgDragOver}
       onDragLeave={(e) => { if (e.target === e.currentTarget) setBgDrop(false); }}
       onDrop={handleBgDrop}
@@ -281,14 +281,12 @@ export function FileList({
           <div
             ref={scrollRef}
             className="file-list-body"
-            onClick={handleBodyClick}
-            onDragOver={handleBgDragOver}
-            onDragLeave={(e) => { if (e.target === e.currentTarget) setBgDrop(false); }}
-            onDrop={handleBgDrop}
+            onClick={handleEmptyClick}
           >
             <div
               className="file-list-virtual"
               style={{ height: rowVirtualizer.getTotalSize(), position: "relative" }}
+              onClick={handleEmptyClick}
             >
               {rowVirtualizer.getVirtualItems().map((virtualRow) => {
                 const item = files[virtualRow.index];
