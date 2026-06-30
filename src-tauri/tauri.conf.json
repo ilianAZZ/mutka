@@ -1,6 +1,6 @@
 {
   "productName": "Mutka",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "identifier": "app.mutka",
   "build": {
     "frontendDist": "../dist",
