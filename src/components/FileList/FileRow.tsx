@@ -26,9 +26,19 @@ interface FileRowProps {
 function formatSize(bytes: number): string {
   if (bytes === 0) return "—";
   if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`;
+  // Pick the unit from the ROUNDED value, not the raw one: 1 decimal of "1023.99"
+  // renders as "1024.0", so comparing the raw magnitude leaves e.g. 1048560 B
+  // showing "1024.0 KB" instead of rolling over to "1.0 MB". Advance a unit while
+  // the value would still round to ≥ 1024 at its display precision.
+  const units = ["KB", "MB", "GB"];
+  let value = bytes / 1024;
+  let i = 0;
+  while (i < units.length - 1 && Number(value.toFixed(1)) >= 1024) {
+    value /= 1024;
+    i++;
+  }
+  const decimals = i === units.length - 1 ? 2 : 1;
+  return `${value.toFixed(decimals)} ${units[i]}`;
 }
 
 function formatDate(ts: number): string {
