@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/ilianAZZ/mutka/compare/v1.1.0...v1.1.1) (2026-06-30)
+
+
+### Bug Fixes
+
+* **file-list:** roll size units over on rounding so files near 1 MB do not show "1024.0 KB" ([749744c](https://github.com/ilianAZZ/mutka/commit/749744c4ed2699011fdbf1be8cb6a901819365dc))
+* **file-list:** roll size units over on rounding so files near 1 MB don't show "1024.0 KB" ([0f3757e](https://github.com/ilianAZZ/mutka/commit/0f3757e0199c14aa6cbda5a9985907b09b09c10b))
+
 ## [1.1.0](https://github.com/ilianAZZ/mutka/compare/v1.0.0...v1.1.0) (2026-06-29)
 
 
