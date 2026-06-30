@@ -270,16 +270,24 @@ jobs:
           # The SHA, not the tag: the tag is created only when `publish` un-drafts,
           # which runs in parallel with this job — so the tag may not exist yet.
           ref: ${{ needs.setup.outputs.ref }}
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: pnpm
           registry-url: "https://registry.npmjs.org"
-      - name: Install SDK build deps
-        working-directory: packages/module-sdk
-        run: npm install --no-audit --no-fund
+      # The SDK's index.d.ts is GENERATED from the app source (../../src), so the
+      # dts bundler has to resolve the app's own deps (@tauri-apps/api, react,
+      # @crabnebula/tauri-plugin-drag) that those sources import — not just the
+      # package's dts-bundle-generator. A root workspace install provides BOTH (the
+      # app deps and module-sdk's devDeps, since it's a workspace member). Installing
+      # only packages/module-sdk left the app deps unresolved and failed the release.
+      - name: Install workspace deps
+        run: pnpm install --frozen-lockfile
       - name: Build types bundle
         working-directory: packages/module-sdk
-        run: npm run build
+        run: pnpm run build
       - name: Publish to npm
         working-directory: packages/module-sdk
         env:
