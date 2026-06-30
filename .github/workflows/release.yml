@@ -257,6 +257,27 @@ jobs:
             "repos/${{ github.repository }}/releases/${{ inputs.release_id }}" \
             -F draft=false -f make_latest=true
 
+      # Kill the deferred-tag race's phantom release PR. release-please evaluates the
+      # NEXT release PR in the SAME run that merges this one — i.e. BEFORE the un-draft
+      # above creates the vX.Y.Z tag. Seeing no tag, it thinks nothing is released and
+      # opens a PR re-rolling the whole history (typically a bogus major bump). Now the
+      # tag exists, so that PR is stale — and release-please will NOT auto-close it (it
+      # silently skips once it finds nothing releasable). Close it here. If real
+      # commits have landed since, release-please reopens a correct PR on the next push.
+      - name: Close the stale release-please PR (deferred-tag race)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          PR=$(gh pr list --state open --label "autorelease: pending" --json number -q '.[0].number // empty')
+          if [ -n "$PR" ]; then
+            gh pr close "$PR" --delete-branch \
+              --comment "Superseded by the just-published ${{ needs.setup.outputs.tag }}. This PR was generated before that tag existed (deferred-tag race with release-please); a fresh, correct release PR will open when new releasable commits land."
+            echo "Closed stale release PR #$PR"
+          else
+            echo "No open release-please PR to close."
+          fi
+
   # npm packages publish on FINAL releases only. release-please has already bumped
   # their package.json in lockstep, so they publish at the correct version with no
   # stamping. RC tags skip this.
